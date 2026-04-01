@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/rig.schema.json",
+  "title": "Camera Rig",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "rig_name",
+    "coordinate_system",
+    "cameras"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "rig_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "coordinate_system": {
+      "$ref": "#/$defs/coordinate_system"
+    },
+    "cameras": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/camera"
+      }
+    }
+  },
+  "$defs": {
+    "vector2_number": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "vector3_number": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "matrix3x3_number": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        },
+        "minItems": 3,
+        "maxItems": 3
+      }
+    },
+    "coordinate_system": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "frame",
+        "length_unit",
+        "rotation_representation"
+      ],
+      "properties": {
+        "frame": {
+          "type": "string",
+          "enum": [
+            "vehicle",
+            "ego_vehicle",
+            "world"
+          ]
+        },
+        "length_unit": {
+          "type": "string",
+          "enum": [
+            "mm",
+            "cm",
+            "m"
+          ]
+        },
+        "rotation_representation": {
+          "type": "string",
+          "enum": [
+            "matrix3x3"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "intrinsics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "focal_length_px",
+        "principal_point_px"
+      ],
+      "properties": {
+        "focal_length_px": {
+          "$ref": "#/$defs/vector2_number"
+        },
+        "principal_point_px": {
+          "$ref": "#/$defs/vector2_number"
+        },
+        "skew": {
+          "type": "number"
+        }
+      }
+    },
+    "distortion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model",
+        "coefficients"
+      ],
+      "properties": {
+        "model": {
+          "type": "string",
+          "enum": [
+            "none",
+            "radial_tangential",
+            "fisheye_polynomial4",
+            "fisheye_polynomial8",
+            "equidistant"
+          ]
+        },
+        "coefficients": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "pose_vehicle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "translation",
+        "rotation"
+      ],
+      "properties": {
+        "translation": {
+          "$ref": "#/$defs/vector3_number"
+        },
+        "rotation": {
+          "$ref": "#/$defs/matrix3x3_number"
+        }
+      }
+    },
+    "stitch_hints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "priority": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "camera": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "role",
+        "projection_model",
+        "image_size",
+        "intrinsics",
+        "distortion",
+        "pose_vehicle"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "front",
+            "rear",
+            "left",
+            "right",
+            "front_left",
+            "front_right",
+            "rear_left",
+            "rear_right",
+            "unknown"
+          ]
+        },
+        "projection_model": {
+          "type": "string",
+          "enum": [
+            "perspective",
+            "fisheye"
+          ]
+        },
+        "image_size": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "intrinsics": {
+          "$ref": "#/$defs/intrinsics"
+        },
+        "distortion": {
+          "$ref": "#/$defs/distortion"
+        },
+        "pose_vehicle": {
+          "$ref": "#/$defs/pose_vehicle"
+        },
+        "stitch_hints": {
+          "$ref": "#/$defs/stitch_hints"
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "dataset": {
+              "type": "string"
+            },
+            "sensor_name": {
+              "type": "string"
+            },
+            "notes": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

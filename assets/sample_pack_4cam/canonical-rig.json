@@ -1,0 +1,225 @@
+{
+  "schema_version": 1,
+  "rig_name": "demo_vehicle_rig",
+  "description": "Canonical four-camera surround-view rig used by the current demo setup.",
+  "coordinate_system": {
+    "frame": "vehicle",
+    "length_unit": "mm",
+    "rotation_representation": "matrix3x3",
+    "notes": "Vehicle frame: +X forward, +Y left, +Z up."
+  },
+  "cameras": [
+    {
+      "id": "cam_front",
+      "role": "front",
+      "projection_model": "fisheye",
+      "image_size": [
+        1280,
+        944
+      ],
+      "intrinsics": {
+        "focal_length_px": [
+          331.5108,
+          331.5078
+        ],
+        "principal_point_px": [
+          640.0,
+          472.0
+        ],
+        "skew": 0.0
+      },
+      "distortion": {
+        "model": "fisheye_polynomial4",
+        "coefficients": [
+          0.1216,
+          -0.08,
+          0.0402,
+          -0.008
+        ]
+      },
+      "pose_vehicle": {
+        "translation": [
+          2305.895751953125,
+          -15.427281379699707,
+          653.6359252929688
+        ],
+        "rotation": [
+          [
+            -0.0024208473595276,
+            -0.013862164239142815,
+            0.9999009850483541
+          ],
+          [
+            -0.9999782218027112,
+            0.0061726451748641996,
+            -0.0023354596620577873
+          ],
+          [
+            -0.006139659465291345,
+            -0.9998848627987886,
+            -0.013876805377968033
+          ]
+        ]
+      }
+    },
+    {
+      "id": "cam_left",
+      "role": "left",
+      "projection_model": "fisheye",
+      "image_size": [
+        1280,
+        944
+      ],
+      "intrinsics": {
+        "focal_length_px": [
+          331.5108,
+          331.5078
+        ],
+        "principal_point_px": [
+          640.0,
+          472.0
+        ],
+        "skew": 0.0
+      },
+      "distortion": {
+        "model": "fisheye_polynomial4",
+        "coefficients": [
+          0.1216,
+          -0.08,
+          0.0402,
+          -0.008
+        ]
+      },
+      "pose_vehicle": {
+        "translation": [
+          654.6549682617188,
+          1012.6365966796875,
+          920.9412231445312
+        ],
+        "rotation": [
+          [
+            0.9803422033793231,
+            -0.005671295013123995,
+            -0.19722322552439983
+          ],
+          [
+            0.11575708153260827,
+            -0.792943423332215,
+            0.5981981490018511
+          ],
+          [
+            -0.15977941778723329,
+            -0.6092688764470592,
+            -0.7766994102254172
+          ]
+        ]
+      }
+    },
+    {
+      "id": "cam_rear",
+      "role": "rear",
+      "projection_model": "fisheye",
+      "image_size": [
+        1280,
+        944
+      ],
+      "intrinsics": {
+        "focal_length_px": [
+          331.5108,
+          331.5078
+        ],
+        "principal_point_px": [
+          640.0,
+          472.0
+        ],
+        "skew": 0.0
+      },
+      "distortion": {
+        "model": "fisheye_polynomial4",
+        "coefficients": [
+          0.1216,
+          -0.08,
+          0.0402,
+          -0.008
+        ]
+      },
+      "pose_vehicle": {
+        "translation": [
+          -2313.031005859375,
+          -1.0795254707336426,
+          868.2960205078125
+        ],
+        "rotation": [
+          [
+            0.006173514385916783,
+            0.3272983651859409,
+            -0.9449008772705937
+          ],
+          [
+            0.9999438549780573,
+            0.006117694374975606,
+            0.008652208224283014
+          ],
+          [
+            0.008612468388844009,
+            -0.9449012403220481,
+            -0.32724222133781317
+          ]
+        ]
+      }
+    },
+    {
+      "id": "cam_right",
+      "role": "right",
+      "projection_model": "fisheye",
+      "image_size": [
+        1280,
+        944
+      ],
+      "intrinsics": {
+        "focal_length_px": [
+          331.5108,
+          331.5078
+        ],
+        "principal_point_px": [
+          640.0,
+          472.0
+        ],
+        "skew": 0.0
+      },
+      "distortion": {
+        "model": "fisheye_polynomial4",
+        "coefficients": [
+          0.1216,
+          -0.08,
+          0.0402,
+          -0.008
+        ]
+      },
+      "pose_vehicle": {
+        "translation": [
+          597.5703125,
+          -1005.672119140625,
+          915.7822265625
+        ],
+        "rotation": [
+          [
+            -0.9128924361303115,
+            0.2763324301227776,
+            -0.3004459820308892
+          ],
+          [
+            0.4027766713372084,
+            0.7293564196533806,
+            -0.5530010543723402
+          ],
+          [
+            0.06632008053812626,
+            -0.6258431122676368,
+            -0.7771242151320306
+          ]
+        ]
+      }
+    }
+  ]
+}

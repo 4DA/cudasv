@@ -1,0 +1,169 @@
+#include <fstream>
+
+#include <spdlog/spdlog.h>
+#include <spdlog/fmt/bundled/printf.h>
+
+#include "renderer/cudarf/helpers.hpp"
+#include "renderer/utils.hpp"
+
+#include "ibl.hpp"
+
+const unsigned int CUBE_FACES = 6;
+
+using namespace rf;
+
+SphericalHarmonics SphericalHarmonics::load_from_file(const std::string &file)
+{
+    std::vector<glm::vec3> result;
+    std::ifstream fin(file, std::ios::in);
+    std::size_t line = 0;
+
+    if (!fin.good()) {
+        SPDLOG_ERROR("{}", fmt::sprintf("Error opening %s", file.c_str()));
+        return SphericalHarmonics();
+    }
+
+    // skip all comment lines starting with '#' symbol
+    while (fin.peek() == '#') {
+        std::string unused;
+        std::getline(fin, unused);
+    }
+
+    while(line < SphericalHarmonics::ROWS_COUNT) {
+        float R = 0.0f; float G = 0.0f; float B = 0.0f;
+        fin >> R; fin >> G; fin >> B;
+
+        if (fin.eof()) {break;}
+
+        SPDLOG_INFO("{}", fmt::sprintf("SH coefs(%zu): %f, %f, %f", line, R, G, B));
+        result.push_back(glm::vec3(R, G, B));
+        line++;
+    }
+
+   if (result.size() != SphericalHarmonics::ROWS_COUNT) {
+        SPDLOG_ERROR("{}", fmt::sprintf("Incorrect SH rows count: %zu",
+            result.size(), SphericalHarmonics::ROWS_COUNT));
+    }
+
+    return SphericalHarmonics{result};
+}
+
+static cudarf::CubeMap create_cubemap_mipped(std::vector<CubemapDescription> specularMap,
+                                             cudaStream_t cuStream)
+{
+    int lod = 0;
+    int mipLevels = specularMap.size();
+    CubemapDescription topLod = specularMap[lod];
+    int width = topLod[0].w;
+    assert(topLod[0].channels == 4);
+
+    // allocate array and copy image data
+    cudaChannelFormatDesc channelDesc =
+        cudaCreateChannelDesc(32, 32, 32, 32, cudaChannelFormatKindFloat);
+
+    cudaMipmappedArray *dev_mipmapArray;
+    CUDA_CHK(cudaMallocMipmappedArray(&dev_mipmapArray,
+                                      &channelDesc,
+                                      make_cudaExtent(width, width, CUBE_FACES),
+                                      mipLevels,
+                                      cudaArrayCubemap));
+
+    for (int id = 0; id < mipLevels; id++) {
+        CubemapDescription lod = specularMap[id];
+        int width = lod[0].w;
+
+        auto data = std::make_unique<float[]>(4 * width * width * CUBE_FACES);
+
+        for (unsigned int i = 0; i < CUBE_FACES; i++) {
+            memcpy(&data[4 * width * width * i], lod[i].data, 4 * sizeof(float) * width * width);
+        }
+
+        cudaArray_t dev_mipLevelArray;
+
+        CUDA_CHK(cudaGetMipmappedArrayLevel(&dev_mipLevelArray, dev_mipmapArray, id));
+
+        // DEBUG: to get mip level properties
+        // cudaChannelFormatDesc desc;
+        // cudaExtent extent;
+        // unsigned int flags;
+        // CUDA_CHK(cudaArrayGetInfo(&desc, &extent, &flags, dev_mipLevelArray));
+
+        cudaMemcpy3DParms myparms = {0};
+        myparms.srcPos   = make_cudaPos(0, 0, 0);
+        myparms.dstPos   = make_cudaPos(0, 0, 0);
+        myparms.srcPtr   = make_cudaPitchedPtr(data.get(), width * sizeof(float) * 4, width, width);
+        myparms.dstArray = dev_mipLevelArray;
+        myparms.extent   = make_cudaExtent(width, width, CUBE_FACES);
+        myparms.kind     = cudaMemcpyHostToDevice;
+        CUDA_CHK(cudaMemcpy3DAsync(&myparms, cuStream));
+    }
+
+    cudaTextureObject_t tex;
+    cudaResourceDesc texRes;
+    memset(&texRes, 0, sizeof(cudaResourceDesc));
+
+    texRes.resType = cudaResourceTypeMipmappedArray;
+    texRes.res.mipmap.mipmap = dev_mipmapArray;
+
+    cudaTextureDesc texDescr;
+    memset(&texDescr, 0, sizeof(cudaTextureDesc));
+
+    texDescr.normalizedCoords    = true;
+    texDescr.filterMode          = cudaFilterModeLinear;
+    texDescr.mipmapFilterMode    = cudaFilterModeLinear;
+    texDescr.addressMode[0]      = cudaAddressModeMirror;
+    texDescr.addressMode[1]      = cudaAddressModeMirror;
+    texDescr.addressMode[2]      = cudaAddressModeClamp;
+    texDescr.readMode            = cudaReadModeElementType;
+    texDescr.maxMipmapLevelClamp = float(mipLevels - 1);
+
+    // for TextureDesc_v2:
+    // texDescr.seamlessCubeMap = 1;
+
+    CUDA_CHK(cudaCreateTextureObject(&tex, &texRes, &texDescr, NULL));
+
+    return cudarf::CubeMap{tex, specularMap.size()};
+}
+
+rf::IBL rf::load_ibl(const std::string &path_prefix, cudaStream_t cuStream) {
+    SphericalHarmonics sphericalHarmonics;
+
+    if (std::ifstream(path_prefix + "ibl/diffuse/sh.txt").good()) {
+        sphericalHarmonics = SphericalHarmonics::load_from_file(path_prefix + "ibl/diffuse/sh.txt");
+    }
+
+    SPDLOG_INFO("{}", fmt::sprintf("Using spherical harmonics"));
+
+    std::vector<CubemapDescription> specularMap;
+
+    // todo: levels should be determined automatically
+    for (unsigned int i = 0; i < 9; i++) {
+        CubemapDescription specularLevel = {
+            load_image_hdr(std::string(path_prefix + "ibl/specular/m") + std::to_string(i) + std::string("_px.hdr")),
+            load_image_hdr(std::string(path_prefix + "ibl/specular/m") + std::to_string(i) + std::string("_nx.hdr")),
+            load_image_hdr(std::string(path_prefix + "ibl/specular/m") + std::to_string(i) + std::string("_py.hdr")),
+            load_image_hdr(std::string(path_prefix + "ibl/specular/m") + std::to_string(i) + std::string("_ny.hdr")),
+            load_image_hdr(std::string(path_prefix + "ibl/specular/m") + std::to_string(i) + std::string("_pz.hdr")),
+            load_image_hdr(std::string(path_prefix + "ibl/specular/m") + std::to_string(i) + std::string("_nz.hdr"))
+        };
+        specularMap.push_back(specularLevel);
+    }
+
+    cudarf::CubeMap specularTex = create_cubemap_mipped(specularMap, cuStream);
+    assert(specularTex);
+
+    for (unsigned int i = 0; i < specularMap.size(); i++) {
+        CubemapDescription specularLevel = specularMap[i];
+        for (size_t j = 0; j < specularLevel.size(); j++) {
+            free((void*)specularLevel[j].data);
+        }
+    }
+
+    Image lutDesc = load_image(path_prefix + "ibl/brdfLUT_16.png", true, false, 4);
+
+    cudaTextureObject_t lutTex = rf::create_cuda_texture(lutDesc, cudaAddressModeClamp, cuStream);
+
+    free((void*)lutDesc.data);
+
+    return IBL(sphericalHarmonics, lutTex, specularTex);
+}

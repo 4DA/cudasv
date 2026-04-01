@@ -1,0 +1,202 @@
+{
+  "vehicle_config": {
+    "model_path": "polestar_1_ver02.glb",
+    "ibl_path": "",
+    "wheelsConfig": {
+      "front_left_steering": "Wheel_01_Steering",
+      "front_right_steering": "Wheel_02_Steering",
+      "rear_left_steering": "",
+      "rear_right_steering": "",
+      "front_left_spinning": "Wheel_01",
+      "front_right_spinning": "Wheel_02",
+      "rear_left_spinning": "Wheel_03",
+      "rear_right_spinning": "Wheel_04"
+    },
+    "use_velocity_for_wheels_animation": 1
+  },
+  "controls_config": {
+    "model_path": "camera_controls_new.glb",
+    "controls": [
+      {
+        "component": "CameraMarker",
+        "is_billboard": 0,
+        "is_viewpoint_oriented": 1,
+        "position": [
+          2750.0,
+          2500.0,
+          1000.0
+        ],
+        "viewpoint": 0
+      },
+      {
+        "component": "CameraMarker",
+        "is_billboard": 0,
+        "is_viewpoint_oriented": 1,
+        "position": [
+          2750.0,
+          -2500.0,
+          1000.0
+        ],
+        "viewpoint": 1
+      },
+      {
+        "component": "CameraMarker",
+        "is_billboard": 0,
+        "is_viewpoint_oriented": 1,
+        "position": [
+          -2750.0,
+          -2500.0,
+          1000.0
+        ],
+        "viewpoint": 2
+      },
+      {
+        "component": "CameraMarker",
+        "is_billboard": 0,
+        "is_viewpoint_oriented": 1,
+        "position": [
+          -2750.0,
+          2500.0,
+          1000.0
+        ],
+        "viewpoint": 3
+      },
+      {
+        "component": "CameraMarker",
+        "is_billboard": 0,
+        "is_viewpoint_oriented": 1,
+        "position": [
+          0.0,
+          0.0,
+          2000.0
+        ],
+        "viewpoint": 4
+      },
+      {
+        "component": "CameraMarker",
+        "is_billboard": 0,
+        "is_viewpoint_oriented": 0,
+        "look_at": [
+          1751.0,
+          0.0,
+          1500.0
+        ],
+        "position": [
+          1750.0,
+          0.0,
+          1500.0
+        ],
+        "viewpoint": 5
+      },
+      {
+        "component": "CameraMarker",
+        "is_billboard": 0,
+        "is_viewpoint_oriented": 0,
+        "look_at": [
+          -1751.0,
+          0.0,
+          1500.0
+        ],
+        "position": [
+          -1750.0,
+          0.0,
+          1500.0
+        ],
+        "viewpoint": 6
+      },
+      {
+        "component": "SelectionRing",
+        "is_billboard": 1,
+        "position": [
+          2750.0,
+          2500.0,
+          1000.0
+        ],
+        "viewpoint": 0
+      },
+      {
+        "component": "SelectionRing",
+        "is_billboard": 1,
+        "position": [
+          2750.0,
+          -2500.0,
+          1000.0
+        ],
+        "viewpoint": 1
+      },
+      {
+        "component": "SelectionRing",
+        "is_billboard": 1,
+        "position": [
+          -2750.0,
+          -2500.0,
+          1000.0
+        ],
+        "viewpoint": 2
+      },
+      {
+        "component": "SelectionRing",
+        "is_billboard": 1,
+        "position": [
+          -2750.0,
+          2500.0,
+          1000.0
+        ],
+        "viewpoint": 3
+      },
+      {
+        "component": "SelectionRing",
+        "is_billboard": 1,
+        "position": [
+          0.0,
+          0.0,
+          2000.0
+        ],
+        "viewpoint": 4
+      },
+      {
+        "component": "SelectionRing",
+        "is_billboard": 1,
+        "position": [
+          1750.0,
+          0.0,
+          1500.0
+        ],
+        "viewpoint": 5
+      },
+      {
+        "component": "SelectionRing",
+        "is_billboard": 1,
+        "position": [
+          -1750.0,
+          0.0,
+          1500.0
+        ],
+        "viewpoint": 6
+      },
+      {
+        "component": "SelectionRing",
+        "is_billboard": 0,
+        "is_viewpoint_oriented": 0,
+        "position": [
+          0.0,
+          0.0,
+          100.0
+        ],
+        "viewpoint": 255
+      }
+    ],
+    "controls_count": 15,
+    "enabled": 1
+  },
+  "renderer_config": {
+    "use_ibl": 1
+  },
+  "underlay_config": {
+    "blind_front": 300.0,
+    "blind_left": 100.0,
+    "blind_rear": 350.0,
+    "blind_right": 100.0,
+    "texture_path": "vehicle_shadow.png"
+  }
+}

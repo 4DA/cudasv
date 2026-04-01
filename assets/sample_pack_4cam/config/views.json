@@ -1,0 +1,386 @@
+{
+  "view_3d": {
+    "duration_ms": 1500,
+    "enabled": 1,
+    "exposure": 1.0,
+    "max_rotator_scale": 1.399999976158142,
+    "min_rotator_scale": 0.019999999552965164,
+    "sky_fade": {
+      "color": {
+        "rgba": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "enabled": 1,
+      "gradient_mm": 1000.0,
+      "radius_mm": 10000.0,
+      "start_mm": 2600.0
+    },
+    "topview_limits": {
+      "bottom": -5000.0,
+      "left": 3000.0,
+      "right": -3000.0,
+      "top": 5000.0
+    },
+    "viewpoint": {
+      "boundary": {
+        "angle_max": {
+          "azimuthal": 360.0,
+          "polar": 70.0
+        },
+        "angle_min": {
+          "azimuthal": 0.0,
+          "polar": 0.0
+        },
+        "boundary_max": {
+          "X": 10000.0,
+          "Y": 10000.0,
+          "Z": 10000.0
+        },
+        "boundary_min": {
+          "X": 2000.0,
+          "Y": 2000.0,
+          "Z": 3500.0
+        }
+      },
+      "camera": {
+        "vfov": 90.0,
+        "z_far": 30000.0,
+        "z_near": 200.0
+      },
+      "navigation_mode": "orbital",
+      "rotator": {
+        "X": 6000.0,
+        "Y": 4500.0,
+        "Z": 4500.0
+      },
+      "pose_mode": "orbital",
+      "spherical": {
+        "azimuthal": 55.0,
+        "polar": 70.0
+      }
+    },
+    "viewpoint_presets": [
+      {
+        "camera": {
+          "vfov": 90.0,
+          "z_far": 30000.0,
+          "z_near": 200.0
+        },
+        "navigation_mode": "orbital",
+        "pose_mode": "orbital",
+        "spherical": {
+          "azimuthal": 45.0,
+          "polar": 60.0
+        }
+      },
+      {
+        "camera": {
+          "vfov": 90.0,
+          "z_far": 30000.0,
+          "z_near": 200.0
+        },
+        "navigation_mode": "orbital",
+        "pose_mode": "orbital",
+        "spherical": {
+          "azimuthal": -45.0,
+          "polar": 60.0
+        }
+      },
+      {
+        "camera": {
+          "vfov": 90.0,
+          "z_far": 30000.0,
+          "z_near": 200.0
+        },
+        "navigation_mode": "orbital",
+        "pose_mode": "orbital",
+        "spherical": {
+          "azimuthal": 225.0,
+          "polar": 60.0
+        }
+      },
+      {
+        "camera": {
+          "vfov": 90.0,
+          "z_far": 30000.0,
+          "z_near": 200.0
+        },
+        "navigation_mode": "orbital",
+        "pose_mode": "orbital",
+        "spherical": {
+          "azimuthal": -225.0,
+          "polar": 60.0
+        }
+      },
+      {
+        "camera": {
+          "look_at": [
+            300.0,
+            0.0,
+            0.0
+          ],
+          "position": [
+            300.0,
+            0.0,
+            10000.0
+          ],
+          "up": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "vfov": 57.0,
+          "z_far": 300000.0,
+          "z_near": 200.0
+        },
+        "navigation_mode": "topview",
+        "pose_mode": "look_at"
+      },
+      {
+        "camera": {
+          "look_at": [
+            3500.0,
+            0.0,
+            0.0
+          ],
+          "position": [
+            3500.0,
+            0.0,
+            10000.0
+          ],
+          "up": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "vfov": 40.0,
+          "z_far": 300000.0,
+          "z_near": 200.0
+        },
+        "navigation_mode": "topview",
+        "pose_mode": "look_at"
+      },
+      {
+        "camera": {
+          "look_at": [
+            -3500.0,
+            0.0,
+            0.0
+          ],
+          "position": [
+            -3500.0,
+            0.0,
+            10000.0
+          ],
+          "up": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "vfov": 40.0,
+          "z_far": 300000.0,
+          "z_near": 200.0
+        },
+        "navigation_mode": "topview",
+        "pose_mode": "look_at"
+      },
+      {
+        "camera": {
+          "look_at": [
+            -776.5,
+            0.0,
+            900.0
+          ],
+          "position": [
+            -1276.5,
+            0.0,
+            1400.0
+          ],
+          "up": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "vfov": 57.0,
+          "z_far": 300000.0,
+          "z_near": 200.0
+        },
+        "navigation_mode": "topview",
+        "pose_mode": "look_at"
+      },
+      {
+        "camera": {
+          "look_at": [
+            168.5,
+            0.0,
+            0.0
+          ],
+          "position": [
+            168.5,
+            0.0,
+            0.0
+          ],
+          "up": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "vfov": 0.0,
+          "z_far": 0.0,
+          "z_near": 0.0
+        },
+        "navigation_mode": "orbital",
+        "pose_mode": "look_at"
+      },
+      {
+        "camera": {
+          "look_at": [
+            168.5,
+            0.0,
+            0.0
+          ],
+          "position": [
+            168.5,
+            0.0,
+            0.0
+          ],
+          "up": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "vfov": 0.0,
+          "z_far": 0.0,
+          "z_near": 0.0
+        },
+        "navigation_mode": "orbital",
+        "pose_mode": "look_at"
+      },
+      {
+        "camera": {
+          "look_at": [
+            168.5,
+            0.0,
+            0.0
+          ],
+          "position": [
+            168.5,
+            0.0,
+            0.0
+          ],
+          "up": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "vfov": 0.0,
+          "z_far": 0.0,
+          "z_near": 0.0
+        },
+        "navigation_mode": "orbital",
+        "pose_mode": "look_at"
+      },
+      {
+        "camera": {
+          "look_at": [
+            168.5,
+            0.0,
+            0.0
+          ],
+          "position": [
+            168.5,
+            0.0,
+            0.0
+          ],
+          "up": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "vfov": 0.0,
+          "z_far": 0.0,
+          "z_near": 0.0
+        },
+        "navigation_mode": "orbital",
+        "pose_mode": "look_at"
+      },
+      {
+        "camera": {
+          "look_at": [
+            168.5,
+            0.0,
+            0.0
+          ],
+          "position": [
+            168.5,
+            0.0,
+            0.0
+          ],
+          "up": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "vfov": 0.0,
+          "z_far": 0.0,
+          "z_near": 0.0
+        },
+        "navigation_mode": "orbital",
+        "pose_mode": "look_at"
+      },
+      {
+        "camera": {
+          "look_at": [
+            168.5,
+            0.0,
+            0.0
+          ],
+          "position": [
+            168.5,
+            0.0,
+            0.0
+          ],
+          "up": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "vfov": 0.0,
+          "z_far": 0.0,
+          "z_near": 0.0
+        },
+        "navigation_mode": "orbital",
+        "pose_mode": "look_at"
+      },
+      {
+        "camera": {
+          "look_at": [
+            168.5,
+            0.0,
+            0.0
+          ],
+          "position": [
+            168.5,
+            0.0,
+            0.0
+          ],
+          "up": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "vfov": 0.0,
+          "z_far": 0.0,
+          "z_near": 0.0
+        },
+        "navigation_mode": "orbital",
+        "pose_mode": "look_at"
+      }
+    ],
+    "viewpoints_count": 8
+  }
+}

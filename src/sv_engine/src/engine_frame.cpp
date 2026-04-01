@@ -1,0 +1,133 @@
+#include <spdlog/spdlog.h>
+#include <spdlog/fmt/bundled/printf.h>
+
+#include <engine/engine.hpp>
+
+#include <rf/renderer/cuda_helpers.hpp>
+
+#include "engine_internal.hpp"
+
+using namespace engine;
+
+engine::Error Engine::update_vehicle_state(const vehicle::CANSignals *vehicle_signals)
+{
+    OverlaysConfig *overlays_config = &config.overlays_config;
+    VehicleModelConfig *vehicle_model_config = &overlays_config->vehicle_config;
+    vehicle::VehicleDimensions *vehicle_config = &config.vehicle_config;
+
+    sv_vehicle_state_handle_signals(&_impl->vehicleState,
+                                    vehicle_config,
+                                    vehicle_model_config,
+                                    vehicle_signals);
+
+    return OK;
+}
+
+engine::Error Engine::pre_process(videoio::FrameSet<camera::CAMERAS_TOTAL> frames_set)
+{
+    OverlaysConfig *overlays_config = &config.overlays_config;
+    vehicle::VehicleDimensions *vehicle_config = &config.vehicle_config;
+    VehicleModelConfig *vehicle_model_config = &overlays_config->vehicle_config;
+
+    sv_vehicle_state_update(&_impl->vehicleState,
+                            vehicle_config,
+                            vehicle_model_config);
+
+    _impl->world->vehicle_controller().update(&_impl->vehicleState);
+
+    if (_impl->world->frame_projector().prevFrameSeq != frames_set.frameseq) {
+        _impl->world->camera_textures() =
+            _impl->world->frame_projector().load_rgb(
+                {
+                    frames_set.data[camera::CAMERA_RIGHT],
+                    frames_set.data[camera::CAMERA_LEFT],
+                    frames_set.data[camera::CAMERA_FRONT],
+                    frames_set.data[camera::CAMERA_REAR]
+                },
+                0,
+                frames_set.width,
+                frames_set.height,
+                frames_set.stride);
+    }
+
+    _impl->world->frame_projector().prevFrameSeq = frames_set.frameseq;
+
+    CUDA_CHK(cudaStreamSynchronize(_impl->cudaOutputStreams[0]));
+    return OK;
+}
+
+engine::Error Engine::process(videoio::FrameSet<camera::CAMERAS_TOTAL> frames_set,
+                              void *output_buffer,
+                              unsigned long long cuda_str,
+                              uint32_t width,
+                              uint32_t height,
+                              float clear_color[4],
+                              const Output &output,
+                              int output_index)
+{
+    (void)output_buffer;
+    (void)cuda_str;
+    (void)clear_color;
+
+    cudarf::pipe::Ctx *cuda_rasterizer = _impl->cuda_rasterizers[output_index].get();
+    cudarf::CudaOutput *cuda_output = _impl->cudaOutput[output_index].get();
+    cudaStream_t cudaStream = _impl->cudaOutputStreams[0];
+    cudarf::Framebuffer meshGpuOutput = _impl->mesh_gpu_outputs[output_index];
+
+#ifdef DUMP_FRAME_TIMING
+    _impl->frameTimeDB->clear();
+#endif
+
+#ifdef WITH_TAA
+    auto &taa = cuda_rasterizer->TAA;
+    taa.pattern = cudarf::TAA_Pattern::Halton;
+    taa.scale = 1.0f;
+    taa.feedback = 0.90f;
+#endif
+
+    cudarf::pipe::begin_frame(cuda_rasterizer, _impl->frameCounter, cudaStream);
+
+    bool surroundViewRendered = false;
+
+    for (int viewIndex = 0; viewIndex < output.views_count; ++viewIndex) {
+        const int active_view = output.active_view_ids[viewIndex];
+
+        switch (active_view) {
+        case view::SV_VIEW_3D:
+            if (_impl->view_3d) {
+                view::View3D *view = _impl->view_3d.get();
+
+                view->compose(frames_set,
+                              cuda_output->d_output,
+                              meshGpuOutput,
+                              width,
+                              height,
+                              _impl->vehicleState.current_state.steering_angle.value,
+                              {cudaStream},
+                              *_impl->frameTimeDB,
+                              _impl->frameCounter);
+
+                surroundViewRendered = true;
+            }
+            break;
+        default:
+            SPDLOG_ERROR("{}", fmt::sprintf("Unknown view type %d", active_view));
+            assert(false);
+            return ERROR;
+        }
+    }
+
+#ifdef DUMP_FRAME_TIMING
+    SPDLOG_INFO("{}", fmt::sprintf("frame counter: %u", _impl->frameCounter));
+    _impl->frameTimeDB->show();
+#endif
+
+    CUDA_CHK(cudaStreamSynchronize(cudaStream));
+    cuda_output->present(cuda_output->d_output);
+
+    if (surroundViewRendered) {
+        _impl->frameCounter++;
+    }
+
+    return OK;
+}

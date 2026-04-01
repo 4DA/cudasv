@@ -1,0 +1,5 @@
+.cache
+.projectile
+compile_commands.json
+
+out/
