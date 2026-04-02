@@ -111,6 +111,10 @@ create_animation_channel(const tinygltf::Model &model,
     rf::animation::TargetPath targetPath;
 
     if (gltfChannel.target_node >= 0) {
+        if (gltfChannel.target_node >= static_cast<int>(model.nodes.size())) {
+            SPDLOG_ERROR("Animation channel references invalid target node {}", gltfChannel.target_node);
+            return nullptr;
+        }
         targetName = prefix + model.nodes[gltfChannel.target_node].name;
     }
 

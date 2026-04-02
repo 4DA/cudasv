@@ -53,7 +53,7 @@ bool make_gltf_mesh(const tinygltf::Model &model,
                     rf::GltfMesh &gltfMesh)
 {
     for (auto it: gltfPrim.attributes) {
-        if (it.second < 0) {
+        if (it.second < 0 || it.second >= static_cast<int>(model.accessors.size())) {
             SPDLOG_ERROR("Primitive attribute {} has invalid accessor index {}", it.first, it.second);
             return false;
         }
@@ -118,6 +118,21 @@ bool make_gltf_mesh(const tinygltf::Model &model,
         return false;
     }
 
+    const size_t componentSize =
+        indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT
+            ? sizeof(uint16_t)
+            : sizeof(uint32_t);
+    const size_t indexByteOffset = bufferView.byteOffset + indexAccessor.byteOffset;
+    const size_t indexByteLength = indexAccessor.count * componentSize;
+    if (indexByteOffset > buffer.data.size() ||
+        indexByteLength > buffer.data.size() - indexByteOffset) {
+        SPDLOG_ERROR("Index buffer range [{}, {}) exceeds buffer size {}",
+                     indexByteOffset,
+                     indexByteOffset + indexByteLength,
+                     buffer.data.size());
+        return false;
+    }
+
     gltfMesh.convertIdxTo32 = (indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT);
     gltfMesh.indexPtr = (uint32_t *)(&buffer.data.at(0) + bufferView.byteOffset + indexAccessor.byteOffset);
     gltfMesh.count = indexAccessor.count;
@@ -138,6 +153,11 @@ bool create_mesh_component(cudarf::pipe::Ctx *desc,
                            cudaStream_t cuStream,
                            SceneComponent **outComponent)
 {
+    if (node.mesh < 0 || node.mesh >= static_cast<int>(model.meshes.size())) {
+        SPDLOG_ERROR("Node references invalid mesh index {}", node.mesh);
+        return false;
+    }
+
     const tinygltf::Mesh &mesh = model.meshes[node.mesh];
 
     if (scene.get_scene_component(compoName) != nullptr) {
