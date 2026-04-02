@@ -134,7 +134,8 @@ bool make_gltf_mesh(const tinygltf::Model &model,
     }
 
     gltfMesh.convertIdxTo32 = (indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT);
-    gltfMesh.indexPtr = (uint32_t *)(&buffer.data.at(0) + bufferView.byteOffset + indexAccessor.byteOffset);
+    gltfMesh.indexPtr = const_cast<uint32_t *>(
+        reinterpret_cast<const uint32_t *>(buffer.data.data() + bufferView.byteOffset + indexAccessor.byteOffset));
     gltfMesh.count = indexAccessor.count;
     return true;
 }
@@ -165,8 +166,8 @@ bool create_mesh_component(cudarf::pipe::Ctx *desc,
         return false;
     }
 
-    auto newCompo = std::unique_ptr<PrimitiveComponent>(
-        new PrimitiveComponent(compoName, TRSTransform(translation, rotation, scale), parent, false, false));
+    auto newCompo = std::make_unique<PrimitiveComponent>(
+        compoName, TRSTransform(translation, rotation, scale), parent, false, false);
 
     for (const tinygltf::Primitive &gltfPrim : mesh.primitives) {
         MeshInfo info;
@@ -278,7 +279,13 @@ bool create_light_component(const tinygltf::Model &model,
                             SceneComponent *parent,
                             SceneComponent **outComponent)
 {
-    int id = node.extensions.at("KHR_lights_punctual").Get("light").Get<int>();
+    auto nodeLightIt = node.extensions.find("KHR_lights_punctual");
+    if (nodeLightIt == node.extensions.end() || !nodeLightIt->second.Has("light")) {
+        SPDLOG_ERROR("KHR_lights_punctual extension is missing required 'light' field");
+        return false;
+    }
+
+    int id = nodeLightIt->second.Get("light").Get<int>();
 
     auto extension_it = model.extensions.find("KHR_lights_punctual");
     if (extension_it == model.extensions.end() || !extension_it->second.Has("lights")) {

@@ -25,6 +25,41 @@ const std::string UV_TRANSFORM_SCALE = "scale";
 const std::string UV_TRANSFORM_ROTATION = "rotation";
 const std::string UV_TRANSFORM_TEXCOORD = "texCoord";
 
+std::optional<glm::vec2> get_texture_transform_vec2(const tinygltf::Value::Object &object,
+                                                    const std::string &key)
+{
+    auto it = object.find(key);
+    if (it == object.end()) {
+        return std::nullopt;
+    }
+
+    const tinygltf::Value &value = it->second;
+    if (!value.IsArray() || value.ArrayLen() != 2 ||
+        !value.Get(0).IsNumber() || !value.Get(1).IsNumber()) {
+        SPDLOG_ERROR("KHR_texture_transform::{} must be a 2-element numeric array", key);
+        return std::nullopt;
+    }
+
+    return glm::vec2(static_cast<float>(value.Get(0).GetNumberAsDouble()),
+                     static_cast<float>(value.Get(1).GetNumberAsDouble()));
+}
+
+std::optional<float> get_texture_transform_float(const tinygltf::Value::Object &object,
+                                                 const std::string &key)
+{
+    auto it = object.find(key);
+    if (it == object.end()) {
+        return std::nullopt;
+    }
+
+    if (!it->second.IsNumber()) {
+        SPDLOG_ERROR("KHR_texture_transform::{} must be numeric", key);
+        return std::nullopt;
+    }
+
+    return static_cast<float>(it->second.GetNumberAsDouble());
+}
+
 std::optional<cudarf::Vec3f> to_vec3(const std::vector<double> &std_vec)
 {
     if (std_vec.size() != 3) {
@@ -64,21 +99,25 @@ bool get_uv_transform_matrix(const tinygltf::Value::Object &texform, glm::mat3 &
     glm::vec2 scale(1.0f, 1.0f);
     float rotation = 0.0f;
 
-    if (texform.count(UV_TRANSFORM_OFFSET)) {
-        offset[0] = static_cast<float>(texform.at(UV_TRANSFORM_OFFSET).Get(0).GetNumberAsDouble());
-        offset[1] = static_cast<float>(texform.at(UV_TRANSFORM_OFFSET).Get(1).GetNumberAsDouble());
+    if (auto parsedOffset = get_texture_transform_vec2(texform, UV_TRANSFORM_OFFSET)) {
+        offset = *parsedOffset;
         offset_mat = glm::translate(glm::mat3(1.0f), offset);
+    } else if (texform.count(UV_TRANSFORM_OFFSET)) {
+        return false;
     }
 
-    if (texform.count(UV_TRANSFORM_SCALE)) {
-        scale[0] = static_cast<float>(texform.at(UV_TRANSFORM_SCALE).Get(0).GetNumberAsDouble());
-        scale[1] = static_cast<float>(texform.at(UV_TRANSFORM_SCALE).Get(1).GetNumberAsDouble());
+    if (auto parsedScale = get_texture_transform_vec2(texform, UV_TRANSFORM_SCALE)) {
+        scale = *parsedScale;
         scale_mat = glm::scale(glm::mat3(1.0f), scale);
+    } else if (texform.count(UV_TRANSFORM_SCALE)) {
+        return false;
     }
 
-    if (texform.count(UV_TRANSFORM_ROTATION)) {
-        rotation = static_cast<float>(texform.at(UV_TRANSFORM_ROTATION).GetNumberAsDouble());
+    if (auto parsedRotation = get_texture_transform_float(texform, UV_TRANSFORM_ROTATION)) {
+        rotation = *parsedRotation;
         rot_mat = glm::rotate(glm::mat3(1.0f), rotation);
+    } else if (texform.count(UV_TRANSFORM_ROTATION)) {
+        return false;
     }
 
     if (texform.count(UV_TRANSFORM_TEXCOORD)) {
@@ -140,7 +179,12 @@ std::optional<cudarf::Texture> load_gltf_image(const tinygltf::Model &model,
                                                std::optional<glm::mat3> uvTransform,
                                                cudaStream_t cuStream)
 {
-    const tinygltf::Image &gltf_image = model.images.at(image_id);
+    if (image_id < 0 || image_id >= static_cast<int>(model.images.size())) {
+        SPDLOG_ERROR("Invalid image id {}", image_id);
+        return std::nullopt;
+    }
+
+    const tinygltf::Image &gltf_image = model.images[image_id];
 
     if (!gltf_image.image.size()) {
         SPDLOG_ERROR("image [index = {}, name = {}] has no data", image_id, gltf_image.name.c_str());
@@ -220,7 +264,7 @@ std::optional<LoadedTexture> load_pbr_texture(const tinygltf::Model &model,
         return std::nullopt;
     }
 
-    int image_id = model.textures.at(tex_index).source;
+    int image_id = model.textures[tex_index].source;
     if (image_id < 0 || image_id >= static_cast<int>(model.images.size())) {
         SPDLOG_ERROR("Texture {} references invalid image id {}", tex_index, image_id);
         return std::nullopt;
@@ -274,7 +318,7 @@ create_material(const tinygltf::Model &model,
     }
 
     const tinygltf::Material *gltfMaterial =
-        materialIndex >= 0 ? &model.materials.at(materialIndex) : nullptr;
+        materialIndex >= 0 ? &model.materials[materialIndex] : nullptr;
     std::string materialName = get_material_name(gltfMaterial, materialIndex, prefix);
 
     auto existingMat = scene.get_material(materialName);
