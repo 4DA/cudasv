@@ -84,7 +84,6 @@ set(
     ${PROJECT_NAME}_CUDARF_PUBLIC_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/rf/renderer/cudarf/cudarf.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/rf/renderer/cudarf/cudarf_profile.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/rf/renderer/cudarf/gltf_loader.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/rf/renderer/cudarf/material.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/rf/renderer/cudarf/draw_list_renderer.hpp
     )
