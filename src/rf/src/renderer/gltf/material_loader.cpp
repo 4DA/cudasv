@@ -1,6 +1,5 @@
 #include "renderer/gltf/material_loader.hpp"
 
-#include <cassert>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -198,6 +197,18 @@ struct LoadedTexture {
     std::optional<glm::mat3> uv_transform;
 };
 
+std::optional<int> get_parameter_texture_index(const tinygltf::Parameter &parameter,
+                                               const char *label)
+{
+    const int texIndex = parameter.TextureIndex();
+    if (texIndex < 0) {
+        SPDLOG_ERROR("{} is present but does not contain a valid texture index", label);
+        return std::nullopt;
+    }
+
+    return texIndex;
+}
+
 std::optional<LoadedTexture> load_pbr_texture(const tinygltf::Model &model,
                                               int tex_index,
                                               const tinygltf::ExtensionMap &extensions,
@@ -257,6 +268,11 @@ create_material(const tinygltf::Model &model,
                 cudaStream_t cuStream)
 {
     const int materialIndex = primitive.material;
+    if (materialIndex >= static_cast<int>(model.materials.size())) {
+        SPDLOG_ERROR("Primitive references invalid material index {}", materialIndex);
+        return nullptr;
+    }
+
     const tinygltf::Material *gltfMaterial =
         materialIndex >= 0 ? &model.materials.at(materialIndex) : nullptr;
     std::string materialName = get_material_name(gltfMaterial, materialIndex, prefix);
@@ -321,6 +337,8 @@ create_material(const tinygltf::Model &model,
         isOpaque = !(gltfMaterial->alphaMode == "BLEND");
         isDoubleSided = gltfMaterial->doubleSided;
         isUnlit = (gltfMaterial->extensions.find("KHR_materials_unlit") != gltfMaterial->extensions.end());
+        withTransmission =
+            (gltfMaterial->extensions.find("KHR_materials_transmission") != gltfMaterial->extensions.end());
 
         const tinygltf::PbrMetallicRoughness &pbr = gltfMaterial->pbrMetallicRoughness;
 
@@ -394,8 +412,12 @@ create_material(const tinygltf::Model &model,
         }
 
         if (occlusionIt != gltfMaterial->additionalValues.end()) {
-            int tex_id = static_cast<int>(occlusionIt->second.json_double_value.at("index"));
-            auto loaded = load_pbr_texture(model, tex_id, {}, "occlusion", cuStream);
+            auto texId = get_parameter_texture_index(occlusionIt->second, "occlusionTexture");
+            if (!texId) {
+                return nullptr;
+            }
+
+            auto loaded = load_pbr_texture(model, *texId, {}, "occlusion", cuStream);
             if (!loaded) {
                 return nullptr;
             }
@@ -406,9 +428,13 @@ create_material(const tinygltf::Model &model,
 
         auto emissiveIt = gltfMaterial->additionalValues.find("emissiveTexture");
         if (emissiveIt != gltfMaterial->additionalValues.end()) {
-            int tex_id = static_cast<int>(emissiveIt->second.json_double_value.at("index"));
+            auto texId = get_parameter_texture_index(emissiveIt->second, "emissiveTexture");
+            if (!texId) {
+                return nullptr;
+            }
+
             auto loaded = load_pbr_texture(model,
-                                           tex_id,
+                                           *texId,
                                            gltfMaterial->emissiveTexture.extensions,
                                            "emissive",
                                            cuStream);
