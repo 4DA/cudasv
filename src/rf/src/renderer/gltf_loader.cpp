@@ -17,6 +17,33 @@ using rf::Scene;
 using rf::SceneComponent;
 using rf::PrimitiveComponent;
 
+namespace
+{
+
+template <typename T>
+bool validate_optional_vertex_attribute(const std::vector<T> &attribute,
+                                        const std::size_t vertexCount,
+                                        const char *label,
+                                        const std::string &meshName)
+{
+    if (attribute.empty()) {
+        return true;
+    }
+
+    if (attribute.size() != vertexCount) {
+        SPDLOG_ERROR("Cannot add naive mesh '{}': {} count {} does not match vertex count {}",
+                     meshName,
+                     label,
+                     attribute.size(),
+                     vertexCount);
+        return false;
+    }
+
+    return true;
+}
+
+} // namespace
+
 rf::SceneComponent *
 loader::add_naive_mesh(cudarf::pipe::Ctx *desc,
                        const std::string &name,
@@ -47,33 +74,54 @@ loader::add_naive_mesh(cudarf::pipe::Ctx *desc,
         return nullptr;
     }
 
-    rf::PrimitiveComponent *newCompo = new rf::PrimitiveComponent(name, transform, parent, false, false);
+    if (meshPtr->vertices.empty()) {
+        SPDLOG_ERROR("Cannot add naive mesh '{}': mesh has no vertices", name);
+        return nullptr;
+    }
+
+    if (!validate_optional_vertex_attribute(meshPtr->colors, meshPtr->vertices.size(), "color", name) ||
+        !validate_optional_vertex_attribute(meshPtr->normals, meshPtr->vertices.size(), "normal", name) ||
+        !validate_optional_vertex_attribute(meshPtr->texcoords, meshPtr->vertices.size(), "texcoord", name)) {
+        return nullptr;
+    }
+
+    auto newCompo = std::make_unique<rf::PrimitiveComponent>(name, transform, parent, false, false);
 
     int drawPacketId = cudarf::pipe::alloc_draw_packet(desc);
     unsigned int idxSize = meshPtr->idx.data() ? meshPtr->idx.size() : meshPtr->vertices.size();
+    const cudarf::Vec4f *colorData = meshPtr->colors.empty() ? nullptr : meshPtr->colors.data();
+    const cudarf::Vec3f *normalData = meshPtr->normals.empty() ? nullptr : meshPtr->normals.data();
+    const cudarf::Vec2f *texcoordData = meshPtr->texcoords.empty() ? nullptr : meshPtr->texcoords.data();
+    const std::uint8_t normalComponentCount = meshPtr->normals.empty() ? 0 : 3;
+    const std::uint8_t texcoordComponentCount = meshPtr->texcoords.empty() ? 0 : 2;
+    const std::uint8_t vertexColorComponentCount = meshPtr->colors.empty() ? 0 : 4;
 
     cudarf::pipe::set_draw_packet_buffers(desc,
                                           meshPtr->idx.data(),
                                           idxSize,
                                           meshPtr->vertices.data(),
                                           meshPtr->vertices.size(),
-                                          nullptr, // TODO: handle vertex colors
-                                          meshPtr->normals.data(),
-                                          meshPtr->texcoords.data(),
+                                          colorData,
+                                          normalData,
+                                          texcoordData,
                                           drawPacketId,
                                           cuStream);
 
-    newCompo->add_primitive(rf::MeshInfo(0, 0, 0, 0, 0),
+    newCompo->add_primitive(rf::MeshInfo(normalComponentCount,
+                                         texcoordComponentCount,
+                                         0,
+                                         0,
+                                         vertexColorComponentCount),
                             meshPtr->vertexMin,
                             meshPtr->vertexMax,
                             drawPacketId,
                             material);
 
-    scene.add_primitive_component(std::unique_ptr<rf::PrimitiveComponent>(newCompo), parent);
+    rf::PrimitiveComponent *addedComponent = scene.add_primitive_component(std::move(newCompo), parent);
 
     SPDLOG_INFO("Added compo[name={}]", name);
 
-    return newCompo;
+    return addedComponent;
 }
 
 

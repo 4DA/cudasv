@@ -1,6 +1,7 @@
 #include "renderer/gltf/scene_loader.hpp"
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <spdlog/spdlog.h>
@@ -35,7 +36,7 @@ const std::string ATTRIB_TEXCOORD_0 = "TEXCOORD_0";
 const std::string ATTRIB_TEXCOORD_1 = "TEXCOORD_1";
 const std::string ATTRIB_TANGENT = "TANGENT";
 
-float to_float(const tinygltf::Value &value)
+std::optional<float> to_float(const tinygltf::Value &value)
 {
     if (value.IsInt()) {
         return static_cast<float>(value.Get<int>());
@@ -45,7 +46,7 @@ float to_float(const tinygltf::Value &value)
     }
 
     SPDLOG_ERROR("Not a number in tinygltf::Value");
-    return 0.0f;
+    return std::nullopt;
 }
 
 bool make_gltf_mesh(const tinygltf::Model &model,
@@ -285,7 +286,13 @@ bool create_light_component(const tinygltf::Model &model,
         return false;
     }
 
-    int id = nodeLightIt->second.Get("light").Get<int>();
+    const tinygltf::Value &lightValue = nodeLightIt->second.Get("light");
+    if (!lightValue.IsInt()) {
+        SPDLOG_ERROR("KHR_lights_punctual::light must be an integer index");
+        return false;
+    }
+
+    int id = lightValue.Get<int>();
 
     auto extension_it = model.extensions.find("KHR_lights_punctual");
     if (extension_it == model.extensions.end() || !extension_it->second.Has("lights")) {
@@ -300,7 +307,14 @@ bool create_light_component(const tinygltf::Model &model,
     }
 
     auto gltf_light = lights.Get(id);
-    float intensity = to_float(gltf_light.Get("intensity"));
+    float intensity = 1.0f;
+    if (gltf_light.Has("intensity")) {
+        auto parsedIntensity = to_float(gltf_light.Get("intensity"));
+        if (!parsedIntensity) {
+            return false;
+        }
+        intensity = *parsedIntensity;
+    }
 
     PointLightComponent *newCompo =
         scene.add_light_component(compoName, TRSTransform(translation, rotation, scale), intensity, parent);
