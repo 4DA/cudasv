@@ -62,7 +62,10 @@ bool make_gltf_mesh(const tinygltf::Model &model,
         AttributesAccessor attrib;
         const tinygltf::Accessor &gltf_accessor = model.accessors[it.second];
 
-        loader::gltf::init_attributes_accessor(model, attrib, it.first, gltf_accessor);
+        if (!loader::gltf::init_attributes_accessor(model, attrib, it.first, gltf_accessor)) {
+            SPDLOG_ERROR("Failed to initialize accessor for attribute '{}'", it.first);
+            return false;
+        }
 
         if (it.first == ATTRIB_POSITION) {
             gltfMesh.vertices = std::move(attrib);

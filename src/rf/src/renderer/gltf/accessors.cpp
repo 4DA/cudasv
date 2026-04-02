@@ -1,6 +1,5 @@
 #include "renderer/gltf/accessors.hpp"
 
-#include <cassert>
 #include <memory>
 
 #include <spdlog/spdlog.h>
@@ -74,27 +73,58 @@ static GeometryBuffer::Type get_buffer_view_type(const tinygltf::Accessor &acces
 static std::unique_ptr<GeometryBuffer>
 load_geometry_buffer(const tinygltf::Model &model, const tinygltf::Accessor &accessor)
 {
-    size_t bufferId = accessor.bufferView;
-    const tinygltf::BufferView &buffer_view = model.bufferViews[bufferId];
+    if (accessor.bufferView < 0 ||
+        accessor.bufferView >= static_cast<int>(model.bufferViews.size())) {
+        SPDLOG_ERROR("Accessor references invalid bufferView {}", accessor.bufferView);
+        return nullptr;
+    }
+
+    const tinygltf::BufferView &buffer_view = model.bufferViews[accessor.bufferView];
+    if (buffer_view.buffer < 0 ||
+        buffer_view.buffer >= static_cast<int>(model.buffers.size())) {
+        SPDLOG_ERROR("BufferView references invalid buffer {}", buffer_view.buffer);
+        return nullptr;
+    }
+
     const tinygltf::Buffer &buffer = model.buffers[buffer_view.buffer];
     GeometryBuffer::Type type = get_buffer_view_type(accessor, buffer_view);
+    const size_t byteOffset = buffer_view.byteOffset;
+    const size_t byteLength = buffer_view.byteLength;
+
+    if (byteOffset > buffer.data.size() ||
+        byteLength > buffer.data.size() - byteOffset) {
+        SPDLOG_ERROR("BufferView range [{}, {}) exceeds buffer size {}",
+                     byteOffset,
+                     byteOffset + byteLength,
+                     buffer.data.size());
+        return nullptr;
+    }
 
     return std::make_unique<GeometryBuffer>(buffer_view.name,
-                                            &(buffer.data[0]) + buffer_view.byteOffset,
-                                            buffer_view.byteLength,
+                                            buffer.data.data() + byteOffset,
+                                            byteLength,
                                             type);
 }
 
-void init_attributes_accessor(const tinygltf::Model &model,
+bool init_attributes_accessor(const tinygltf::Model &model,
                               AttributesAccessor &attribPtr,
                               const std::string &name,
                               const tinygltf::Accessor &accessor)
 {
+    if (accessor.bufferView < 0 ||
+        accessor.bufferView >= static_cast<int>(model.bufferViews.size())) {
+        SPDLOG_ERROR("Accessor '{}' references invalid bufferView {}", name, accessor.bufferView);
+        return false;
+    }
+
     const tinygltf::BufferView &buffer_view = model.bufferViews[accessor.bufferView];
 
     if (buffer_view.target != 0 && buffer_view.target != TINYGLTF_TARGET_ARRAY_BUFFER) {
-        SPDLOG_ERROR("buffer_view (id={}) target is not ELEMENT_ARRAY_BUFFER", accessor.bufferView);
-        assert(false);
+        SPDLOG_ERROR("BufferView {} for accessor '{}' has unsupported target {}",
+                     accessor.bufferView,
+                     name,
+                     buffer_view.target);
+        return false;
     }
 
     ComponentType type;
@@ -113,9 +143,10 @@ void init_attributes_accessor(const tinygltf::Model &model,
     case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
     case TINYGLTF_COMPONENT_TYPE_BYTE:
     default:
-        SPDLOG_ERROR("Unsupported component type: {}", accessor.type);
-        assert(false);
-        return;
+        SPDLOG_ERROR("Unsupported component type {} for accessor '{}'",
+                     accessor.componentType,
+                     name);
+        return false;
     }
 
     size_t compos;
@@ -143,9 +174,15 @@ void init_attributes_accessor(const tinygltf::Model &model,
         compos = 16;
         break;
     default:
-        SPDLOG_ERROR("Unsupported element type: {}", accessor.type);
-        assert(false);
-        return;
+        SPDLOG_ERROR("Unsupported element type {} for accessor '{}'",
+                     accessor.type,
+                     name);
+        return false;
+    }
+
+    auto buffer = load_geometry_buffer(model, accessor);
+    if (!buffer) {
+        return false;
     }
 
     attribPtr.name = name;
@@ -154,7 +191,8 @@ void init_attributes_accessor(const tinygltf::Model &model,
     attribPtr.num_components = compos;
     attribPtr.type = type;
     attribPtr.byte_offset = accessor.byteOffset;
-    attribPtr.buffer = load_geometry_buffer(model, accessor);
+    attribPtr.buffer = std::move(buffer);
+    return true;
 }
 
 } // namespace loader::gltf

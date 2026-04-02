@@ -17,7 +17,7 @@ std::optional<glm::vec2> to_glm_vec2(const std::vector<double> &std_vec);
 std::optional<glm::vec3> to_glm_vec3(const std::vector<double> &std_vec);
 std::optional<glm::vec4> to_glm_vec4(const std::vector<double> &std_vec);
 
-void init_attributes_accessor(const tinygltf::Model &model,
+bool init_attributes_accessor(const tinygltf::Model &model,
                               rf::AttributesAccessor &attribPtr,
                               const std::string &name,
                               const tinygltf::Accessor &accessor);
