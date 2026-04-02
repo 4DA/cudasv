@@ -1,6 +1,5 @@
 #include "renderer/gltf/scene_loader.hpp"
 
-#include <cassert>
 #include <memory>
 #include <string>
 
@@ -80,8 +79,27 @@ bool make_gltf_mesh(const tinygltf::Model &model,
         }
     }
 
+    if (gltfPrim.indices < 0 || gltfPrim.indices >= static_cast<int>(model.accessors.size())) {
+        SPDLOG_ERROR("Primitive has invalid index accessor {}", gltfPrim.indices);
+        return false;
+    }
+
     const tinygltf::Accessor &indexAccessor = model.accessors[gltfPrim.indices];
+    if (indexAccessor.bufferView < 0 ||
+        indexAccessor.bufferView >= static_cast<int>(model.bufferViews.size())) {
+        SPDLOG_ERROR("Index accessor {} references invalid bufferView {}",
+                     gltfPrim.indices,
+                     indexAccessor.bufferView);
+        return false;
+    }
+
     const tinygltf::BufferView &bufferView = model.bufferViews[indexAccessor.bufferView];
+    if (bufferView.buffer < 0 || bufferView.buffer >= static_cast<int>(model.buffers.size())) {
+        SPDLOG_ERROR("Index bufferView {} references invalid buffer {}",
+                     indexAccessor.bufferView,
+                     bufferView.buffer);
+        return false;
+    }
     const tinygltf::Buffer &buffer = model.buffers[bufferView.buffer];
 
     if (gltfPrim.mode != TINYGLTF_MODE_TRIANGLES) {
@@ -248,7 +266,13 @@ bool create_light_component(const tinygltf::Model &model,
         return false;
     }
 
-    auto gltf_light = extension_it->second.Get("lights").Get(id);
+    auto lights = extension_it->second.Get("lights");
+    if (!lights.IsArray() || id < 0 || id >= static_cast<int>(lights.ArrayLen())) {
+        SPDLOG_ERROR("KHR_lights_punctual references invalid light index {}", id);
+        return false;
+    }
+
+    auto gltf_light = lights.Get(id);
     float intensity = to_float(gltf_light.Get("intensity"));
 
     PointLightComponent *newCompo =
@@ -271,9 +295,15 @@ bool create_scene_component(cudarf::pipe::Ctx *desc,
                             cudaStream_t cuStream,
                             SceneComponent **outComponent)
 {
-    assert(desc);
-    assert(parent);
-    assert(model.scenes.size() > 0);
+    if (desc == nullptr) {
+        SPDLOG_ERROR("Cannot create GLTF scene component: raster context is null");
+        return false;
+    }
+
+    if (parent == nullptr) {
+        SPDLOG_ERROR("Cannot create GLTF scene component for node {}: parent is null", nodeIndex);
+        return false;
+    }
 
     SPDLOG_DEBUG("parent component [name = {}] [toLocal = {}]",
                  parent->name, parent->toLocal.to_string());
@@ -362,8 +392,15 @@ bool load_scene_tree(cudarf::pipe::Ctx *desc,
                      loader::PrimitiveComponentCB cb,
                      cudaStream_t cuStream)
 {
-    assert(desc);
-    assert(parent);
+    if (desc == nullptr) {
+        SPDLOG_ERROR("Cannot load GLTF scene tree at node {}: raster context is null", nodeIndex);
+        return false;
+    }
+
+    if (parent == nullptr) {
+        SPDLOG_ERROR("Cannot load GLTF scene tree at node {}: parent is null", nodeIndex);
+        return false;
+    }
 
     SceneComponent *compo = nullptr;
     if (!create_scene_component(desc, model, nodeIndex, scene, node, parent, namePrefix, cb, cuStream, &compo)) {

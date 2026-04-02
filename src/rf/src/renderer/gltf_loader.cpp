@@ -1,4 +1,3 @@
-#include <cassert>
 #include <string>
 
 #include <spdlog/spdlog.h>
@@ -28,7 +27,25 @@ loader::add_naive_mesh(cudarf::pipe::Ctx *desc,
                        rf::SceneComponent *parent,
                        cudaStream_t cuStream)
 {
-    assert(scene.get_scene_component(name) == nullptr);
+    if (desc == nullptr) {
+        SPDLOG_ERROR("Cannot add naive mesh '{}': raster context is null", name);
+        return nullptr;
+    }
+
+    if (meshPtr == nullptr) {
+        SPDLOG_ERROR("Cannot add naive mesh '{}': mesh is null", name);
+        return nullptr;
+    }
+
+    if (parent == nullptr) {
+        SPDLOG_ERROR("Cannot add naive mesh '{}': parent component is null", name);
+        return nullptr;
+    }
+
+    if (scene.get_scene_component(name) != nullptr) {
+        SPDLOG_ERROR("Cannot add naive mesh '{}': scene component already exists", name);
+        return nullptr;
+    }
 
     rf::PrimitiveComponent *newCompo = new rf::PrimitiveComponent(name, transform, parent, false, false);
 
@@ -79,7 +96,20 @@ bool loader::load_gltf_model(cudarf::pipe::Ctx *desc,
                              PrimitiveComponentCB cb,
                              cudaStream_t cuStream)
 {
-    assert(file.length() > 0);
+    if (desc == nullptr) {
+        SPDLOG_ERROR("Failed to load GLTF: raster context is null");
+        return false;
+    }
+
+    if (parent == nullptr) {
+        SPDLOG_ERROR("Failed to load GLTF '{}': parent component is null", file);
+        return false;
+    }
+
+    if (file.empty()) {
+        SPDLOG_ERROR("Failed to load GLTF: input file path is empty");
+        return false;
+    }
 
     std::string errMsg;
     std::string warnMsg;
