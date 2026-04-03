@@ -35,6 +35,7 @@ add_executable(sv_app
   src/app/demo_vehicle_signal_provider.cpp
   src/app/app_runtime.cpp
   src/compat/render_bridge_4cam_contract.cpp
+  src/compat/runtime_source_bridge_4cam.cpp
   src/config/config.cpp
   src/config/canonical_rig.cpp
   src/config/runtime_calibration_bridge_4cam.cpp
