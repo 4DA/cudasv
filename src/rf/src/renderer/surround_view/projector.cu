@@ -623,6 +623,54 @@ __device__ float4 overlap(glm::vec2 p,
     return blend_val;
 }
 
+__device__ float4 debug_role_color(int cameraIndex)
+{
+    switch (cameraIndex) {
+    case CAMERA_FRONT:
+        return make_float4(1.0f, 0.0f, 0.0f, 1.0f);
+    case CAMERA_LEFT:
+        return make_float4(0.0f, 1.0f, 0.0f, 1.0f);
+    case CAMERA_RIGHT:
+        return make_float4(0.0f, 0.0f, 1.0f, 1.0f);
+    case CAMERA_REAR:
+        return make_float4(1.0f, 1.0f, 0.0f, 1.0f);
+    default:
+        return make_float4(1.0f, 0.0f, 1.0f, 1.0f);
+    }
+}
+
+__device__ float4 debug_coverage_color(int visibleCount)
+{
+    switch (visibleCount) {
+    case 0:
+        return make_float4(0.0f, 0.0f, 0.0f, 1.0f);
+    case 1:
+        return make_float4(0.0f, 0.5f, 1.0f, 1.0f);
+    case 2:
+        return make_float4(1.0f, 0.75f, 0.0f, 1.0f);
+    case 3:
+        return make_float4(1.0f, 0.0f, 1.0f, 1.0f);
+    default:
+        return make_float4(1.0f, 1.0f, 1.0f, 1.0f);
+    }
+}
+
+__device__ float4 apply_reprojection_grid(float4 rgba, glm::vec3 uv)
+{
+    const float gridCells = 12.0f;
+    const float lineWidth = 0.04f;
+    const float gridU = uv.x * gridCells - floorf(uv.x * gridCells);
+    const float gridV = uv.y * gridCells - floorf(uv.y * gridCells);
+    const bool onGrid = (gridU < lineWidth) || (gridU > (1.0f - lineWidth)) ||
+                        (gridV < lineWidth) || (gridV > (1.0f - lineWidth));
+
+    if (!onGrid) {
+        return rgba;
+    }
+
+    return make_float4(1.0f, 1.0f, 1.0f, 1.0f);
+}
+
 __global__
 void render_mesh_gpu(int w,
                      int h,
@@ -661,6 +709,8 @@ void render_mesh_gpu(int w,
     glm::vec3 pWorld = virtCamera.origin + t * dir;
 
     float4 cam_samples[4] = {0.0f};
+    glm::vec3 cam_uvs[4] = {glm::vec3(0.0f)};
+    bool camera_visible[4] = {false, false, false, false};
 
     for (int i = 0; i < 4; i++) {
         const auto& projection = cameraParams.projections[i];
@@ -675,51 +725,94 @@ void render_mesh_gpu(int w,
 
         if (uv.z > 0) {
             cam_samples[i] = rgba;
+            cam_uvs[i] = uv;
+            camera_visible[i] = true;
         }
     }
 
     float4 blend_val = {0.0f};
+    int visibleCameraCount = 0;
+    for (int i = 0; i < 4; ++i) {
+        visibleCameraCount += camera_visible[i] ? 1 : 0;
+    }
 
-    float VL2 = cameraParams.vehicle_length / 2.0f;
-    float VW2 = cameraParams.vehicle_width / 2.0f;
+    const float frontExtent = cameraParams.front_extent;
+    const float rearExtent = cameraParams.rear_extent;
+    const float leftExtent = cameraParams.left_extent;
+    const float rightExtent = cameraParams.right_extent;
 
     // front camera
-    if (pWorld.x > 0.0f && pWorld.y <= VW2 && pWorld.y >= -VW2) {
+    if (pWorld.x > 0.0f && pWorld.y <= leftExtent && pWorld.y >= -rightExtent) {
         blend_val = cam_samples[CAMERA_FRONT];
     } // front-left overlap
     else if (pWorld.x > 0.0f && pWorld.y > 0.0f) {
 
-        glm::vec2 C = glm::vec2(pWorld) - glm::vec2(VL2, VW2);
+        glm::vec2 C = glm::vec2(pWorld) - glm::vec2(frontExtent, leftExtent);
 
         blend_val = overlap(C,
-                            glm::radians(35.0f), glm::radians(55.0f),
+                            cameraParams.front_left_start_rad, cameraParams.front_left_end_rad,
                             cam_samples[CAMERA_FRONT], cam_samples[CAMERA_LEFT]);
     } // right-front overlap
     else if (pWorld.x > 0.0f && pWorld.y < 0.0f) {
-        glm::vec2 C = glm::vec2(pWorld) - glm::vec2(VL2, -VW2);
+        glm::vec2 C = glm::vec2(pWorld) - glm::vec2(frontExtent, -rightExtent);
 
         blend_val = overlap(C,
-                            glm::radians(305 - 10.0f), glm::radians(305 + 10.0f),
+                            cameraParams.right_front_start_rad, cameraParams.right_front_end_rad,
                             cam_samples[CAMERA_RIGHT], cam_samples[CAMERA_FRONT]);
     } // rear-right overlap
     else if (pWorld.x < 0.0f && pWorld.y < 0.0f) {
-        glm::vec2 C = glm::vec2(pWorld) - glm::vec2(-VL2, -VW2);
+        glm::vec2 C = glm::vec2(pWorld) - glm::vec2(-rearExtent, -rightExtent);
 
         blend_val = overlap(C,
-                            glm::radians(225 - 10.0f), glm::radians(225 + 10.0f),
+                            cameraParams.rear_right_start_rad, cameraParams.rear_right_end_rad,
                             cam_samples[CAMERA_REAR], cam_samples[CAMERA_RIGHT]);
     }
     // left-rear overlap
     else if (pWorld.x < 0.0f && pWorld.y > 0.0f) {
-        glm::vec2 C = glm::vec2(pWorld) - glm::vec2(-VL2, VW2);
+        glm::vec2 C = glm::vec2(pWorld) - glm::vec2(-rearExtent, leftExtent);
 
         blend_val = overlap(C,
-                            glm::radians(135 - 10.0f), glm::radians(135 + 10.0f),
+                            cameraParams.left_rear_start_rad, cameraParams.left_rear_end_rad,
                             cam_samples[CAMERA_LEFT], cam_samples[CAMERA_REAR]);
     }
 
     // DEBUG: draw single camera
     // blend_val = cam_samples[CAMERA_FRONT];
+
+    if (cameraParams.debug_mode == DEBUG_MODE_CAMERA_ROLES) {
+        if (pWorld.x > 0.0f && pWorld.y <= leftExtent && pWorld.y >= -rightExtent) {
+            blend_val = debug_role_color(CAMERA_FRONT);
+        } else if (pWorld.x > 0.0f && pWorld.y > 0.0f) {
+            glm::vec2 C = glm::vec2(pWorld) - glm::vec2(frontExtent, leftExtent);
+            blend_val = overlap(C,
+                                cameraParams.front_left_start_rad, cameraParams.front_left_end_rad,
+                                debug_role_color(CAMERA_FRONT), debug_role_color(CAMERA_LEFT));
+        } else if (pWorld.x > 0.0f && pWorld.y < 0.0f) {
+            glm::vec2 C = glm::vec2(pWorld) - glm::vec2(frontExtent, -rightExtent);
+            blend_val = overlap(C,
+                                cameraParams.right_front_start_rad, cameraParams.right_front_end_rad,
+                                debug_role_color(CAMERA_RIGHT), debug_role_color(CAMERA_FRONT));
+        } else if (pWorld.x < 0.0f && pWorld.y < 0.0f) {
+            glm::vec2 C = glm::vec2(pWorld) - glm::vec2(-rearExtent, -rightExtent);
+            blend_val = overlap(C,
+                                cameraParams.rear_right_start_rad, cameraParams.rear_right_end_rad,
+                                debug_role_color(CAMERA_REAR), debug_role_color(CAMERA_RIGHT));
+        } else if (pWorld.x < 0.0f && pWorld.y > 0.0f) {
+            glm::vec2 C = glm::vec2(pWorld) - glm::vec2(-rearExtent, leftExtent);
+            blend_val = overlap(C,
+                                cameraParams.left_rear_start_rad, cameraParams.left_rear_end_rad,
+                                debug_role_color(CAMERA_LEFT), debug_role_color(CAMERA_REAR));
+        }
+    } else if (cameraParams.debug_mode == DEBUG_MODE_COVERAGE_MASK) {
+        blend_val = debug_coverage_color(visibleCameraCount);
+    } else if (cameraParams.debug_mode == DEBUG_MODE_REPROJECTION_GRID) {
+        const uint32_t cameraIndex = cameraParams.debug_camera_index;
+        if (cameraIndex < 4 && camera_visible[cameraIndex]) {
+            blend_val = apply_reprojection_grid(cam_samples[cameraIndex], cam_uvs[cameraIndex]);
+        } else {
+            blend_val = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
+        }
+    }
 
     fb::store(framebuffer, x,  y, blend_val);
 }

@@ -232,6 +232,23 @@ inline void to_json(nlohmann::json &j, const ViewsConfig &config)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(RendererConfig,
                                    use_ibl)
 
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SurroundViewBlendConfig,
+                                   front_left_start_deg,
+                                   front_left_end_deg,
+                                   right_front_start_deg,
+                                   right_front_end_deg,
+                                   rear_right_start_deg,
+                                   rear_right_end_deg,
+                                   left_rear_start_deg,
+                                   left_rear_end_deg,
+                                   front_anchor_offset_mm,
+                                   rear_anchor_offset_mm,
+                                   left_anchor_offset_mm,
+                                   right_anchor_offset_mm)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SurroundViewDebugConfig,
+                                   mode,
+                                   camera_role)
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(CarUnderlayConfig,
                                    blind_front,
@@ -315,6 +332,14 @@ inline void to_json(nlohmann::json &j, const VirtualControlConfig &config)
 inline void from_json(const nlohmann::json &j, OverlaysConfig &config)
 {
     config.renderer_config = j.at("renderer_config").get<RendererConfig>();
+    if (j.contains("surround_view_blend_config")) {
+        config.surround_view_blend_config =
+            j.at("surround_view_blend_config").get<SurroundViewBlendConfig>();
+    }
+    if (j.contains("surround_view_debug_config")) {
+        config.surround_view_debug_config =
+            j.at("surround_view_debug_config").get<SurroundViewDebugConfig>();
+    }
     config.underlay_config = j.at("underlay_config").get<CarUnderlayConfig>();
     config.vehicle_config = j.at("vehicle_config").get<VehicleModelConfig>();
     config.controls_config = j.at("controls_config").get<VirtualControlConfig>();
@@ -324,6 +349,8 @@ inline void to_json(nlohmann::json &j, const OverlaysConfig &config)
 {
     j = nlohmann::json{
         {"renderer_config", config.renderer_config},
+        {"surround_view_blend_config", config.surround_view_blend_config},
+        {"surround_view_debug_config", config.surround_view_debug_config},
         {"underlay_config", config.underlay_config},
         {"vehicle_config", config.vehicle_config},
         {"controls_config", config.controls_config},

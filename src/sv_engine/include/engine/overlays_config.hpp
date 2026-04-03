@@ -115,10 +115,46 @@ struct RendererConfig
     int use_ibl;
 } ;
 
+enum SurroundViewDebugMode
+{
+    SURROUND_VIEW_DEBUG_NORMAL = 0,
+    SURROUND_VIEW_DEBUG_CAMERA_ROLES = 1,
+    SURROUND_VIEW_DEBUG_COVERAGE_MASK = 2,
+    SURROUND_VIEW_DEBUG_REPROJECTION_GRID = 3,
+};
+
+struct SurroundViewBlendConfig
+{
+    float front_left_start_deg = 35.0f;
+    float front_left_end_deg = 55.0f;
+    float right_front_start_deg = 295.0f;
+    float right_front_end_deg = 315.0f;
+    float rear_right_start_deg = 215.0f;
+    float rear_right_end_deg = 235.0f;
+    float left_rear_start_deg = 125.0f;
+    float left_rear_end_deg = 145.0f;
+    float front_anchor_offset_mm = 0.0f;
+    float rear_anchor_offset_mm = 0.0f;
+    float left_anchor_offset_mm = 0.0f;
+    float right_anchor_offset_mm = 0.0f;
+};
+
+struct SurroundViewDebugConfig
+{
+    int mode = SURROUND_VIEW_DEBUG_NORMAL;
+    std::string camera_role = "front";
+};
+
 struct OverlaysConfig
 {
     // 3D renderer config
     RendererConfig renderer_config;
+
+    // Surround-view overlap/blending policy
+    SurroundViewBlendConfig surround_view_blend_config;
+
+    // Surround-view debug output mode
+    SurroundViewDebugConfig surround_view_debug_config;
 
     // Underlay/bottom shadow config
     CarUnderlayConfig underlay_config;
