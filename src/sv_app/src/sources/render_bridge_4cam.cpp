@@ -57,13 +57,24 @@ bool resolve_render_bridge_4cam(
     return true;
 }
 
-bool remap_source_frame_packet_to_render_bridge_4cam(
-    videoio::FramePacket &packet,
+bool prepare_runtime_render_bridge_4cam_context(
     const videoio::SourceInfo &sourceInfo,
-    const videoio::SourceInfo &renderBridgeInfo)
+    RuntimeRenderBridge4CamContext &context)
+{
+    context.sourceInfo = &sourceInfo;
+    context.runtimeSourceInfo = sourceInfo;
+    context.runtimeSourceInfo.render_roles = kRenderBridge4CameraRoles;
+    return true;
+}
+
+bool adapt_frame_packet_for_runtime_render_bridge_4cam(
+    videoio::FramePacket &packet,
+    const RuntimeRenderBridge4CamContext &context)
 {
     std::array<int, camera::CAMERAS_TOTAL> sourceIndexByRenderSlot;
     videoio::FramePacket sourcePacket = packet;
+    const videoio::SourceInfo &sourceInfo = *context.sourceInfo;
+    const videoio::SourceInfo &renderBridgeInfo = context.runtimeSourceInfo;
 
     if (!resolve_render_bridge_4cam_source_slot_indices(sourceInfo.render_roles,
                                                         sourceInfo.source_name,

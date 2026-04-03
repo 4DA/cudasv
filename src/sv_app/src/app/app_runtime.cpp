@@ -23,8 +23,12 @@ int run_application_loop(AppContext &app,
     int frame_set_index = 0;
     vehicle::CANSignals demo_state;
     const videoio::SourceInfo &source_info = frame_source.info();
-    videoio::SourceInfo render_bridge_info = source_info;
-    render_bridge_info.render_roles = kRenderBridge4CameraRoles;
+    RuntimeRenderBridge4CamContext runtime_render_bridge;
+
+    if (!prepare_runtime_render_bridge_4cam_context(source_info, runtime_render_bridge)) {
+        SPDLOG_ERROR("Failed to prepare the current 4-camera runtime compatibility bridge");
+        return EXIT_FAILURE;
+    }
 
     while (app.running && !glfw_host.should_close_any()) {
         if (!signal_provider.get_next_signals(demo_state)) {
@@ -45,10 +49,9 @@ int run_application_loop(AppContext &app,
             return EXIT_FAILURE;
         }
 
-        if (!remap_source_frame_packet_to_render_bridge_4cam(frame_packets[frame_set_index],
-                                                             source_info,
-                                                             render_bridge_info)) {
-            SPDLOG_ERROR("Failed to remap source frame packet into the current 4-camera render mapping");
+        if (!adapt_frame_packet_for_runtime_render_bridge_4cam(frame_packets[frame_set_index],
+                                                               runtime_render_bridge)) {
+            SPDLOG_ERROR("Failed to adapt source frame packet through the current 4-camera runtime compatibility bridge");
             return EXIT_FAILURE;
         }
 
