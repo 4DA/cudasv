@@ -93,7 +93,8 @@ engine::Error Engine::process(const videoio::FramePacket &frame_packet,
     auto &taa = cuda_rasterizer->TAA;
     taa.pattern = cudarf::TAA_Pattern::Halton;
     taa.scale = 1.0f;
-    taa.feedback = 0.90f;
+    taa.feedback = 0.70f;
+    taa.velocityThreshold = 0.1f;
 #endif
 
     cudarf::pipe::begin_frame(cuda_rasterizer, _impl->frameCounter, cudaStream);

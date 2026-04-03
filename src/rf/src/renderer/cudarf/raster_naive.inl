@@ -161,7 +161,7 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
 #ifdef WITH_TAA
             cudarf::Vec2f frag = make_vec2f((x + 0.5f) / pipe->windowWidth, (y + 0.5f) / pipe->windowHeight);
             float2 velocity = make_float2(x + 0.5f, y + 0.5f) - fragOut.pos_ss_hist;
-            if (length(velocity) > 0.5f) {
+            if (length(velocity) > pipe->taa.velocityThreshold) {
                 pipe->taa.velocityTex[outIdx] = velocity;
             }
 #endif

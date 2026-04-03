@@ -505,6 +505,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
 #ifdef WITH_TAA
     pipe.taa.velocityTex = desc->dev_velocityTex;
+    pipe.taa.velocityThreshold = desc->TAA.velocityThreshold;
 #endif
 
     CUDA_CHK(cudaMemcpyAsync(desc->dev_pipeParams, &pipe, sizeof(cudarf::rast::PipeParams), cudaMemcpyHostToDevice, cuStream));

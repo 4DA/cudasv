@@ -265,6 +265,7 @@ struct PipeParams {
         cudarf::CommonUniforms commonHist;
         cudarf::Uniforms *uniformsHist;
         cudarf::Velocity *velocityTex;
+        float velocityThreshold;
     } taa;
 #endif
 

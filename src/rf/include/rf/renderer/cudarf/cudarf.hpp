@@ -141,6 +141,7 @@ struct Ctx
     struct TAA_Params {
         float scale = 1.0f;
         float feedback = 0.8f;
+        float velocityThreshold = 0.1f;
         cudarf::TAA_Pattern pattern = cudarf::TAA_Pattern::Helix;
         std::vector<float2> pointsHalton;
     } TAA;
