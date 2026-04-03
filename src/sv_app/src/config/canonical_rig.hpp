@@ -4,6 +4,7 @@
 #include <string>
 
 #include <engine/camera_rig.hpp>
+
 // Canonical rig JSON is the project-owned runtime calibration format.
 //
 // High-level shape:

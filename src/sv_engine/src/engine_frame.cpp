@@ -23,8 +23,17 @@ engine::Error Engine::update_vehicle_state(const vehicle::CANSignals *vehicle_si
     return OK;
 }
 
-engine::Error Engine::pre_process(videoio::FrameSet<camera::CAMERAS_TOTAL> frames_set)
+engine::Error Engine::pre_process(const videoio::FramePacket &frame_packet)
 {
+    const videoio::FrameSet<camera::CAMERAS_TOTAL> &frames_set = frame_packet.frames;
+
+    for (bool is_valid : frame_packet.valid_cameras) {
+        if (!is_valid) {
+            SPDLOG_ERROR("Current runtime requires all render-bridge cameras to be valid in each frame packet");
+            return ERROR;
+        }
+    }
+
     OverlaysConfig *overlays_config = &config.overlays_config;
     vehicle::VehicleDimensions *vehicle_config = &config.vehicle_config;
     VehicleModelConfig *vehicle_model_config = &overlays_config->vehicle_config;
@@ -56,7 +65,7 @@ engine::Error Engine::pre_process(videoio::FrameSet<camera::CAMERAS_TOTAL> frame
     return OK;
 }
 
-engine::Error Engine::process(videoio::FrameSet<camera::CAMERAS_TOTAL> frames_set,
+engine::Error Engine::process(const videoio::FramePacket &frame_packet,
                               void *output_buffer,
                               unsigned long long cuda_str,
                               uint32_t width,
@@ -65,6 +74,8 @@ engine::Error Engine::process(videoio::FrameSet<camera::CAMERAS_TOTAL> frames_se
                               const Output &output,
                               int output_index)
 {
+    const videoio::FrameSet<camera::CAMERAS_TOTAL> &frames_set = frame_packet.frames;
+
     (void)output_buffer;
     (void)cuda_str;
     (void)clear_color;

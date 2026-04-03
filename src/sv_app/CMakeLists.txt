@@ -32,12 +32,16 @@ add_executable(sv_app
   src/main.cpp
   src/app/cmdline.cpp
   src/app/glfw_host.cpp
-  src/app/demo_vehicle_signals.cpp
+  src/app/demo_vehicle_signal_provider.cpp
   src/app/app_runtime.cpp
+  src/compat/render_bridge_4cam_contract.cpp
   src/config/config.cpp
   src/config/canonical_rig.cpp
   src/config/runtime_calibration_bridge_4cam.cpp
   src/sources/file_sequence_source.cpp
+  src/sources/render_bridge_4cam.cpp
+  src/sources/rigged_png_source_support.cpp
+  src/sources/source_validation.cpp
   src/sources/source_factory.cpp
   src/conversion_utils.cpp
   )

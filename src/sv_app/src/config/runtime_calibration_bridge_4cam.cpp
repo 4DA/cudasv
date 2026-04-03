@@ -6,27 +6,11 @@
 
 #include <spdlog/spdlog.h>
 
+#include "compat/render_bridge_4cam_contract.hpp"
 #include "config/canonical_rig.hpp"
 
 namespace
 {
-
-camera::CameraID render_slot_for_role(camera::CameraRole role)
-{
-    switch (role)
-    {
-    case camera::CameraRole::Front:
-        return camera::CAMERA_FRONT;
-    case camera::CameraRole::Rear:
-        return camera::CAMERA_REAR;
-    case camera::CameraRole::Left:
-        return camera::CAMERA_LEFT;
-    case camera::CameraRole::Right:
-        return camera::CAMERA_RIGHT;
-    default:
-        throw std::runtime_error("role is not renderable through the current 4-camera bridge");
-    }
-}
 
 camera::CameraLensType lens_model_from_projection(camera::ProjectionModel projection_model)
 {
@@ -45,6 +29,7 @@ void canonical_pose_to_extrinsics(const camera::CanonicalPose &pose, camera::Ext
 {
     for (std::size_t row = 0; row < 3; ++row) {
         for (std::size_t col = 0; col < 3; ++col) {
+            // JSON stores rows. Extrinsics::R is flat column-major storage.
             extrinsics.R[row + col * 3] = pose.rotation[row][col];
         }
     }
@@ -99,12 +84,18 @@ int load_camera_rig_into_runtime_calibration(engine::CalibrationConfig *calibrat
         std::set<camera::CameraID> seen_slots;
 
         for (const auto &camera_desc: rig.cameras) {
-            camera::CameraID slot = render_slot_for_role(camera_desc.role);
+            camera::CameraID slot;
+            if (!svapp::render_bridge_4cam_slot_for_role(camera_desc.role, &slot)) {
+                throw std::runtime_error("role is not renderable through the current 4-camera bridge");
+            }
             if (!seen_slots.insert(slot).second) {
                 throw std::runtime_error("duplicate canonical camera role mapped to the same render slot");
             }
 
-            fill_runtime_camera_config(camera_desc, slot, calibration_config->camera_cfg[slot]);
+            fill_runtime_camera_config(
+                camera_desc,
+                slot,
+                calibration_config->camera_cfg[slot]);
         }
 
         if (seen_slots.size() != camera::CAMERAS_COUNT) {

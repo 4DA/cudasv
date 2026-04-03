@@ -7,6 +7,7 @@
 #include <engine/overlays_config.hpp>
 #include <engine/views_config.hpp>
 
+#include <engine/frame_packet.hpp>
 #include <engine/video_source.hpp>
 
 inline constexpr unsigned int SV_MAX_OUTPUTS = 3;
@@ -101,9 +102,9 @@ struct Engine
 
     engine::Error update_vehicle_state(const vehicle::CANSignals *vehicle_signals);
 
-    engine::Error pre_process(videoio::FrameSet<camera::CAMERAS_TOTAL> frames_set);
+    engine::Error pre_process(const videoio::FramePacket &frame_packet);
 
-    engine::Error process(videoio::FrameSet<camera::CAMERAS_TOTAL> frames,
+    engine::Error process(const videoio::FramePacket &frame_packet,
                                void* output_buffer,
                                unsigned long long cuda_str,
                                uint32_t width,

@@ -7,7 +7,7 @@
 
 #include <spdlog/spdlog.h>
 
-#include "app/demo_vehicle_signals.hpp"
+#include "sources/render_bridge_4cam.hpp"
 
 namespace svapp
 {
@@ -16,14 +16,21 @@ int run_application_loop(AppContext &app,
                          GLFWHost &glfw_host,
                          const CmdlineOpts &options,
                          engine::OutputSet output_set,
-                         videoio::FrameSource &frame_source)
+                         videoio::FrameSource &frame_source,
+                         VehicleSignalProvider &signal_provider)
 {
     videoio::FramePacket frame_packets[2];
     int frame_set_index = 0;
     vehicle::CANSignals demo_state;
+    const videoio::SourceInfo &source_info = frame_source.info();
+    videoio::SourceInfo render_bridge_info = source_info;
+    render_bridge_info.render_roles = kRenderBridge4CameraRoles;
 
     while (app.running && !glfw_host.should_close_any()) {
-        update_demo_vehicle_signals(demo_state);
+        if (!signal_provider.get_next_signals(demo_state)) {
+            SPDLOG_ERROR("Failed to fetch next vehicle signal sample");
+            return EXIT_FAILURE;
+        }
         app.engine->update_vehicle_state(&demo_state);
 
         for (std::size_t output_index = 0; output_index < SV_MAX_OUTPUTS; ++output_index) {
@@ -33,10 +40,20 @@ int run_application_loop(AppContext &app,
             }
         }
 
-        frame_source.get_next_frame(frame_packets[frame_set_index]);
+        if (!frame_source.get_next_frame(frame_packets[frame_set_index])) {
+            SPDLOG_ERROR("Failed to fetch next frame packet from source");
+            return EXIT_FAILURE;
+        }
+
+        if (!remap_source_frame_packet_to_render_bridge_4cam(frame_packets[frame_set_index],
+                                                             source_info,
+                                                             render_bridge_info)) {
+            SPDLOG_ERROR("Failed to remap source frame packet into the current 4-camera render mapping");
+            return EXIT_FAILURE;
+        }
 
         pthread_mutex_lock(&app.access);
-        if (app.engine->pre_process(frame_packets[frame_set_index].frames)) {
+        if (app.engine->pre_process(frame_packets[frame_set_index])) {
             pthread_mutex_unlock(&app.access);
             SPDLOG_ERROR("engine->pre_process() failed");
             return EXIT_FAILURE;
@@ -61,7 +78,7 @@ int run_application_loop(AppContext &app,
             if (output_set.outputs[output_index].active) {
                 float clear_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 
-                if (app.engine->process(frame_packets[frame_set_index].frames,
+                if (app.engine->process(frame_packets[frame_set_index],
                                         nullptr,
                                         0,
                                         output_set.outputs[output_index].config.display_width,
@@ -79,7 +96,10 @@ int run_application_loop(AppContext &app,
             glfw_host.swap_buffers(output_index);
         }
 
-        frame_source.release_frame(frame_packets[frame_set_index]);
+        if (!frame_source.release_frame(frame_packets[frame_set_index])) {
+            SPDLOG_ERROR("Failed to release frame packet back to source");
+            return EXIT_FAILURE;
+        }
         frame_set_index = 1 - frame_set_index;
 
         usleep(1000000 / options.fps);

@@ -8,6 +8,24 @@
 namespace svapp
 {
 
+namespace
+{
+
+videoio::SourceKind parse_source_kind(const char *value)
+{
+    if (!strcmp(value, "file_sequence")) {
+        return videoio::SourceKind::FileSequence;
+    }
+
+    if (!strcmp(value, "nuscenes")) {
+        return videoio::SourceKind::NuScenes;
+    }
+
+    return videoio::SourceKind::Unknown;
+}
+
+} // namespace
+
 int parse_cmdline(int argc, char **argv, CmdlineOpts &options)
 {
     for (int index = 1; index < argc; ++index) {
@@ -36,6 +54,31 @@ int parse_cmdline(int argc, char **argv, CmdlineOpts &options)
             }
 
             options.rig_file = argv[++index];
+        } else if (!strcmp(argv[index], "--source-kind")) {
+            if (index + 1 >= argc) {
+                SPDLOG_ERROR("--source-kind requires a value");
+                return -1;
+            }
+
+            options.source_kind = parse_source_kind(argv[++index]);
+            if (options.source_kind == videoio::SourceKind::Unknown) {
+                SPDLOG_ERROR("Unsupported --source-kind value");
+                return -1;
+            }
+        } else if (!strcmp(argv[index], "--dataset-root")) {
+            if (index + 1 >= argc) {
+                SPDLOG_ERROR("--dataset-root requires a value");
+                return -1;
+            }
+
+            options.dataset_root = argv[++index];
+        } else if (!strcmp(argv[index], "--sequence-id")) {
+            if (index + 1 >= argc) {
+                SPDLOG_ERROR("--sequence-id requires a value");
+                return -1;
+            }
+
+            options.sequence_id = argv[++index];
         } else if (!strcmp(argv[index], "--width")) {
             if (index + 1 >= argc) {
                 SPDLOG_ERROR("--width requires a value");

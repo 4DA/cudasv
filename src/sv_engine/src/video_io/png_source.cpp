@@ -20,6 +20,15 @@ extern "C" {
 namespace
 {
 
+void free_frames(std::array<AVFrame *, camera::CAMERAS_TOTAL> &frames)
+{
+    for (AVFrame *&frame: frames) {
+        if (frame != nullptr) {
+            av_frame_free(&frame);
+        }
+    }
+}
+
 void fail(const std::string &msg, int err)
 {
     char buf[256];
@@ -215,24 +224,25 @@ PNGSource::PNGSource():
 
 PNGSource::~PNGSource()
 {
-    for (AVFrame *&frame: _impl->avFrames) {
-        if (frame != nullptr) {
-            av_frame_free(&frame);
-        }
-    }
-
+    reset();
     fini();
 }
 
 bool PNGSource::start(std::array<std::string, camera::CAMERAS_TOTAL> sources)
 {
     pre_init();
+    reset();
 
     for (std::size_t index = 0; index < sources.size(); ++index) {
         _impl->avFrames[index] = decode_png(sources[index]);
     }
 
     return true;
+}
+
+void PNGSource::reset()
+{
+    free_frames(_impl->avFrames);
 }
 
 bool PNGSource::get_next_frame(FrameSet<camera::CAMERAS_TOTAL> &frames)

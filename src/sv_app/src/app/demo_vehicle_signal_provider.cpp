@@ -1,10 +1,10 @@
-#include "app/demo_vehicle_signals.hpp"
+#include "app/demo_vehicle_signal_provider.hpp"
 
 #include <cmath>
 #include <ctime>
 #include <cstring>
 
-namespace svapp
+namespace
 {
 
 uint64_t monotonic_timestamp_ns()
@@ -14,7 +14,12 @@ uint64_t monotonic_timestamp_ns()
     return ts.tv_sec * 1000000000ULL + ts.tv_nsec;
 }
 
-void update_demo_vehicle_signals(vehicle::CANSignals &signals)
+} // namespace
+
+namespace svapp
+{
+
+bool DemoVehicleSignalProvider::get_next_signals(vehicle::CANSignals &signals)
 {
     std::memset(&signals, 0, sizeof(signals));
 
@@ -31,6 +36,8 @@ void update_demo_vehicle_signals(vehicle::CANSignals &signals)
         signals.wheel_velocity[wheel].timestamp = timestamp;
         signals.wheel_movement[wheel].value = vehicle::BACKWARD;
     }
+
+    return true;
 }
 
 } // namespace svapp

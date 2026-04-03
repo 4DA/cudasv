@@ -12,6 +12,7 @@
 #include "app/app_context.hpp"
 #include "app/app_runtime.hpp"
 #include "app/cmdline.hpp"
+#include "app/demo_vehicle_signal_provider.hpp"
 #include "app/glfw_host.hpp"
 #include "sources/source_factory.hpp"
 
@@ -86,6 +87,9 @@ int main(int argc, char* argv[])
     svapp::GLFWHost glfw_host(&app, &output_set, app.engine->config.outputs_number);
 
     svapp::SourceFactoryConfig source_config;
+    source_config.source_kind = cmdline.source_kind;
+    source_config.dataset_root = cmdline.dataset_root;
+    source_config.sequence_id = cmdline.sequence_id;
     source_config.frame_paths = cmdline.files;
     source_config.rig_path = cmdline.rig_file;
 
@@ -94,6 +98,13 @@ int main(int argc, char* argv[])
         SPDLOG_ERROR("Failed to create frame source");
         return -1;
     }
+
+    const videoio::SourceInfo &source_info = frame_source->info();
+    SPDLOG_INFO("Opened source '{}' [kind={}, dataset_root='{}', sequence_id='{}']",
+                source_info.source_name,
+                static_cast<int>(source_info.kind),
+                source_info.dataset_root,
+                source_info.sequence_id);
 
     if (load_camera_rig_into_runtime_calibration(&app.engine->config.calibration_config,
                                                  frame_source->rig())) {
@@ -110,11 +121,14 @@ int main(int argc, char* argv[])
 
     app.engine->init();
 
+    svapp::DemoVehicleSignalProvider signal_provider;
+
     const int rc = svapp::run_application_loop(app,
                                                glfw_host,
                                                cmdline,
                                                output_set,
-                                               *frame_source);
+                                               *frame_source,
+                                               signal_provider);
 
     pthread_mutex_destroy(&app.access);
     return rc;

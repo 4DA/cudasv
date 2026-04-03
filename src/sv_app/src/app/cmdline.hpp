@@ -4,12 +4,16 @@
 #include <string>
 
 #include <engine/engine.hpp>
+#include <engine/frame_source.hpp>
 
 namespace svapp
 {
 
 struct CmdlineOpts
 {
+    videoio::SourceKind source_kind = videoio::SourceKind::FileSequence;
+    std::string dataset_root;
+    std::string sequence_id;
     std::array<std::string, camera::CAMERAS_TOTAL> files;
     std::string rig_file = "canonical-rig.json";
     int width = 0;

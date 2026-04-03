@@ -21,6 +21,7 @@ public:
     PNGSource& operator=(const PNGSource &) = delete;
 
     bool start(std::array<std::string, camera::CAMERAS_TOTAL> sources);
+    void reset();
     bool get_next_frame(FrameSet<camera::CAMERAS_TOTAL> &frames) override;
     bool release_frame(const FrameSet<camera::CAMERAS_TOTAL> &frame_set) override;
 

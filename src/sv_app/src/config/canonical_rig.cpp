@@ -1,11 +1,7 @@
 #include "canonical_rig.hpp"
 
-#include <algorithm>
-#include <array>
 #include <fstream>
-#include <optional>
 #include <stdexcept>
-#include <string_view>
 
 #include <spdlog/spdlog.h>
 
