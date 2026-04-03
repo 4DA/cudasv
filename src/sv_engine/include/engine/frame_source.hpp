@@ -2,6 +2,7 @@
 #define FRAME_SOURCE_HPP
 
 #include <array>
+#include <cstdint>
 #include <string>
 
 #include <engine/camera_rig.hpp>
@@ -23,6 +24,8 @@ struct SourceInfo
     std::string source_name;
     std::string dataset_root;
     std::string sequence_id;
+    uint64_t sequence_frame_count = 0;
+    bool has_sequence_frame_count = false;
     std::array<camera::CameraRole, camera::CAMERAS_TOTAL> render_roles = {
         camera::CameraRole::Right,
         camera::CameraRole::Left,

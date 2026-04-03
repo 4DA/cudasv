@@ -1,7 +1,12 @@
 #include <memory>
 #include <pthread.h>
+#include <array>
+#include <utility>
 
 #include <spdlog/spdlog.h>
+#include <spdlog/common.h>
+#include <spdlog/details/null_mutex.h>
+#include <spdlog/sinks/base_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
 #include <engine/engine.hpp>
@@ -15,6 +20,58 @@
 #include "app/demo_vehicle_signal_provider.hpp"
 #include "app/glfw_host.hpp"
 #include "sources/source_factory.hpp"
+#include "sources/source_validation.hpp"
+
+namespace
+{
+
+template <typename Mutex>
+class level_range_sink final : public spdlog::sinks::base_sink<Mutex>
+{
+public:
+    level_range_sink(spdlog::sink_ptr inner,
+                     spdlog::level::level_enum minLevel,
+                     spdlog::level::level_enum maxLevel)
+        : _inner(std::move(inner)),
+          _minLevel(minLevel),
+          _maxLevel(maxLevel)
+    {
+    }
+
+protected:
+    void sink_it_(const spdlog::details::log_msg &msg) override
+    {
+        if (msg.level < _minLevel || msg.level > _maxLevel) {
+            return;
+        }
+
+        _inner->log(msg);
+    }
+
+    void flush_() override
+    {
+        _inner->flush();
+    }
+
+    void set_pattern_(const std::string &pattern) override
+    {
+        _inner->set_pattern(pattern);
+    }
+
+    void set_formatter_(std::unique_ptr<spdlog::formatter> sinkFormatter) override
+    {
+        _inner->set_formatter(std::move(sinkFormatter));
+    }
+
+private:
+    spdlog::sink_ptr _inner;
+    spdlog::level::level_enum _minLevel;
+    spdlog::level::level_enum _maxLevel;
+};
+
+using level_range_sink_mt = level_range_sink<std::mutex>;
+
+} // namespace
 
 int main(int argc, char* argv[])
 {
@@ -26,17 +83,37 @@ int main(int argc, char* argv[])
     // --
     using spdlog::level::level_enum;
 
-    auto sink = std::make_shared<spdlog::sinks::ansicolor_stderr_sink_mt>();
-    // customize colors per level
-    sink->set_color(level_enum::trace,    sink->white);
-    sink->set_color(level_enum::debug,    sink->cyan);
-    sink->set_color(level_enum::info,     sink->green);
-    sink->set_color(level_enum::warn,     sink->yellow);
-    sink->set_color(level_enum::err,      sink->red);
-    sink->set_color(level_enum::critical, sink->red);
+    auto stdout_sink = std::make_shared<spdlog::sinks::ansicolor_stdout_sink_mt>();
+    auto stderr_sink = std::make_shared<spdlog::sinks::ansicolor_stderr_sink_mt>();
+
+    stdout_sink->set_color(level_enum::trace,    stdout_sink->white);
+    stdout_sink->set_color(level_enum::debug,    stdout_sink->cyan);
+    stdout_sink->set_color(level_enum::info,     stdout_sink->green);
+    stdout_sink->set_color(level_enum::warn,     stdout_sink->yellow);
+    stdout_sink->set_color(level_enum::err,      stdout_sink->red);
+    stdout_sink->set_color(level_enum::critical, stdout_sink->red);
+
+    stderr_sink->set_color(level_enum::trace,    stderr_sink->white);
+    stderr_sink->set_color(level_enum::debug,    stderr_sink->cyan);
+    stderr_sink->set_color(level_enum::info,     stderr_sink->green);
+    stderr_sink->set_color(level_enum::warn,     stderr_sink->yellow);
+    stderr_sink->set_color(level_enum::err,      stderr_sink->red);
+    stderr_sink->set_color(level_enum::critical, stderr_sink->red);
+
+    auto stdout_range_sink = std::make_shared<level_range_sink_mt>(
+        stdout_sink,
+        level_enum::trace,
+        level_enum::info);
+
+    auto stderr_range_sink = std::make_shared<level_range_sink_mt>(
+        stderr_sink,
+        level_enum::warn,
+        level_enum::critical);
 
     // build default logger with this sink
-    auto logger = std::make_shared<spdlog::logger>("default", sink);
+    auto logger = std::make_shared<spdlog::logger>(
+        "default",
+        spdlog::sinks_init_list{stdout_range_sink, stderr_range_sink});
     logger->set_level(spdlog::level::info);
 
     // (A) color the WHOLE line by level:
@@ -105,6 +182,11 @@ int main(int argc, char* argv[])
                 static_cast<int>(source_info.kind),
                 source_info.dataset_root,
                 source_info.sequence_id);
+
+    if (!svapp::report_source_and_validate_render_bridge_4cam(source_info, frame_source->rig())) {
+        SPDLOG_ERROR("Resolved source and rig are not compatible with the current 4-camera runtime bridge");
+        return -1;
+    }
 
     if (load_camera_rig_into_runtime_calibration(&app.engine->config.calibration_config,
                                                  frame_source->rig())) {
