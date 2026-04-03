@@ -23,6 +23,7 @@ struct CmdlineOpts
 
 int parse_cmdline(int argc, char **argv, CmdlineOpts &options);
 bool has_frame_inputs(const CmdlineOpts &options);
+bool validate_source_inputs(const CmdlineOpts &options);
 engine::OutputSet make_single_output_set(int width, int height);
 
 } // namespace svapp

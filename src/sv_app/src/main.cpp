@@ -136,9 +136,7 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    if (!svapp::has_frame_inputs(cmdline)) {
-        SPDLOG_ERROR("--frames is mandatory and requires exactly {} PNG files",
-                     static_cast<int>(camera::CAMERAS_TOTAL));
+    if (!svapp::validate_source_inputs(cmdline)) {
         return -1;
     }
 

@@ -39,6 +39,7 @@ add_executable(sv_app
   src/config/canonical_rig.cpp
   src/config/runtime_calibration_bridge_4cam.cpp
   src/sources/file_sequence_source.cpp
+  src/sources/nuscenes_source.cpp
   src/sources/render_bridge_4cam.cpp
   src/sources/rigged_png_source_support.cpp
   src/sources/source_validation.cpp

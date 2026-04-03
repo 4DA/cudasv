@@ -106,6 +106,33 @@ bool has_frame_inputs(const CmdlineOpts &options)
     });
 }
 
+bool validate_source_inputs(const CmdlineOpts &options)
+{
+    switch (options.source_kind) {
+    case videoio::SourceKind::FileSequence:
+        if (!has_frame_inputs(options)) {
+            SPDLOG_ERROR("--frames is mandatory for source-kind=file_sequence and requires exactly {} PNG files",
+                         static_cast<int>(camera::CAMERAS_TOTAL));
+            return false;
+        }
+        return true;
+    case videoio::SourceKind::NuScenes:
+        if (options.dataset_root.empty()) {
+            SPDLOG_ERROR("--dataset-root is mandatory for source-kind=nuscenes");
+            return false;
+        }
+        if (options.sequence_id.empty()) {
+            SPDLOG_ERROR("--sequence-id is mandatory for source-kind=nuscenes");
+            return false;
+        }
+        return true;
+    case videoio::SourceKind::Unknown:
+    default:
+        SPDLOG_ERROR("Unsupported source configuration");
+        return false;
+    }
+}
+
 engine::OutputSet make_single_output_set(int width, int height)
 {
     engine::OutputSet output_set = {};

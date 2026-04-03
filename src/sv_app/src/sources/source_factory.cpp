@@ -5,6 +5,7 @@
 #include <spdlog/spdlog.h>
 
 #include "sources/file_sequence_source.hpp"
+#include "sources/nuscenes_source.hpp"
 
 namespace svapp
 {
@@ -40,9 +41,7 @@ std::unique_ptr<videoio::FrameSource> create_source(const SourceFactoryConfig &c
         return std::make_unique<FileSequenceSource>(std::move(file_config));
     }
     case videoio::SourceKind::NuScenes:
-        SPDLOG_ERROR("Source kind '{}' is recognized but not implemented yet",
-                     source_kind_name(config.source_kind));
-        return nullptr;
+        return std::make_unique<NuScenesSource>(config.dataset_root, config.sequence_id);
     case videoio::SourceKind::Unknown:
     default:
         SPDLOG_ERROR("Source kind '{}' is not supported",
