@@ -9,6 +9,22 @@
 
 using namespace engine;
 
+namespace
+{
+
+#ifdef WITH_TAA
+void configure_default_taa(cudarf::pipe::Ctx *rasterizer)
+{
+    auto &taa = rasterizer->TAA;
+    taa.pattern = cudarf::TAA_Pattern::Halton;
+    taa.scale = 1.0f;
+    taa.feedback = 0.70f;
+    taa.velocityThreshold = 0.1f;
+}
+#endif
+
+} // namespace
+
 engine::Error Engine::update_vehicle_state(const vehicle::CANSignals *vehicle_signals)
 {
     OverlaysConfig *overlays_config = &config.overlays_config;
@@ -90,11 +106,7 @@ engine::Error Engine::process(const videoio::FramePacket &frame_packet,
 #endif
 
 #ifdef WITH_TAA
-    auto &taa = cuda_rasterizer->TAA;
-    taa.pattern = cudarf::TAA_Pattern::Halton;
-    taa.scale = 1.0f;
-    taa.feedback = 0.70f;
-    taa.velocityThreshold = 0.1f;
+    configure_default_taa(cuda_rasterizer);
 #endif
 
     cudarf::pipe::begin_frame(cuda_rasterizer, _impl->frameCounter, cudaStream);

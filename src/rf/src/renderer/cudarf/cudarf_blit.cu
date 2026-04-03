@@ -187,6 +187,21 @@ static void copy_to_pbo(cudarf::Framebuffer fb, int w, int h, uchar4 *pbo)
 }
 
 __global__
+static void copy_framebuffer_kernel(cudarf::Framebuffer src,
+                                    cudarf::Framebuffer dst,
+                                    int w,
+                                    int h)
+{
+    int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+    int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+    if (x < w && y < h) {
+        cudarf::ColorN pix;
+        fb::load(src, x, y, pix);
+        fb::store(dst, x, y, pix);
+    }
+}
+
+__global__
 void resample_bilinear(cudarf::FBTexture tex, int width, int height, uchar4 *out)
 {
     assert(tex);
@@ -214,6 +229,19 @@ void cudarf::pipe::clear_framebuffer(cudarf::pipe::Ctx *desc, cudarf::Framebuffe
                       (desc->height - 1) / blockSize2d.y + 1);
     init_framebuffer<<<blockCount2d, blockSize2d, 0, cuStream>>>(fb, desc->width, desc->height, color);
     CUDA_CHK_ERROR("clear_framebuffer");
+}
+
+void cudarf::pipe::copy_framebuffer(cudarf::pipe::Ctx *desc,
+                                    cudarf::Framebuffer src,
+                                    cudarf::Framebuffer dst,
+                                    cudaStream_t cuStream)
+{
+    dim3 blockSize2d(8, 8);
+    dim3 blockCount2d((desc->width - 1) / blockSize2d.x + 1,
+                      (desc->height - 1) / blockSize2d.y + 1);
+    copy_framebuffer_kernel<<<blockCount2d, blockSize2d, 0, cuStream>>>(
+        src, dst, desc->width, desc->height);
+    CUDA_CHK_ERROR("copy_framebuffer");
 }
 
 void cudarf::pipe::generate_checkers(cudarf::pipe::Ctx *desc, cudarf::Framebuffer fb,

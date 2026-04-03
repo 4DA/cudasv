@@ -13,7 +13,9 @@ void engine::view::ViewPostProcessPipeline::begin_frame(
 {
     if (frameCounter == 0) {
         _history = work;
+        _historyUniforms = {};
     }
+
 }
 
 void engine::view::ViewPostProcessPipeline::run(
@@ -26,6 +28,8 @@ void engine::view::ViewPostProcessPipeline::run(
     cudarf::profiling::Events &composeTime,
     unsigned int frameCounter)
 {
+    cudarf::Framebuffer sceneOutput = cudarf::pipe::get_output_fb(rasterCtx, frameCounter);
+
     {
         auto projection = cudarf::ProjectionParams {
             virtualCamera.get_projection().perspective.near,
@@ -35,13 +39,30 @@ void engine::view::ViewPostProcessPipeline::run(
 
 #ifdef WITH_TAA
         auto frameUniforms = cudarf::make_common(&virtualCamera);
-        cudarf::pipe::TAA(rasterCtx,
-                          frameUniforms,
-                          _historyUniforms,
-                          projection,
-                          frameCounter,
-                          cudaStreams.rendering);
+        if (rasterCtx->TAAEnabled) {
+            if (frameCounter == 0) {
+                _historyUniforms = frameUniforms;
+                sceneOutput = cudarf::pipe::get_output_fb(rasterCtx, frameCounter);
+                cudarf::pipe::copy_framebuffer(
+                    rasterCtx,
+                    cudarf::pipe::get_internal_fb(rasterCtx, frameCounter),
+                    sceneOutput,
+                    cudaStreams.rendering);
+            } else {
+                cudarf::pipe::TAA(rasterCtx,
+                                  frameUniforms,
+                                  _historyUniforms,
+                                  projection,
+                                  frameCounter,
+                                  cudaStreams.rendering);
+            }
+        } else {
+            sceneOutput = cudarf::pipe::get_internal_fb(rasterCtx, frameCounter);
+        }
         _historyUniforms = frameUniforms;
+#else
+        (void)projection;
+        sceneOutput = cudarf::pipe::get_internal_fb(rasterCtx, frameCounter);
 #endif
     }
 
@@ -60,7 +81,7 @@ void engine::view::ViewPostProcessPipeline::run(
 #endif
 
     cudarf::compose(meshGPUOutput,
-                    cudarf::pipe::get_output_fb(rasterCtx, frameCounter),
+                    sceneOutput,
                     virtualCamera.exposure,
                     rasterCtx->width,
                     rasterCtx->height,

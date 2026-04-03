@@ -173,6 +173,11 @@ struct LaunchConfig
 
 void clear_framebuffer(Ctx *desc, cudarf::Framebuffer fb, cudarf::ColorN color, cudaStream_t cuStream);
 
+void copy_framebuffer(Ctx *desc,
+                      cudarf::Framebuffer src,
+                      cudarf::Framebuffer dst,
+                      cudaStream_t cuStream);
+
 void clear_depth(Ctx *desc, cudaStream_t stream);
 
 void copy_to_pbo(Ctx *desc, cudarf::Framebuffer src, uchar4 *pbo);
