@@ -110,8 +110,8 @@ static std::array<float, 3> camera_axis_in_vehicle(const camera::CanonicalPose &
 namespace svapp
 {
 
-bool report_source_and_validate_render_bridge_4cam(const videoio::SourceInfo &sourceInfo,
-                                                   const camera::CameraRig &rig)
+void report_source(const videoio::SourceInfo &sourceInfo,
+                   const camera::CameraRig &rig)
 {
     SPDLOG_INFO("Source validation: kind='{}', name='{}', dataset_root='{}', sequence_id='{}'",
                 source_kind_to_string(sourceInfo.kind),
@@ -140,7 +140,10 @@ bool report_source_and_validate_render_bridge_4cam(const videoio::SourceInfo &so
                     format_vec3(camera_axis_in_vehicle(cameraDesc.pose_vehicle, 1)),
                     format_vec3(camera_axis_in_vehicle(cameraDesc.pose_vehicle, 2)));
     }
+}
 
+bool validate_render_bridge_4cam(const camera::CameraRig &rig)
+{
     std::array<camera::CameraRole, camera::CAMERAS_TOTAL> bridgeRoles;
     std::array<uint32_t, 2> uniformImageSize = {0, 0};
     const bool compatible = resolve_render_bridge_4cam(rig, bridgeRoles, &uniformImageSize);

@@ -181,14 +181,27 @@ int main(int argc, char* argv[])
                 source_info.dataset_root,
                 source_info.sequence_id);
 
-    if (!svapp::report_source_and_validate_render_bridge_4cam(source_info, frame_source->rig())) {
-        SPDLOG_ERROR("Resolved source and rig are not compatible with the current 4-camera runtime bridge");
-        return -1;
-    }
+    svapp::report_source(source_info, frame_source->rig());
 
-    if (load_camera_rig_into_runtime_calibration(&app.engine->config.calibration_config,
-                                                 frame_source->rig())) {
-        SPDLOG_ERROR("Failed to convert canonical rig into runtime calibration");
+    switch (source_info.kind) {
+    case videoio::SourceKind::FileSequence:
+        if (!svapp::validate_render_bridge_4cam(frame_source->rig())) {
+            SPDLOG_ERROR("Resolved source and rig are not compatible with the current 4-camera runtime bridge");
+            return -1;
+        }
+
+        if (load_camera_rig_into_runtime_calibration(&app.engine->config.calibration_config,
+                                                     frame_source->rig())) {
+            SPDLOG_ERROR("Failed to convert canonical rig into runtime calibration");
+            return -1;
+        }
+        break;
+    case videoio::SourceKind::NuScenes:
+        SPDLOG_ERROR("NuScenes source loading is not ready for the current 4-camera runtime bridge yet");
+        return -1;
+    case videoio::SourceKind::Unknown:
+    default:
+        SPDLOG_ERROR("Unsupported source kind in bootstrap");
         return -1;
     }
 

@@ -7,8 +7,10 @@
 namespace svapp
 {
 
-bool report_source_and_validate_render_bridge_4cam(const videoio::SourceInfo &sourceInfo,
-                                                   const camera::CameraRig &rig);
+void report_source(const videoio::SourceInfo &sourceInfo,
+                   const camera::CameraRig &rig);
+
+bool validate_render_bridge_4cam(const camera::CameraRig &rig);
 
 } // namespace svapp
 
