@@ -84,6 +84,17 @@ static std::string format_vec3(const std::array<float, 3> &value)
     return out.str();
 }
 
+static std::string format_source_contract(const videoio::SourceInfo::Contract &contract)
+{
+    std::ostringstream out;
+    out << "synchronized_samples=" << (contract.synchronized_samples ? "yes" : "no")
+        << ", sample_identity=" << (contract.provides_sample_identity ? "yes" : "no")
+        << ", source_timestamp=" << (contract.provides_source_timestamp ? "yes" : "no")
+        << ", per_camera_timestamps=" << (contract.provides_per_camera_timestamps ? "yes" : "no")
+        << ", ego_pose=" << (contract.provides_ego_pose ? "yes" : "no");
+    return out.str();
+}
+
 static std::array<float, 3> camera_axis_in_vehicle(const camera::CanonicalPose &pose,
                                                    std::size_t axisIndex)
 {
@@ -112,6 +123,8 @@ bool report_source_and_validate_render_bridge_4cam(const videoio::SourceInfo &so
         SPDLOG_INFO("Source validation: sequence_frame_count={}", sourceInfo.sequence_frame_count);
     }
 
+    SPDLOG_INFO("Source validation: source contract [{}]",
+                format_source_contract(sourceInfo.contract));
     SPDLOG_INFO("Source validation: source roles [{}]", join_render_roles(sourceInfo.render_roles));
 
     for (const auto &cameraDesc : rig.cameras) {

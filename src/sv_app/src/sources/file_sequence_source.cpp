@@ -15,6 +15,11 @@ FileSequenceSource::FileSequenceSource(FileSequenceSourceConfig config):
     _info.sequence_id = _config.sequence_id;
     _info.sequence_frame_count = 1;
     _info.has_sequence_frame_count = true;
+    _info.contract.synchronized_samples = true;
+    _info.contract.provides_sample_identity = true;
+    _info.contract.provides_source_timestamp = false;
+    _info.contract.provides_per_camera_timestamps = false;
+    _info.contract.provides_ego_pose = false;
     _info.render_roles = kRenderBridge4CameraRoles;
 }
 
@@ -44,7 +49,7 @@ bool FileSequenceSource::get_next_frame(videoio::FramePacket &packet)
         return false;
     }
 
-    fill_static_frame_packet_metadata(_frame_id++, packet);
+    fill_static_frame_packet_metadata(_frame_id++, _info, packet);
     return true;
 }
 

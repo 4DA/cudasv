@@ -17,7 +17,9 @@ bool open_rigged_png_source_for_render_bridge_4cam(
     videoio::SourceInfo &info,
     videoio::PNGSource &pngSource);
 
-void fill_static_frame_packet_metadata(uint64_t frameId, videoio::FramePacket &packet);
+void fill_static_frame_packet_metadata(uint64_t frameId,
+                                       const videoio::SourceInfo &sourceInfo,
+                                       videoio::FramePacket &packet);
 
 } // namespace svapp
 
