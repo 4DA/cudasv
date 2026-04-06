@@ -5,6 +5,7 @@
 #include <string>
 
 #include <engine/frame_source.hpp>
+#include <engine/image_frame_loader.hpp>
 
 namespace svapp
 {
@@ -29,6 +30,7 @@ private:
         std::string calibrated_sensor_token;
         uint32_t width = 0;
         uint32_t height = 0;
+        uint64_t timestamp_ns = 0;
     };
 
     std::string _datasetRoot;
@@ -38,9 +40,12 @@ private:
     std::string _resolvedSampleToken;
     std::string _resolvedSceneName;
     bool _opened = false;
+    bool _decoded_sample_ready = false;
+    uint64_t _frameId = 0;
     camera::CameraRig _rig;
     videoio::SourceInfo _info;
     std::vector<CameraSample> _cameraSamples;
+    std::vector<videoio::DecodedImageFrame> _decodedFrames;
 };
 
 } // namespace svapp

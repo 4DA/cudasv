@@ -36,6 +36,7 @@ struct ResolvedCameraSample
     std::string calibratedSensorToken;
     uint32_t width = 0;
     uint32_t height = 0;
+    uint64_t timestampNs = 0;
 };
 
 struct ResolvedNuScenesRoots
@@ -362,6 +363,7 @@ static std::vector<ResolvedCameraSample> resolve_camera_samples_for_target(
         sample.calibratedSensorToken = calibratedToken;
         sample.width = sampleDataEntry.value("width", 0);
         sample.height = sampleDataEntry.value("height", 0);
+        sample.timestampNs = sampleDataEntry.value("timestamp", 0ULL);
         if (sample.width == 0 || sample.height == 0) {
             throw std::runtime_error("camera sample_data entry is missing image dimensions");
         }
@@ -460,8 +462,11 @@ bool NuScenesSource::open()
         _resolvedSampleToken.clear();
         _resolvedSceneName.clear();
         _opened = false;
+        _decoded_sample_ready = false;
+        _frameId = 0;
         _rig = {};
         _cameraSamples.clear();
+        _decodedFrames.clear();
         _info.has_sequence_frame_count = false;
         _info.sequence_frame_count = 0;
 
@@ -512,6 +517,7 @@ bool NuScenesSource::open()
             sample.calibrated_sensor_token = resolvedCameraSample.calibratedSensorToken;
             sample.width = resolvedCameraSample.width;
             sample.height = resolvedCameraSample.height;
+            sample.timestamp_ns = resolvedCameraSample.timestampNs;
             _cameraSamples.push_back(std::move(sample));
         }
 
@@ -552,15 +558,57 @@ const videoio::SourceInfo& NuScenesSource::info() const
 
 bool NuScenesSource::get_next_frame(videoio::FramePacket &packet)
 {
-    (void)packet;
     if (!_opened) {
         SPDLOG_ERROR("NuScenesSource::get_next_frame() called before successful open()");
         return false;
     }
 
-    SPDLOG_ERROR("NuScenesSource sample loading is not implemented yet [sample_token='{}']",
-                 _resolvedSampleToken);
-    return false;
+    if (!_decoded_sample_ready) {
+        _decodedFrames.clear();
+        _decodedFrames.resize(_cameraSamples.size());
+
+        for (std::size_t index = 0; index < _cameraSamples.size(); ++index) {
+            const std::string imagePath =
+                (std::filesystem::path(_dataRoot) / _cameraSamples[index].relative_path).string();
+            std::string errorMessage;
+            if (!videoio::load_rgb_image(imagePath, _decodedFrames[index], &errorMessage)) {
+                SPDLOG_ERROR("Failed to decode NuScenes camera image '{}': {}",
+                             imagePath,
+                             errorMessage);
+                _decodedFrames.clear();
+                return false;
+            }
+        }
+
+        _decoded_sample_ready = true;
+    }
+
+    packet.metadata.frame_id = _frameId++;
+    packet.metadata.source_frame_sequence = 0;
+    packet.metadata.sample_id = _resolvedSampleToken;
+    packet.metadata.has_sample_id = true;
+    packet.metadata.synchronized_cameras = true;
+    packet.metadata.source_timestamp_ns = _cameraSamples.empty() ? 0 : _cameraSamples[0].timestamp_ns;
+    packet.metadata.has_source_timestamp = true;
+
+    packet.cameras.clear();
+    packet.cameras.reserve(_cameraSamples.size());
+
+    for (std::size_t index = 0; index < _cameraSamples.size(); ++index) {
+        videoio::SourceCameraFrame cameraFrame;
+        cameraFrame.role = _cameraSamples[index].role;
+        cameraFrame.data = _decodedFrames[index].data;
+        cameraFrame.userdata = _decodedFrames[index].owner.get();
+        cameraFrame.width = _decodedFrames[index].width;
+        cameraFrame.height = _decodedFrames[index].height;
+        cameraFrame.stride = _decodedFrames[index].stride;
+        cameraFrame.timestamp_ns = _cameraSamples[index].timestamp_ns;
+        cameraFrame.has_timestamp = true;
+        cameraFrame.valid = true;
+        packet.cameras.push_back(cameraFrame);
+    }
+
+    return true;
 }
 
 bool NuScenesSource::release_frame(const videoio::FramePacket &packet)

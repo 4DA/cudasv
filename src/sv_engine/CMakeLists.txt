@@ -28,6 +28,7 @@ set(PUBLIC_HEADERS
     include/engine/frame_packet.hpp
     include/engine/frame_source.hpp
     include/engine/video_source.hpp
+    include/engine/image_frame_loader.hpp
     include/engine/png_source.hpp
 )
 
@@ -40,6 +41,7 @@ set(SOURCE_FILES
     src/sv_gl_common.cpp
 
     src/video_io/png_source.cpp
+    src/video_io/image_frame_loader.cpp
 
     src/views/view_3d.cpp
     src/views/viewpoint_registry.cpp
