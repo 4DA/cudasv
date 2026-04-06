@@ -161,6 +161,29 @@ void report_source(const videoio::SourceInfo &sourceInfo,
     }
 }
 
+void report_source_packet(const videoio::FramePacket &packet)
+{
+    SPDLOG_INFO("Source packet: frame_id={}, sample_id='{}', camera_count={}, synchronized={}, source_timestamp={}{}",
+                packet.metadata.frame_id,
+                packet.metadata.has_sample_id ? packet.metadata.sample_id : "<none>",
+                packet.cameras.size(),
+                packet.metadata.synchronized_cameras ? "yes" : "no",
+                packet.metadata.source_timestamp_ns,
+                packet.metadata.has_source_timestamp ? " ns" : " (absent)");
+
+    for (std::size_t index = 0; index < packet.cameras.size(); ++index) {
+        const auto &cameraFrame = packet.cameras[index];
+        SPDLOG_INFO("Source packet:   [{}] role='{}', image_size={}x{}, stride={}, timestamp={}{}",
+                    index,
+                    camera_role_to_string(cameraFrame.role),
+                    cameraFrame.width,
+                    cameraFrame.height,
+                    cameraFrame.stride,
+                    cameraFrame.timestamp_ns,
+                    cameraFrame.has_timestamp ? " ns" : " (absent)");
+    }
+}
+
 bool validate_render_bridge_4cam(const camera::CameraRig &rig)
 {
     std::array<camera::CameraRole, camera::CAMERAS_TOTAL> bridgeRoles;

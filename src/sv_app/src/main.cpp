@@ -19,6 +19,7 @@
 #include "app/glfw_host.hpp"
 #include "compat/runtime_source_bridge_4cam.hpp"
 #include "sources/source_factory.hpp"
+#include "sources/source_validation.hpp"
 
 namespace
 {
@@ -178,6 +179,26 @@ int main(int argc, char* argv[])
                 static_cast<int>(source_info.kind),
                 source_info.dataset_root,
                 source_info.sequence_id);
+
+    if (source_info.kind == videoio::SourceKind::NuScenes) {
+        svapp::report_source(source_info, frame_source->rig());
+
+        videoio::FramePacket source_packet;
+        if (!frame_source->get_next_frame(source_packet)) {
+            SPDLOG_ERROR("Failed to fetch the first NuScenes source packet");
+            return -1;
+        }
+
+        svapp::report_source_packet(source_packet);
+
+        if (!frame_source->release_frame(source_packet)) {
+            SPDLOG_ERROR("Failed to release the first NuScenes source packet");
+            return -1;
+        }
+
+        SPDLOG_INFO("NuScenes smoke path completed successfully; current runtime rendering still requires the 4-camera bridge");
+        return 0;
+    }
 
     if (!svapp::prepare_source_for_runtime_bridge_4cam(&app.engine->config.calibration_config,
                                                        source_info,
