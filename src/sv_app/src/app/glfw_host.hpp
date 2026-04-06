@@ -18,6 +18,7 @@ public:
     void make_current(int index);
     void swap_buffers(int index);
     bool should_close_any() const;
+    bool key_pressed(int index, int key) const;
 
 private:
     static void error_callback(int error, const char *description);

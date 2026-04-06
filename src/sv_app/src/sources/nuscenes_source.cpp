@@ -1,4 +1,5 @@
 #include <array>
+#include <algorithm>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -332,6 +333,9 @@ static std::vector<ResolvedCameraSample> resolve_camera_samples_for_target(
         if (sampleDataEntry.value("sample_token", "") != sampleToken) {
             continue;
         }
+        if (!sampleDataEntry.value("is_key_frame", false)) {
+            continue;
+        }
 
         const std::string calibratedToken = sampleDataEntry.value("calibrated_sensor_token", "");
         auto calibratedIt = calibratedSensorToChannel.find(calibratedToken);
@@ -375,6 +379,53 @@ static std::vector<ResolvedCameraSample> resolve_camera_samples_for_target(
     }
 
     return cameraSamples;
+}
+
+static std::vector<std::string> collect_sample_tokens_for_target(
+    const json &samples,
+    const ResolvedNuScenesTarget &target)
+{
+    if (!samples.is_array()) {
+        throw std::runtime_error("sample.json does not contain an array");
+    }
+
+    if (target.sceneName.empty()) {
+        return {target.sampleToken};
+    }
+
+    std::unordered_map<std::string, std::string> nextTokenBySampleToken;
+    for (const auto &sample : samples) {
+        const std::string token = sample.value("token", "");
+        if (token.empty()) {
+            continue;
+        }
+        nextTokenBySampleToken[token] = sample.value("next", "");
+    }
+
+    std::vector<std::string> sampleTokens;
+    std::set<std::string> visitedTokens;
+    std::string token = target.sampleToken;
+    while (!token.empty()) {
+        if (!visitedTokens.insert(token).second) {
+            throw std::runtime_error("scene sample chain contains a loop");
+        }
+
+        sampleTokens.push_back(token);
+
+        const auto nextIt = nextTokenBySampleToken.find(token);
+        if (nextIt == nextTokenBySampleToken.end()) {
+            throw std::runtime_error("scene sample token is missing from sample.json");
+        }
+
+        token = nextIt->second;
+    }
+
+    if (target.hasSceneSampleCount &&
+        sampleTokens.size() != target.sceneSampleCount) {
+        throw std::runtime_error("scene sample chain length does not match nbr_samples");
+    }
+
+    return sampleTokens;
 }
 
 static camera::CameraRig build_camera_rig_for_target(
@@ -464,8 +515,9 @@ bool NuScenesSource::open()
         _opened = false;
         _decoded_sample_ready = false;
         _frameId = 0;
+        _currentSampleIndex = 0;
         _rig = {};
-        _cameraSamples.clear();
+        _samples.clear();
         _decodedFrames.clear();
         _info.has_sequence_frame_count = false;
         _info.sequence_frame_count = 0;
@@ -481,12 +533,49 @@ bool NuScenesSource::open()
 
         const ResolvedNuScenesTarget target =
             resolve_target_sample(scenes, samples, _sequenceId);
+        const std::vector<std::string> sampleTokens =
+            collect_sample_tokens_for_target(samples, target);
 
-        const auto resolvedCameraSamples = resolve_camera_samples_for_target(dataRoot,
-                                                                            sampleData,
-                                                                            calibratedSensors,
-                                                                            sensors,
-                                                                            target.sampleToken);
+        std::vector<ResolvedCameraSample> firstResolvedCameraSamples;
+        _samples.reserve(sampleTokens.size());
+        for (std::size_t sampleIndex = 0; sampleIndex < sampleTokens.size(); ++sampleIndex) {
+            const auto resolvedCameraSamples = resolve_camera_samples_for_target(dataRoot,
+                                                                                sampleData,
+                                                                                calibratedSensors,
+                                                                                sensors,
+                                                                                sampleTokens[sampleIndex]);
+
+            if (sampleIndex == 0) {
+                firstResolvedCameraSamples = resolvedCameraSamples;
+            }
+
+            SampleFrame sampleFrame;
+            sampleFrame.sample_token = sampleTokens[sampleIndex];
+            // nuScenes exposes slightly different timestamps per camera sample;
+            // use the earliest one as the sample-level timestamp anchor.
+            sampleFrame.source_timestamp_ns =
+                std::min_element(resolvedCameraSamples.begin(),
+                                 resolvedCameraSamples.end(),
+                                 [](const ResolvedCameraSample &lhs,
+                                    const ResolvedCameraSample &rhs) {
+                                     return lhs.timestampNs < rhs.timestampNs;
+                                 })->timestampNs;
+
+            sampleFrame.cameras.reserve(resolvedCameraSamples.size());
+            for (const auto &resolvedCameraSample : resolvedCameraSamples) {
+                CameraSample sample;
+                sample.role = resolvedCameraSample.role;
+                sample.channel_name = resolvedCameraSample.channelName;
+                sample.relative_path = resolvedCameraSample.relativePath;
+                sample.calibrated_sensor_token = resolvedCameraSample.calibratedSensorToken;
+                sample.width = resolvedCameraSample.width;
+                sample.height = resolvedCameraSample.height;
+                sample.timestamp_ns = resolvedCameraSample.timestampNs;
+                sampleFrame.cameras.push_back(std::move(sample));
+            }
+
+            _samples.push_back(std::move(sampleFrame));
+        }
 
         _dataRoot = dataRoot.string();
         _versionRoot = versionRoot.string();
@@ -505,29 +594,16 @@ bool NuScenesSource::open()
 
         _rig = build_camera_rig_for_target(
             calibratedSensors,
-            resolvedCameraSamples,
+            firstResolvedCameraSamples,
             _resolvedSceneName.empty() ? _resolvedSampleToken : _resolvedSceneName);
-
-        _cameraSamples.reserve(resolvedCameraSamples.size());
-        for (const auto &resolvedCameraSample : resolvedCameraSamples) {
-            CameraSample sample;
-            sample.role = resolvedCameraSample.role;
-            sample.channel_name = resolvedCameraSample.channelName;
-            sample.relative_path = resolvedCameraSample.relativePath;
-            sample.calibrated_sensor_token = resolvedCameraSample.calibratedSensorToken;
-            sample.width = resolvedCameraSample.width;
-            sample.height = resolvedCameraSample.height;
-            sample.timestamp_ns = resolvedCameraSample.timestampNs;
-            _cameraSamples.push_back(std::move(sample));
-        }
 
         SPDLOG_INFO("Opened NuScenes metadata source [data_root='{}', version_root='{}', scene='{}', sample_token='{}', camera_count={}]",
                     _dataRoot,
                     _versionRoot,
                     _resolvedSceneName.empty() ? "<direct-sample>" : _resolvedSceneName,
                     _resolvedSampleToken,
-                    _cameraSamples.size());
-        for (const auto &cameraSample : _cameraSamples) {
+                    _samples.empty() ? 0 : _samples.front().cameras.size());
+        for (const auto &cameraSample : _samples.front().cameras) {
             SPDLOG_INFO("NuScenes camera sample: role='{}', channel='{}', image_size={}x{}, path='{}'",
                         camera_role_to_string(cameraSample.role),
                         cameraSample.channel_name,
@@ -562,14 +638,19 @@ bool NuScenesSource::get_next_frame(videoio::FramePacket &packet)
         SPDLOG_ERROR("NuScenesSource::get_next_frame() called before successful open()");
         return false;
     }
+    if (_samples.empty()) {
+        SPDLOG_ERROR("NuScenesSource has no resolved samples");
+        return false;
+    }
 
     if (!_decoded_sample_ready) {
+        const SampleFrame &sample = _samples[_currentSampleIndex];
         _decodedFrames.clear();
-        _decodedFrames.resize(_cameraSamples.size());
+        _decodedFrames.resize(sample.cameras.size());
 
-        for (std::size_t index = 0; index < _cameraSamples.size(); ++index) {
+        for (std::size_t index = 0; index < sample.cameras.size(); ++index) {
             const std::string imagePath =
-                (std::filesystem::path(_dataRoot) / _cameraSamples[index].relative_path).string();
+                (std::filesystem::path(_dataRoot) / sample.cameras[index].relative_path).string();
             std::string errorMessage;
             if (!videoio::load_rgb_image(imagePath, _decodedFrames[index], &errorMessage)) {
                 SPDLOG_ERROR("Failed to decode NuScenes camera image '{}': {}",
@@ -583,26 +664,28 @@ bool NuScenesSource::get_next_frame(videoio::FramePacket &packet)
         _decoded_sample_ready = true;
     }
 
+    const SampleFrame &sample = _samples[_currentSampleIndex];
+
     packet.metadata.frame_id = _frameId++;
-    packet.metadata.source_frame_sequence = 0;
-    packet.metadata.sample_id = _resolvedSampleToken;
+    packet.metadata.source_frame_sequence = _currentSampleIndex;
+    packet.metadata.sample_id = sample.sample_token;
     packet.metadata.has_sample_id = true;
     packet.metadata.synchronized_cameras = true;
-    packet.metadata.source_timestamp_ns = _cameraSamples.empty() ? 0 : _cameraSamples[0].timestamp_ns;
+    packet.metadata.source_timestamp_ns = sample.source_timestamp_ns;
     packet.metadata.has_source_timestamp = true;
 
     packet.cameras.clear();
-    packet.cameras.reserve(_cameraSamples.size());
+    packet.cameras.reserve(sample.cameras.size());
 
-    for (std::size_t index = 0; index < _cameraSamples.size(); ++index) {
+    for (std::size_t index = 0; index < sample.cameras.size(); ++index) {
         videoio::SourceCameraFrame cameraFrame;
-        cameraFrame.role = _cameraSamples[index].role;
+        cameraFrame.role = sample.cameras[index].role;
         cameraFrame.data = _decodedFrames[index].data;
         cameraFrame.userdata = _decodedFrames[index].owner.get();
         cameraFrame.width = _decodedFrames[index].width;
         cameraFrame.height = _decodedFrames[index].height;
         cameraFrame.stride = _decodedFrames[index].stride;
-        cameraFrame.timestamp_ns = _cameraSamples[index].timestamp_ns;
+        cameraFrame.timestamp_ns = sample.cameras[index].timestamp_ns;
         cameraFrame.has_timestamp = true;
         cameraFrame.valid = true;
         packet.cameras.push_back(cameraFrame);
@@ -615,6 +698,38 @@ bool NuScenesSource::release_frame(const videoio::FramePacket &packet)
 {
     (void)packet;
     return true;
+}
+
+bool NuScenesSource::step_next_sample()
+{
+    if (_samples.size() <= 1) {
+        return true;
+    }
+
+    _currentSampleIndex = (_currentSampleIndex + 1) % _samples.size();
+    _decoded_sample_ready = false;
+    return true;
+}
+
+bool NuScenesSource::step_previous_sample()
+{
+    if (_samples.size() <= 1) {
+        return true;
+    }
+
+    _currentSampleIndex = (_currentSampleIndex + _samples.size() - 1) % _samples.size();
+    _decoded_sample_ready = false;
+    return true;
+}
+
+std::size_t NuScenesSource::sample_count() const
+{
+    return _samples.size();
+}
+
+std::size_t NuScenesSource::current_sample_index() const
+{
+    return _currentSampleIndex;
 }
 
 } // namespace svapp

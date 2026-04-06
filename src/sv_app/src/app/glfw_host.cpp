@@ -125,6 +125,15 @@ bool GLFWHost::should_close_any() const
     return false;
 }
 
+bool GLFWHost::key_pressed(int index, int key) const
+{
+    if (index < 0 || index >= _outputs_number || !window[index]) {
+        return false;
+    }
+
+    return glfwGetKey(window[index], key) == GLFW_PRESS;
+}
+
 void GLFWHost::key_callback(GLFWwindow *window, int key, int, int action, int)
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {

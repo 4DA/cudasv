@@ -9,6 +9,7 @@
 #include <spdlog/spdlog.h>
 
 #include "app/nuscenes_inspector.hpp"
+#include "sources/nuscenes_source.hpp"
 #include "sources/source_validation.hpp"
 
 namespace
@@ -160,6 +161,11 @@ int run_nuscenes_inspector_loop(AppContext &app,
                                 videoio::FrameSource &frameSource)
 {
     app.interactive_input_enabled = false;
+    auto *nuScenesSource = dynamic_cast<NuScenesSource *>(&frameSource);
+    if (!nuScenesSource) {
+        SPDLOG_ERROR("NuScenes inspector requires a NuScenesSource instance");
+        return EXIT_FAILURE;
+    }
 
     constexpr std::array<camera::CameraRole, 6> kMosaicRoles = {
         camera::CameraRole::FrontLeft,
@@ -236,8 +242,25 @@ int run_nuscenes_inspector_loop(AppContext &app,
 
     uint64_t uploadedSourceSequence = std::numeric_limits<uint64_t>::max();
     bool firstPacketReported = false;
+    bool leftWasPressed = false;
+    bool rightWasPressed = false;
+
+    SPDLOG_INFO("NuScenes inspector controls: Left/Right arrows step through scene samples");
 
     while (app.running && !glfwHost.should_close_any()) {
+        const bool leftPressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_LEFT);
+        const bool rightPressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_RIGHT);
+
+        if (leftPressed && !leftWasPressed) {
+            nuScenesSource->step_previous_sample();
+        }
+        if (rightPressed && !rightWasPressed) {
+            nuScenesSource->step_next_sample();
+        }
+
+        leftWasPressed = leftPressed;
+        rightWasPressed = rightPressed;
+
         videoio::FramePacket packet;
         if (!frameSource.get_next_frame(packet)) {
             SPDLOG_ERROR("Failed to fetch NuScenes source packet");
@@ -246,6 +269,10 @@ int run_nuscenes_inspector_loop(AppContext &app,
 
         if (!firstPacketReported) {
             report_source_packet(packet);
+            SPDLOG_INFO("NuScenes inspector sample [{} / {}]: {}",
+                        nuScenesSource->current_sample_index() + 1,
+                        nuScenesSource->sample_count(),
+                        packet.metadata.sample_id);
             firstPacketReported = true;
         }
 

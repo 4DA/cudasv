@@ -20,6 +20,10 @@ public:
     const videoio::SourceInfo& info() const override;
     bool get_next_frame(videoio::FramePacket &packet) override;
     bool release_frame(const videoio::FramePacket &packet) override;
+    bool step_next_sample();
+    bool step_previous_sample();
+    std::size_t sample_count() const;
+    std::size_t current_sample_index() const;
 
 private:
     struct CameraSample
@@ -33,6 +37,13 @@ private:
         uint64_t timestamp_ns = 0;
     };
 
+    struct SampleFrame
+    {
+        std::string sample_token;
+        uint64_t source_timestamp_ns = 0;
+        std::vector<CameraSample> cameras;
+    };
+
     std::string _datasetRoot;
     std::string _dataRoot;
     std::string _sequenceId;
@@ -42,9 +53,10 @@ private:
     bool _opened = false;
     bool _decoded_sample_ready = false;
     uint64_t _frameId = 0;
+    std::size_t _currentSampleIndex = 0;
     camera::CameraRig _rig;
     videoio::SourceInfo _info;
-    std::vector<CameraSample> _cameraSamples;
+    std::vector<SampleFrame> _samples;
     std::vector<videoio::DecodedImageFrame> _decodedFrames;
 };
 
