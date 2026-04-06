@@ -79,6 +79,7 @@ bool FileSequenceSource::get_next_frame(videoio::FramePacket &packet)
     }
 
     fill_static_frame_packet_metadata(_frame_id++, _info, packet);
+    packet.metadata.source_frame_sequence = frames.frameseq;
     packet.cameras.clear();
     packet.cameras.reserve(camera::CAMERAS_TOTAL);
 

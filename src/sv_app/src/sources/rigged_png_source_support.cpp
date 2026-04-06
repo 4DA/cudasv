@@ -57,6 +57,7 @@ void fill_static_frame_packet_metadata(uint64_t frameId,
                                        videoio::FramePacket &packet)
 {
     packet.metadata.frame_id = frameId;
+    packet.metadata.source_frame_sequence = 0;
     packet.metadata.sample_id = sourceInfo.source_name + ":" + std::to_string(frameId);
     packet.metadata.has_sample_id = sourceInfo.contract.provides_sample_identity;
     packet.metadata.synchronized_cameras = sourceInfo.contract.synchronized_samples;

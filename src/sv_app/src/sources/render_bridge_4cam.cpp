@@ -113,8 +113,8 @@ bool adapt_frame_packet_for_runtime_render_bridge_4cam(
     runtimePacket.frames.width = sourcePacket.cameras[0].width;
     runtimePacket.frames.height = sourcePacket.cameras[0].height;
     runtimePacket.frames.stride = sourcePacket.cameras[0].stride;
-    runtimePacket.frames.timestamp = sourcePacket.metadata.source_timestamp_ns;
-    runtimePacket.frames.frameseq = sourcePacket.metadata.frame_id;
+    runtimePacket.frames.timestamp = sourcePacket.cameras[0].timestamp_ns;
+    runtimePacket.frames.frameseq = sourcePacket.metadata.source_frame_sequence;
     runtimePacket.metadata = sourcePacket.metadata;
 
     return true;

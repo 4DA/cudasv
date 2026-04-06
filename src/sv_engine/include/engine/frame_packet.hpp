@@ -16,6 +16,7 @@ namespace videoio
 struct FramePacketMetadata
 {
     uint64_t frame_id = 0;  // current demo path uses this as a stable sample index
+    uint64_t source_frame_sequence = 0;
     std::string sample_id;
     bool has_sample_id = false;
     bool synchronized_cameras = true;
