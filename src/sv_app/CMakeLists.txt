@@ -33,6 +33,7 @@ add_executable(sv_app
   src/app/cmdline.cpp
   src/app/glfw_host.cpp
   src/app/demo_vehicle_signal_provider.cpp
+  src/app/nuscenes_inspector.cpp
   src/app/app_runtime.cpp
   src/compat/render_bridge_4cam_contract.cpp
   src/compat/runtime_source_bridge_4cam.cpp

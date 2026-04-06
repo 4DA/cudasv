@@ -12,6 +12,7 @@ struct AppContext
 {
     bool running = true;
     bool hide_current_viewpoint = false;
+    bool interactive_input_enabled = true;
     float cursor_x = 0.0f;
     float cursor_y = 0.0f;
 

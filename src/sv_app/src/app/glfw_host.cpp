@@ -135,6 +135,10 @@ void GLFWHost::key_callback(GLFWwindow *window, int key, int, int action, int)
 
 void GLFWHost::cursor_position_callback(GLFWwindow *window, double xpos, double ypos)
 {
+    if (!_app->interactive_input_enabled) {
+        return;
+    }
+
     int width = 0;
     int height = 0;
     glfwGetWindowSize(window, &width, &height);
@@ -209,6 +213,10 @@ void GLFWHost::cursor_position_callback(GLFWwindow *window, double xpos, double 
 
 void GLFWHost::mouse_button_callback(GLFWwindow *window, int button, int action, int)
 {
+    if (!_app->interactive_input_enabled) {
+        return;
+    }
+
     double xpos = 0.0;
     double ypos = 0.0;
     int width = 0;
@@ -244,6 +252,10 @@ void GLFWHost::mouse_button_callback(GLFWwindow *window, int button, int action,
 
 void GLFWHost::scroll_callback(GLFWwindow *, double, double yoffset)
 {
+    if (!_app->interactive_input_enabled) {
+        return;
+    }
+
     engine::InputEvent event;
     event.type = engine::PINCH_ZOOM;
     event.scale = yoffset < 0.0f ? 1.05f : 1.0f / 1.05f;
