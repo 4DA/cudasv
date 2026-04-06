@@ -20,6 +20,12 @@ FileSequenceSource::FileSequenceSource(FileSequenceSourceConfig config):
     _info.contract.provides_source_timestamp = false;
     _info.contract.provides_per_camera_timestamps = false;
     _info.contract.provides_ego_pose = false;
+    _info.source_roles = {
+        camera::CameraRole::Right,
+        camera::CameraRole::Left,
+        camera::CameraRole::Front,
+        camera::CameraRole::Rear,
+    };
     _info.render_roles = kRenderBridge4CameraRoles;
 }
 

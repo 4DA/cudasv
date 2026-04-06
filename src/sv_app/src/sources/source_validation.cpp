@@ -77,6 +77,20 @@ static std::string join_render_roles(
     return out.str();
 }
 
+static std::string join_source_roles(const std::vector<camera::CameraRole> &roles)
+{
+    std::ostringstream out;
+
+    for (std::size_t index = 0; index < roles.size(); ++index) {
+        if (index > 0) {
+            out << ", ";
+        }
+        out << camera_role_to_string(roles[index]);
+    }
+
+    return out.str();
+}
+
 static std::string format_vec3(const std::array<float, 3> &value)
 {
     std::ostringstream out;
@@ -125,7 +139,12 @@ void report_source(const videoio::SourceInfo &sourceInfo,
 
     SPDLOG_INFO("Source validation: source contract [{}]",
                 format_source_contract(sourceInfo.contract));
-    SPDLOG_INFO("Source validation: source roles [{}]", join_render_roles(sourceInfo.render_roles));
+    if (!sourceInfo.source_roles.empty()) {
+        SPDLOG_INFO("Source validation: source camera roles [{}]",
+                    join_source_roles(sourceInfo.source_roles));
+    }
+    SPDLOG_INFO("Source validation: current runtime bridge roles [{}]",
+                join_render_roles(sourceInfo.render_roles));
 
     for (const auto &cameraDesc : rig.cameras) {
         SPDLOG_INFO("Source validation: rig camera id='{}', role='{}', model='{}', image_size={}x{}",

@@ -1,6 +1,7 @@
 #ifndef NUSCENES_SOURCE_HPP
 #define NUSCENES_SOURCE_HPP
 
+#include <vector>
 #include <string>
 
 #include <engine/frame_source.hpp>
@@ -20,10 +21,25 @@ public:
     bool release_frame(const videoio::FramePacket &packet) override;
 
 private:
+    struct CameraSample
+    {
+        camera::CameraRole role = camera::CameraRole::Unknown;
+        std::string channel_name;
+        std::string relative_path;
+        std::string calibrated_sensor_token;
+        uint32_t width = 0;
+        uint32_t height = 0;
+    };
+
     std::string _datasetRoot;
     std::string _sequenceId;
+    std::string _versionRoot;
+    std::string _resolvedSampleToken;
+    std::string _resolvedSceneName;
+    bool _opened = false;
     camera::CameraRig _rig;
     videoio::SourceInfo _info;
+    std::vector<CameraSample> _cameraSamples;
 };
 
 } // namespace svapp

@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include <engine/camera_rig.hpp>
 #include <engine/frame_packet.hpp>
@@ -35,6 +36,7 @@ struct SourceInfo
     uint64_t sequence_frame_count = 0;
     bool has_sequence_frame_count = false;
     Contract contract;
+    std::vector<camera::CameraRole> source_roles;
     std::array<camera::CameraRole, camera::CAMERAS_TOTAL> render_roles = {
         camera::CameraRole::Right,
         camera::CameraRole::Left,
