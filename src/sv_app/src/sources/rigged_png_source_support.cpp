@@ -62,14 +62,6 @@ void fill_static_frame_packet_metadata(uint64_t frameId,
     packet.metadata.synchronized_cameras = sourceInfo.contract.synchronized_samples;
     packet.metadata.source_timestamp_ns = 0;
     packet.metadata.has_source_timestamp = sourceInfo.contract.provides_source_timestamp;
-    packet.metadata.camera_timestamps_ns = {0, 0, 0, 0};
-    packet.metadata.has_camera_timestamps = {
-        sourceInfo.contract.provides_per_camera_timestamps,
-        sourceInfo.contract.provides_per_camera_timestamps,
-        sourceInfo.contract.provides_per_camera_timestamps,
-        sourceInfo.contract.provides_per_camera_timestamps,
-    };
-    packet.valid_cameras = {true, true, true, true};
 }
 
 } // namespace svapp

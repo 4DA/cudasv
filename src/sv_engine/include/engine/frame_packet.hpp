@@ -4,8 +4,10 @@
 #include <array>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include <engine/camera_config.hpp>
+#include <engine/camera_rig.hpp>
 #include <engine/video_source.hpp>
 
 namespace videoio
@@ -19,15 +21,25 @@ struct FramePacketMetadata
     bool synchronized_cameras = true;
     uint64_t source_timestamp_ns = 0;
     bool has_source_timestamp = false;
-    std::array<uint64_t, camera::CAMERAS_TOTAL> camera_timestamps_ns = {0, 0, 0, 0};
-    std::array<bool, camera::CAMERAS_TOTAL> has_camera_timestamps = {false, false, false, false};
+};
+
+struct SourceCameraFrame
+{
+    camera::CameraRole role = camera::CameraRole::Unknown;
+    uint8_t *data = nullptr;
+    void *userdata = nullptr;
+    uint32_t width = 0;
+    uint32_t height = 0;
+    uint32_t stride = 0;
+    uint64_t timestamp_ns = 0;
+    bool has_timestamp = false;
+    bool valid = true;
 };
 
 struct FramePacket
 {
     FramePacketMetadata metadata;
-    FrameSet<camera::CAMERAS_TOTAL> frames;
-    std::array<bool, camera::CAMERAS_TOTAL> valid_cameras = {true, true, true, true};
+    std::vector<SourceCameraFrame> cameras;
 };
 
 struct RuntimeFramePacket4Cam

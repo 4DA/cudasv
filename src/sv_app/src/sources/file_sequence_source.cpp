@@ -3,6 +3,28 @@
 #include "sources/render_bridge_4cam.hpp"
 #include "sources/rigged_png_source_support.hpp"
 
+namespace
+{
+
+static videoio::FrameSet<camera::CAMERAS_TOTAL> frame_set_from_source_packet(
+    const videoio::FramePacket &packet)
+{
+    videoio::FrameSet<camera::CAMERAS_TOTAL> frames = {};
+
+    for (std::size_t index = 0; index < packet.cameras.size() && index < camera::CAMERAS_TOTAL; ++index) {
+        frames.data[index] = packet.cameras[index].data;
+        frames.userdata[index] = packet.cameras[index].userdata;
+        frames.width = packet.cameras[index].width;
+        frames.height = packet.cameras[index].height;
+        frames.stride = packet.cameras[index].stride;
+        frames.timestamp = packet.cameras[index].timestamp_ns;
+    }
+
+    return frames;
+}
+
+} // namespace
+
 namespace svapp
 {
 
@@ -51,17 +73,35 @@ const videoio::SourceInfo& FileSequenceSource::info() const
 
 bool FileSequenceSource::get_next_frame(videoio::FramePacket &packet)
 {
-    if (!_png_source.get_next_frame(packet.frames)) {
+    videoio::FrameSet<camera::CAMERAS_TOTAL> frames;
+    if (!_png_source.get_next_frame(frames)) {
         return false;
     }
 
     fill_static_frame_packet_metadata(_frame_id++, _info, packet);
+    packet.cameras.clear();
+    packet.cameras.reserve(camera::CAMERAS_TOTAL);
+
+    for (std::size_t index = 0; index < camera::CAMERAS_TOTAL; ++index) {
+        videoio::SourceCameraFrame cameraFrame;
+        cameraFrame.role = _info.source_roles[index];
+        cameraFrame.data = frames.data[index];
+        cameraFrame.userdata = frames.userdata[index];
+        cameraFrame.width = frames.width;
+        cameraFrame.height = frames.height;
+        cameraFrame.stride = frames.stride;
+        cameraFrame.timestamp_ns = frames.timestamp;
+        cameraFrame.has_timestamp = false;
+        cameraFrame.valid = true;
+        packet.cameras.push_back(cameraFrame);
+    }
+
     return true;
 }
 
 bool FileSequenceSource::release_frame(const videoio::FramePacket &packet)
 {
-    return _png_source.release_frame(packet.frames);
+    return _png_source.release_frame(frame_set_from_source_packet(packet));
 }
 
 } // namespace svapp

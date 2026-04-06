@@ -1,5 +1,6 @@
 #include "sources/render_bridge_4cam.hpp"
 
+#include <array>
 #include <set>
 
 #include <spdlog/spdlog.h>
@@ -72,14 +73,23 @@ bool adapt_frame_packet_for_runtime_render_bridge_4cam(
     videoio::RuntimeFramePacket4Cam &runtimePacket,
     const RuntimeRenderBridge4CamContext &context)
 {
-    std::array<int, camera::CAMERAS_TOTAL> sourceIndexByRenderSlot;
     const videoio::SourceInfo &sourceInfo = *context.sourceInfo;
     const videoio::SourceInfo &renderBridgeInfo = context.runtimeSourceInfo;
+    std::array<int, camera::CAMERAS_TOTAL> sourceIndexByRenderSlot = {-1, -1, -1, -1};
 
-    if (!resolve_render_bridge_4cam_source_slot_indices(sourceInfo.render_roles,
-                                                        sourceInfo.source_name,
-                                                        sourceIndexByRenderSlot)) {
-        return false;
+    for (std::size_t sourceIndex = 0; sourceIndex < sourcePacket.cameras.size(); ++sourceIndex) {
+        camera::CameraID renderSlot;
+        if (!render_bridge_4cam_slot_for_role(sourcePacket.cameras[sourceIndex].role, &renderSlot)) {
+            continue;
+        }
+
+        if (sourceIndexByRenderSlot[renderSlot] >= 0) {
+            SPDLOG_ERROR("Source '{}' frame packet contains duplicate camera role for the current 4-camera bridge",
+                         sourceInfo.source_name);
+            return false;
+        }
+
+        sourceIndexByRenderSlot[renderSlot] = static_cast<int>(sourceIndex);
     }
 
     for (std::size_t renderSlot = 0; renderSlot < renderBridgeInfo.render_roles.size(); ++renderSlot) {
@@ -95,16 +105,16 @@ bool adapt_frame_packet_for_runtime_render_bridge_4cam(
             return false;
         }
 
-        runtimePacket.frames.data[renderSlot] = sourcePacket.frames.data[sourceIndex];
-        runtimePacket.frames.userdata[renderSlot] = sourcePacket.frames.userdata[sourceIndex];
-        runtimePacket.valid_cameras[renderSlot] = sourcePacket.valid_cameras[sourceIndex];
+        runtimePacket.frames.data[renderSlot] = sourcePacket.cameras[sourceIndex].data;
+        runtimePacket.frames.userdata[renderSlot] = sourcePacket.cameras[sourceIndex].userdata;
+        runtimePacket.valid_cameras[renderSlot] = sourcePacket.cameras[sourceIndex].valid;
     }
 
-    runtimePacket.frames.width = sourcePacket.frames.width;
-    runtimePacket.frames.height = sourcePacket.frames.height;
-    runtimePacket.frames.stride = sourcePacket.frames.stride;
-    runtimePacket.frames.timestamp = sourcePacket.frames.timestamp;
-    runtimePacket.frames.frameseq = sourcePacket.frames.frameseq;
+    runtimePacket.frames.width = sourcePacket.cameras[0].width;
+    runtimePacket.frames.height = sourcePacket.cameras[0].height;
+    runtimePacket.frames.stride = sourcePacket.cameras[0].stride;
+    runtimePacket.frames.timestamp = sourcePacket.metadata.source_timestamp_ns;
+    runtimePacket.frames.frameseq = sourcePacket.metadata.frame_id;
     runtimePacket.metadata = sourcePacket.metadata;
 
     return true;
