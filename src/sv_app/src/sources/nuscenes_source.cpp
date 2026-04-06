@@ -38,6 +38,12 @@ struct ResolvedCameraSample
     uint32_t height = 0;
 };
 
+struct ResolvedNuScenesRoots
+{
+    fs::path dataRoot;
+    fs::path versionRoot;
+};
+
 static const char *camera_role_to_string(camera::CameraRole role)
 {
     switch (role) {
@@ -82,7 +88,7 @@ static bool has_required_table_files(const fs::path &root)
     return true;
 }
 
-static fs::path resolve_nuscenes_version_root(const fs::path &datasetRoot)
+static ResolvedNuScenesRoots resolve_nuscenes_roots(const fs::path &datasetRoot)
 {
     if (!fs::exists(datasetRoot)) {
         throw std::runtime_error("dataset root does not exist");
@@ -92,7 +98,14 @@ static fs::path resolve_nuscenes_version_root(const fs::path &datasetRoot)
     }
 
     if (has_required_table_files(datasetRoot)) {
-        return datasetRoot;
+        ResolvedNuScenesRoots roots;
+        roots.versionRoot = datasetRoot;
+        if (datasetRoot.filename().string().rfind("v1.0-", 0) == 0) {
+            roots.dataRoot = datasetRoot.parent_path();
+        } else {
+            roots.dataRoot = datasetRoot;
+        }
+        return roots;
     }
 
     std::vector<fs::path> candidates;
@@ -114,19 +127,19 @@ static fs::path resolve_nuscenes_version_root(const fs::path &datasetRoot)
             "dataset root does not contain a nuScenes version directory with scene/sample metadata");
     }
     if (candidates.size() == 1) {
-        return candidates.front();
+        return {datasetRoot, candidates.front()};
     }
 
     for (const fs::path &candidate : candidates) {
         const std::string name = candidate.filename().string();
         if (name == "v1.0-mini") {
-            return candidate;
+            return {datasetRoot, candidate};
         }
     }
     for (const fs::path &candidate : candidates) {
         const std::string name = candidate.filename().string();
         if (name == "v1.0-trainval") {
-            return candidate;
+            return {datasetRoot, candidate};
         }
     }
 
@@ -272,7 +285,7 @@ static camera::CanonicalIntrinsics canonical_intrinsics_from_matrix(const json &
 }
 
 static std::vector<ResolvedCameraSample> resolve_camera_samples_for_target(
-    const fs::path &versionRoot,
+    const fs::path &dataRoot,
     const json &sampleData,
     const json &calibratedSensors,
     const json &sensors,
@@ -335,7 +348,7 @@ static std::vector<ResolvedCameraSample> resolve_camera_samples_for_target(
         if (relativePath.empty()) {
             throw std::runtime_error("camera sample_data entry is missing filename");
         }
-        if (!fs::is_regular_file(versionRoot / relativePath)) {
+        if (!fs::is_regular_file(dataRoot / relativePath)) {
             throw std::runtime_error("camera image file is missing: " + relativePath);
         }
         if (!seenRoles.insert(role).second) {
@@ -452,7 +465,9 @@ bool NuScenesSource::open()
         _info.has_sequence_frame_count = false;
         _info.sequence_frame_count = 0;
 
-        const fs::path versionRoot = resolve_nuscenes_version_root(_datasetRoot);
+        const ResolvedNuScenesRoots roots = resolve_nuscenes_roots(_datasetRoot);
+        const fs::path &dataRoot = roots.dataRoot;
+        const fs::path &versionRoot = roots.versionRoot;
         const json scenes = load_json_file(versionRoot / "scene.json");
         const json samples = load_json_file(versionRoot / "sample.json");
         const json sampleData = load_json_file(versionRoot / "sample_data.json");
@@ -462,18 +477,19 @@ bool NuScenesSource::open()
         const ResolvedNuScenesTarget target =
             resolve_target_sample(scenes, samples, _sequenceId);
 
-        const auto resolvedCameraSamples = resolve_camera_samples_for_target(versionRoot,
+        const auto resolvedCameraSamples = resolve_camera_samples_for_target(dataRoot,
                                                                             sampleData,
                                                                             calibratedSensors,
                                                                             sensors,
                                                                             target.sampleToken);
 
+        _dataRoot = dataRoot.string();
         _versionRoot = versionRoot.string();
         _resolvedSampleToken = target.sampleToken;
         _resolvedSceneName = target.sceneName;
         _opened = true;
 
-        _info.dataset_root = _versionRoot;
+        _info.dataset_root = _dataRoot;
         _info.source_name = _resolvedSceneName.empty()
             ? "nuscenes_sample"
             : "nuscenes_scene";
@@ -499,7 +515,8 @@ bool NuScenesSource::open()
             _cameraSamples.push_back(std::move(sample));
         }
 
-        SPDLOG_INFO("Opened NuScenes metadata source [version_root='{}', scene='{}', sample_token='{}', camera_count={}]",
+        SPDLOG_INFO("Opened NuScenes metadata source [data_root='{}', version_root='{}', scene='{}', sample_token='{}', camera_count={}]",
+                    _dataRoot,
                     _versionRoot,
                     _resolvedSceneName.empty() ? "<direct-sample>" : _resolvedSceneName,
                     _resolvedSampleToken,

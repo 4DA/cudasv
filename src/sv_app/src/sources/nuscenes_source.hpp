@@ -32,6 +32,7 @@ private:
     };
 
     std::string _datasetRoot;
+    std::string _dataRoot;
     std::string _sequenceId;
     std::string _versionRoot;
     std::string _resolvedSampleToken;
