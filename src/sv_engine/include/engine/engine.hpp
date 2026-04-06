@@ -102,9 +102,9 @@ struct Engine
 
     engine::Error update_vehicle_state(const vehicle::CANSignals *vehicle_signals);
 
-    engine::Error pre_process(const videoio::FramePacket &frame_packet);
+    engine::Error pre_process(const videoio::RuntimeFramePacket4Cam &frame_packet);
 
-    engine::Error process(const videoio::FramePacket &frame_packet,
+    engine::Error process(const videoio::RuntimeFramePacket4Cam &frame_packet,
                                void* output_buffer,
                                unsigned long long cuda_str,
                                uint32_t width,

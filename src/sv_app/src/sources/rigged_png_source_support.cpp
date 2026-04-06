@@ -56,14 +56,14 @@ void fill_static_frame_packet_metadata(uint64_t frameId,
                                        const videoio::SourceInfo &sourceInfo,
                                        videoio::FramePacket &packet)
 {
-    packet.frame_id = frameId;
-    packet.sample_id = sourceInfo.source_name + ":" + std::to_string(frameId);
-    packet.has_sample_id = sourceInfo.contract.provides_sample_identity;
-    packet.synchronized_cameras = sourceInfo.contract.synchronized_samples;
-    packet.source_timestamp_ns = 0;
-    packet.has_source_timestamp = sourceInfo.contract.provides_source_timestamp;
-    packet.camera_timestamps_ns = {0, 0, 0, 0};
-    packet.has_camera_timestamps = {
+    packet.metadata.frame_id = frameId;
+    packet.metadata.sample_id = sourceInfo.source_name + ":" + std::to_string(frameId);
+    packet.metadata.has_sample_id = sourceInfo.contract.provides_sample_identity;
+    packet.metadata.synchronized_cameras = sourceInfo.contract.synchronized_samples;
+    packet.metadata.source_timestamp_ns = 0;
+    packet.metadata.has_source_timestamp = sourceInfo.contract.provides_source_timestamp;
+    packet.metadata.camera_timestamps_ns = {0, 0, 0, 0};
+    packet.metadata.has_camera_timestamps = {
         sourceInfo.contract.provides_per_camera_timestamps,
         sourceInfo.contract.provides_per_camera_timestamps,
         sourceInfo.contract.provides_per_camera_timestamps,

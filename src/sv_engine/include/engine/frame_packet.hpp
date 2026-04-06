@@ -11,9 +11,8 @@
 namespace videoio
 {
 
-struct FramePacket
+struct FramePacketMetadata
 {
-    FrameSet<camera::CAMERAS_TOTAL> frames;
     uint64_t frame_id = 0;  // current demo path uses this as a stable sample index
     std::string sample_id;
     bool has_sample_id = false;
@@ -22,6 +21,19 @@ struct FramePacket
     bool has_source_timestamp = false;
     std::array<uint64_t, camera::CAMERAS_TOTAL> camera_timestamps_ns = {0, 0, 0, 0};
     std::array<bool, camera::CAMERAS_TOTAL> has_camera_timestamps = {false, false, false, false};
+};
+
+struct FramePacket
+{
+    FramePacketMetadata metadata;
+    FrameSet<camera::CAMERAS_TOTAL> frames;
+    std::array<bool, camera::CAMERAS_TOTAL> valid_cameras = {true, true, true, true};
+};
+
+struct RuntimeFramePacket4Cam
+{
+    FramePacketMetadata metadata;
+    FrameSet<camera::CAMERAS_TOTAL> frames;
     std::array<bool, camera::CAMERAS_TOTAL> valid_cameras = {true, true, true, true};
 };
 

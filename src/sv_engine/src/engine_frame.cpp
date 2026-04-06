@@ -39,7 +39,7 @@ engine::Error Engine::update_vehicle_state(const vehicle::CANSignals *vehicle_si
     return OK;
 }
 
-engine::Error Engine::pre_process(const videoio::FramePacket &frame_packet)
+engine::Error Engine::pre_process(const videoio::RuntimeFramePacket4Cam &frame_packet)
 {
     const videoio::FrameSet<camera::CAMERAS_TOTAL> &frames_set = frame_packet.frames;
 
@@ -81,7 +81,7 @@ engine::Error Engine::pre_process(const videoio::FramePacket &frame_packet)
     return OK;
 }
 
-engine::Error Engine::process(const videoio::FramePacket &frame_packet,
+engine::Error Engine::process(const videoio::RuntimeFramePacket4Cam &frame_packet,
                               void *output_buffer,
                               unsigned long long cuda_str,
                               uint32_t width,

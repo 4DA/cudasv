@@ -27,7 +27,8 @@ bool prepare_runtime_render_bridge_4cam_context(
     RuntimeRenderBridge4CamContext &context);
 
 bool adapt_frame_packet_for_runtime_render_bridge_4cam(
-    videoio::FramePacket &packet,
+    const videoio::FramePacket &sourcePacket,
+    videoio::RuntimeFramePacket4Cam &runtimePacket,
     const RuntimeRenderBridge4CamContext &context);
 
 } // namespace svapp

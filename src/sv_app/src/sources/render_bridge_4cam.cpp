@@ -68,11 +68,11 @@ bool prepare_runtime_render_bridge_4cam_context(
 }
 
 bool adapt_frame_packet_for_runtime_render_bridge_4cam(
-    videoio::FramePacket &packet,
+    const videoio::FramePacket &sourcePacket,
+    videoio::RuntimeFramePacket4Cam &runtimePacket,
     const RuntimeRenderBridge4CamContext &context)
 {
     std::array<int, camera::CAMERAS_TOTAL> sourceIndexByRenderSlot;
-    videoio::FramePacket sourcePacket = packet;
     const videoio::SourceInfo &sourceInfo = *context.sourceInfo;
     const videoio::SourceInfo &renderBridgeInfo = context.runtimeSourceInfo;
 
@@ -95,10 +95,17 @@ bool adapt_frame_packet_for_runtime_render_bridge_4cam(
             return false;
         }
 
-        packet.frames.data[renderSlot] = sourcePacket.frames.data[sourceIndex];
-        packet.frames.userdata[renderSlot] = sourcePacket.frames.userdata[sourceIndex];
-        packet.valid_cameras[renderSlot] = sourcePacket.valid_cameras[sourceIndex];
+        runtimePacket.frames.data[renderSlot] = sourcePacket.frames.data[sourceIndex];
+        runtimePacket.frames.userdata[renderSlot] = sourcePacket.frames.userdata[sourceIndex];
+        runtimePacket.valid_cameras[renderSlot] = sourcePacket.valid_cameras[sourceIndex];
     }
+
+    runtimePacket.frames.width = sourcePacket.frames.width;
+    runtimePacket.frames.height = sourcePacket.frames.height;
+    runtimePacket.frames.stride = sourcePacket.frames.stride;
+    runtimePacket.frames.timestamp = sourcePacket.frames.timestamp;
+    runtimePacket.frames.frameseq = sourcePacket.frames.frameseq;
+    runtimePacket.metadata = sourcePacket.metadata;
 
     return true;
 }
