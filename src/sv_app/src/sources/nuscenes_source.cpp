@@ -702,13 +702,7 @@ bool NuScenesSource::release_frame(const videoio::FramePacket &packet)
 
 bool NuScenesSource::step_next_sample()
 {
-    if (_samples.size() <= 1) {
-        return true;
-    }
-
-    _currentSampleIndex = (_currentSampleIndex + 1) % _samples.size();
-    _decoded_sample_ready = false;
-    return true;
+    return step_samples(1);
 }
 
 bool NuScenesSource::step_previous_sample()
@@ -717,7 +711,21 @@ bool NuScenesSource::step_previous_sample()
         return true;
     }
 
-    _currentSampleIndex = (_currentSampleIndex + _samples.size() - 1) % _samples.size();
+    return step_samples(-1);
+}
+
+bool NuScenesSource::step_samples(int delta)
+{
+    if (_samples.size() <= 1 || delta == 0) {
+        return true;
+    }
+
+    const int64_t sampleCount = static_cast<int64_t>(_samples.size());
+    const int64_t currentIndex = static_cast<int64_t>(_currentSampleIndex);
+    const int64_t wrappedIndex =
+        ((currentIndex + static_cast<int64_t>(delta)) % sampleCount + sampleCount) % sampleCount;
+
+    _currentSampleIndex = static_cast<std::size_t>(wrappedIndex);
     _decoded_sample_ready = false;
     return true;
 }

@@ -22,6 +22,7 @@ public:
     bool release_frame(const videoio::FramePacket &packet) override;
     bool step_next_sample();
     bool step_previous_sample();
+    bool step_samples(int delta);
     std::size_t sample_count() const;
     std::size_t current_sample_index() const;
 

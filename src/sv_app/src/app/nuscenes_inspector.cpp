@@ -20,6 +20,8 @@ struct InspectorControlState
 {
     bool leftWasPressed = false;
     bool rightWasPressed = false;
+    bool leftShiftWasPressed = false;
+    bool rightShiftWasPressed = false;
     bool spaceWasPressed = false;
     std::array<bool, 6> digitWasPressed = {};
 };
@@ -280,20 +282,26 @@ int run_nuscenes_inspector_loop(AppContext &app,
     InspectorControlState controls = {};
     bool focusModeEnabled = false;
     std::size_t focusedSlotIndex = 1;
+    constexpr int kFastStepCount = 5;
 
     SPDLOG_INFO("NuScenes inspector controls: Left/Right arrows step through scene samples, "
-                "1-6 select a camera, Space toggles focused view");
+                "Shift+Left/Right jump by {}, 1-6 select a camera, "
+                "Space toggles focused view",
+                kFastStepCount);
 
     while (app.running && !glfwHost.should_close_any()) {
         const bool leftPressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_LEFT);
         const bool rightPressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_RIGHT);
+        const bool leftShiftPressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_LEFT_SHIFT);
+        const bool rightShiftPressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_RIGHT_SHIFT);
         const bool spacePressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_SPACE);
 
+        const bool fastStepRequested = leftShiftPressed || rightShiftPressed;
         if (leftPressed && !controls.leftWasPressed) {
-            nuScenesSource->step_previous_sample();
+            nuScenesSource->step_samples(fastStepRequested ? -kFastStepCount : -1);
         }
         if (rightPressed && !controls.rightWasPressed) {
-            nuScenesSource->step_next_sample();
+            nuScenesSource->step_samples(fastStepRequested ? kFastStepCount : 1);
         }
         if (spacePressed && !controls.spaceWasPressed) {
             focusModeEnabled = !focusModeEnabled;
@@ -305,6 +313,8 @@ int run_nuscenes_inspector_loop(AppContext &app,
 
         controls.leftWasPressed = leftPressed;
         controls.rightWasPressed = rightPressed;
+        controls.leftShiftWasPressed = leftShiftPressed;
+        controls.rightShiftWasPressed = rightShiftPressed;
         controls.spaceWasPressed = spacePressed;
 
         for (std::size_t slotIndex = 0; slotIndex < slots.size(); ++slotIndex) {
