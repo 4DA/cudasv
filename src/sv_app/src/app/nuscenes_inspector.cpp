@@ -22,6 +22,7 @@ struct InspectorControlState
     bool rightWasPressed = false;
     bool leftShiftWasPressed = false;
     bool rightShiftWasPressed = false;
+    bool pWasPressed = false;
     bool spaceWasPressed = false;
     std::array<bool, 6> digitWasPressed = {};
 };
@@ -162,6 +163,7 @@ static int find_camera_index(const videoio::FramePacket &packet, camera::CameraR
 
 static std::string build_window_title(const svapp::NuScenesSource &source,
                                       const videoio::FramePacket &packet,
+                                      bool autoplayEnabled,
                                       bool focusModeEnabled,
                                       camera::CameraRole focusedRole)
 {
@@ -176,6 +178,8 @@ static std::string build_window_title(const svapp::NuScenesSource &source,
         title << "<no-sample-id>";
     }
 
+    title << " | ";
+    title << (autoplayEnabled ? "play" : "pause");
     title << " | ";
     if (focusModeEnabled) {
         title << "focus:" << camera_role_to_string(focusedRole);
@@ -197,6 +201,8 @@ int run_nuscenes_inspector_loop(AppContext &app,
                                 const engine::OutputSet &outputSet,
                                 videoio::FrameSource &frameSource)
 {
+    (void)options;
+
     app.interactive_input_enabled = false;
     auto *nuScenesSource = dynamic_cast<NuScenesSource *>(&frameSource);
     if (!nuScenesSource) {
@@ -280,12 +286,16 @@ int run_nuscenes_inspector_loop(AppContext &app,
     uint64_t uploadedSourceSequence = std::numeric_limits<uint64_t>::max();
     bool firstPacketReported = false;
     InspectorControlState controls = {};
+    bool autoplayEnabled = false;
     bool focusModeEnabled = false;
     std::size_t focusedSlotIndex = 1;
     constexpr int kFastStepCount = 5;
+    constexpr double kAutoplayStepIntervalSec = 0.25;
+    constexpr useconds_t kInspectorLoopSleepUs = 16000;
+    double lastAutoplayStepTime = glfwGetTime();
 
     SPDLOG_INFO("NuScenes inspector controls: Left/Right arrows step through scene samples, "
-                "Shift+Left/Right jump by {}, 1-6 select a camera, "
+                "Shift+Left/Right jump by {}, P toggles autoplay, 1-6 select a camera, "
                 "Space toggles focused view",
                 kFastStepCount);
 
@@ -294,6 +304,7 @@ int run_nuscenes_inspector_loop(AppContext &app,
         const bool rightPressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_RIGHT);
         const bool leftShiftPressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_LEFT_SHIFT);
         const bool rightShiftPressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_RIGHT_SHIFT);
+        const bool pPressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_P);
         const bool spacePressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_SPACE);
 
         const bool fastStepRequested = leftShiftPressed || rightShiftPressed;
@@ -302,6 +313,12 @@ int run_nuscenes_inspector_loop(AppContext &app,
         }
         if (rightPressed && !controls.rightWasPressed) {
             nuScenesSource->step_samples(fastStepRequested ? kFastStepCount : 1);
+        }
+        if (pPressed && !controls.pWasPressed) {
+            autoplayEnabled = !autoplayEnabled;
+            lastAutoplayStepTime = glfwGetTime();
+            SPDLOG_INFO("NuScenes inspector autoplay: {}",
+                        autoplayEnabled ? "enabled" : "disabled");
         }
         if (spacePressed && !controls.spaceWasPressed) {
             focusModeEnabled = !focusModeEnabled;
@@ -315,6 +332,7 @@ int run_nuscenes_inspector_loop(AppContext &app,
         controls.rightWasPressed = rightPressed;
         controls.leftShiftWasPressed = leftShiftPressed;
         controls.rightShiftWasPressed = rightShiftPressed;
+        controls.pWasPressed = pPressed;
         controls.spaceWasPressed = spacePressed;
 
         for (std::size_t slotIndex = 0; slotIndex < slots.size(); ++slotIndex) {
@@ -327,6 +345,12 @@ int run_nuscenes_inspector_loop(AppContext &app,
                             camera_role_to_string(slots[slotIndex].role));
             }
             controls.digitWasPressed[slotIndex] = digitPressed;
+        }
+
+        const double currentTime = glfwGetTime();
+        if (autoplayEnabled && (currentTime - lastAutoplayStepTime) >= kAutoplayStepIntervalSec) {
+            nuScenesSource->step_next_sample();
+            lastAutoplayStepTime = currentTime;
         }
 
         videoio::FramePacket packet;
@@ -347,6 +371,7 @@ int run_nuscenes_inspector_loop(AppContext &app,
         glfwHost.set_window_title(outputIndex,
                                   build_window_title(*nuScenesSource,
                                                      packet,
+                                                     autoplayEnabled,
                                                      focusModeEnabled,
                                                      slots[focusedSlotIndex].role));
 
@@ -429,7 +454,7 @@ int run_nuscenes_inspector_loop(AppContext &app,
             return EXIT_FAILURE;
         }
 
-        usleep(1000000 / options.fps);
+        usleep(kInspectorLoopSleepUs);
     }
 
     return 0;
