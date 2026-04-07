@@ -321,6 +321,7 @@ int run_nuscenes_inspector_loop(AppContext &app,
 
     uint64_t uploadedSourceSequence = std::numeric_limits<uint64_t>::max();
     bool firstPacketReported = false;
+    std::string lastReportedSampleId;
     InspectorControlState controls = {};
     bool autoplayEnabled = false;
     bool focusModeEnabled = false;
@@ -407,11 +408,17 @@ int run_nuscenes_inspector_loop(AppContext &app,
 
         if (!firstPacketReported) {
             report_source_packet(packet);
+            firstPacketReported = true;
+        }
+
+        if (!packet.metadata.has_sample_id || packet.metadata.sample_id != lastReportedSampleId) {
             SPDLOG_INFO("NuScenes inspector sample [{} / {}]: {}",
                         nuScenesSource->current_sample_index() + 1,
                         nuScenesSource->sample_count(),
-                        packet.metadata.sample_id);
-            firstPacketReported = true;
+                        packet.metadata.has_sample_id ? packet.metadata.sample_id : "<no-sample-id>");
+            lastReportedSampleId = packet.metadata.has_sample_id
+                ? packet.metadata.sample_id
+                : std::string();
         }
 
         glfwHost.set_window_title(outputIndex,
