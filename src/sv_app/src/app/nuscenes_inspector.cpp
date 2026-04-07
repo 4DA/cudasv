@@ -20,6 +20,8 @@ struct InspectorControlState
 {
     bool leftWasPressed = false;
     bool rightWasPressed = false;
+    bool leftBracketWasPressed = false;
+    bool rightBracketWasPressed = false;
     bool homeWasPressed = false;
     bool endWasPressed = false;
     bool leftShiftWasPressed = false;
@@ -344,12 +346,15 @@ int run_nuscenes_inspector_loop(AppContext &app,
 
     SPDLOG_INFO("NuScenes inspector controls: Left/Right arrows step through scene samples, "
                 "Shift+Left/Right jump by {}, Home/End jump to scene bounds, "
-                "P toggles autoplay, 1-6 select a camera, Space toggles focused view",
+                "P toggles autoplay, 1-6 select a camera, [ and ] cycle the "
+                "focused camera, Space toggles focused view",
                 kFastStepCount);
 
     while (app.running && !glfwHost.should_close_any()) {
         const bool leftPressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_LEFT);
         const bool rightPressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_RIGHT);
+        const bool leftBracketPressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_LEFT_BRACKET);
+        const bool rightBracketPressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_RIGHT_BRACKET);
         const bool homePressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_HOME);
         const bool endPressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_END);
         const bool leftShiftPressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_LEFT_SHIFT);
@@ -363,6 +368,18 @@ int run_nuscenes_inspector_loop(AppContext &app,
         }
         if (rightPressed && !controls.rightWasPressed) {
             nuScenesSource->step_samples(fastStepRequested ? kFastStepCount : 1);
+        }
+        if (leftBracketPressed && !controls.leftBracketWasPressed) {
+            focusedSlotIndex = (focusedSlotIndex + slots.size() - 1) % slots.size();
+            SPDLOG_INFO("NuScenes inspector selected camera [{}]: {}",
+                        focusedSlotIndex + 1,
+                        camera_role_to_string(slots[focusedSlotIndex].role));
+        }
+        if (rightBracketPressed && !controls.rightBracketWasPressed) {
+            focusedSlotIndex = (focusedSlotIndex + 1) % slots.size();
+            SPDLOG_INFO("NuScenes inspector selected camera [{}]: {}",
+                        focusedSlotIndex + 1,
+                        camera_role_to_string(slots[focusedSlotIndex].role));
         }
         if (homePressed && !controls.homeWasPressed) {
             nuScenesSource->set_sample_index(0);
@@ -386,6 +403,8 @@ int run_nuscenes_inspector_loop(AppContext &app,
 
         controls.leftWasPressed = leftPressed;
         controls.rightWasPressed = rightPressed;
+        controls.leftBracketWasPressed = leftBracketPressed;
+        controls.rightBracketWasPressed = rightBracketPressed;
         controls.homeWasPressed = homePressed;
         controls.endWasPressed = endPressed;
         controls.leftShiftWasPressed = leftShiftPressed;
