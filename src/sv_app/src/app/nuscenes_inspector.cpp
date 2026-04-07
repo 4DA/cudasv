@@ -185,6 +185,17 @@ static std::string build_window_title(const svapp::NuScenesSource &source,
     title << " | ";
     if (focusModeEnabled) {
         title << "focus:" << camera_role_to_string(focusedRole);
+
+        const int focusedCameraIndex = find_camera_index(packet, focusedRole);
+        if (focusedCameraIndex >= 0) {
+            const auto &cameraFrame =
+                packet.cameras[static_cast<std::size_t>(focusedCameraIndex)];
+            title << " "
+                  << cameraFrame.width << "x" << cameraFrame.height;
+            if (cameraFrame.has_timestamp) {
+                title << " @" << cameraFrame.timestamp_ns;
+            }
+        }
     } else {
         title << "mosaic";
     }
