@@ -192,6 +192,40 @@ static std::string build_window_title(const svapp::NuScenesSource &source,
     return title.str();
 }
 
+static void set_aspect_fit_viewport(int originX,
+                                    int originY,
+                                    int targetWidth,
+                                    int targetHeight,
+                                    uint32_t sourceWidth,
+                                    uint32_t sourceHeight)
+{
+    if (targetWidth <= 0 || targetHeight <= 0 ||
+        sourceWidth == 0 || sourceHeight == 0) {
+        glViewport(originX, originY, targetWidth, targetHeight);
+        return;
+    }
+
+    const float targetAspect = static_cast<float>(targetWidth) / static_cast<float>(targetHeight);
+    const float sourceAspect = static_cast<float>(sourceWidth) / static_cast<float>(sourceHeight);
+
+    int viewportWidth = targetWidth;
+    int viewportHeight = targetHeight;
+    int viewportX = originX;
+    int viewportY = originY;
+
+    // Letterbox each camera tile instead of stretching the decoded image,
+    // so camera geometry stays visually faithful during inspection.
+    if (sourceAspect > targetAspect) {
+        viewportHeight = static_cast<int>(static_cast<float>(targetWidth) / sourceAspect);
+        viewportY += (targetHeight - viewportHeight) / 2;
+    } else {
+        viewportWidth = static_cast<int>(static_cast<float>(targetHeight) * sourceAspect);
+        viewportX += (targetWidth - viewportWidth) / 2;
+    }
+
+    glViewport(viewportX, viewportY, viewportWidth, viewportHeight);
+}
+
 } // namespace
 
 namespace svapp
@@ -439,7 +473,12 @@ int run_nuscenes_inspector_loop(AppContext &app,
         const int tileHeight = displayHeight / 2;
 
         if (focusModeEnabled) {
-            glViewport(0, 0, displayWidth, displayHeight);
+            set_aspect_fit_viewport(0,
+                                    0,
+                                    displayWidth,
+                                    displayHeight,
+                                    slots[focusedSlotIndex].width,
+                                    slots[focusedSlotIndex].height);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, slots[focusedSlotIndex].texture);
             glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -449,10 +488,12 @@ int run_nuscenes_inspector_loop(AppContext &app,
                 // front row on top, rear row on bottom.
                 const int column = static_cast<int>(index % 3);
                 const int row = 1 - static_cast<int>(index / 3);
-                glViewport(column * tileWidth,
-                           row * tileHeight,
-                           tileWidth,
-                           tileHeight);
+                set_aspect_fit_viewport(column * tileWidth,
+                                        row * tileHeight,
+                                        tileWidth,
+                                        tileHeight,
+                                        slots[index].width,
+                                        slots[index].height);
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, slots[index].texture);
                 glDrawArrays(GL_TRIANGLES, 0, 6);
