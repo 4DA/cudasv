@@ -22,6 +22,43 @@ static std::string ffmpeg_error_string(int err)
     return buffer;
 }
 
+static AVPixelFormat normalized_sws_source_format(AVPixelFormat format)
+{
+    switch (format) {
+    case AV_PIX_FMT_YUVJ420P:
+        return AV_PIX_FMT_YUV420P;
+    case AV_PIX_FMT_YUVJ422P:
+        return AV_PIX_FMT_YUV422P;
+    case AV_PIX_FMT_YUVJ444P:
+        return AV_PIX_FMT_YUV444P;
+    case AV_PIX_FMT_YUVJ440P:
+        return AV_PIX_FMT_YUV440P;
+    default:
+        break;
+    }
+
+    return format;
+}
+
+static bool is_full_range_source(const AVFrame *src)
+{
+    if (src->color_range == AVCOL_RANGE_JPEG) {
+        return true;
+    }
+
+    switch (static_cast<AVPixelFormat>(src->format)) {
+    case AV_PIX_FMT_YUVJ420P:
+    case AV_PIX_FMT_YUVJ422P:
+    case AV_PIX_FMT_YUVJ444P:
+    case AV_PIX_FMT_YUVJ440P:
+        return true;
+    default:
+        break;
+    }
+
+    return false;
+}
+
 static bool convert_to_rgb24(const AVFrame *src,
                              videoio::DecodedImageFrame &frame,
                              std::string *errorMessage)
@@ -47,9 +84,12 @@ static bool convert_to_rgb24(const AVFrame *src,
         return false;
     }
 
+    const AVPixelFormat sourceFormat =
+        normalized_sws_source_format(static_cast<AVPixelFormat>(src->format));
+
     SwsContext *scaleContext = sws_getContext(src->width,
                                               src->height,
-                                              static_cast<AVPixelFormat>(src->format),
+                                              sourceFormat,
                                               rgbFrame->width,
                                               rgbFrame->height,
                                               static_cast<AVPixelFormat>(rgbFrame->format),
@@ -61,6 +101,23 @@ static bool convert_to_rgb24(const AVFrame *src,
         if (errorMessage) {
             *errorMessage = "sws_getContext failed";
         }
+        av_frame_free(&rgbFrame);
+        return false;
+    }
+
+    const int *colorspaceCoefficients = sws_getCoefficients(SWS_CS_DEFAULT);
+    if (sws_setColorspaceDetails(scaleContext,
+                                 colorspaceCoefficients,
+                                 is_full_range_source(src) ? 1 : 0,
+                                 colorspaceCoefficients,
+                                 0,
+                                 0,
+                                 1 << 16,
+                                 1 << 16) < 0) {
+        if (errorMessage) {
+            *errorMessage = "sws_setColorspaceDetails failed";
+        }
+        sws_freeContext(scaleContext);
         av_frame_free(&rgbFrame);
         return false;
     }
