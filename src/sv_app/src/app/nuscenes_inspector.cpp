@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <limits>
+#include <sstream>
 #include <string>
 #include <unistd.h>
 
@@ -157,6 +158,32 @@ static int find_camera_index(const videoio::FramePacket &packet, camera::CameraR
     return -1;
 }
 
+static std::string build_window_title(const svapp::NuScenesSource &source,
+                                      const videoio::FramePacket &packet,
+                                      bool focusModeEnabled,
+                                      camera::CameraRole focusedRole)
+{
+    std::ostringstream title;
+    title << "NuScenes Inspector "
+          << "[" << (source.current_sample_index() + 1)
+          << "/" << source.sample_count() << "] ";
+
+    if (packet.metadata.has_sample_id) {
+        title << packet.metadata.sample_id;
+    } else {
+        title << "<no-sample-id>";
+    }
+
+    title << " | ";
+    if (focusModeEnabled) {
+        title << "focus:" << camera_role_to_string(focusedRole);
+    } else {
+        title << "mosaic";
+    }
+
+    return title.str();
+}
+
 } // namespace
 
 namespace svapp
@@ -306,6 +333,12 @@ int run_nuscenes_inspector_loop(AppContext &app,
                         packet.metadata.sample_id);
             firstPacketReported = true;
         }
+
+        glfwHost.set_window_title(outputIndex,
+                                  build_window_title(*nuScenesSource,
+                                                     packet,
+                                                     focusModeEnabled,
+                                                     slots[focusedSlotIndex].role));
 
         if (uploadedSourceSequence != packet.metadata.source_frame_sequence) {
             for (auto &slot : slots) {

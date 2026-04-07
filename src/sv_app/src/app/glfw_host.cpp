@@ -134,6 +134,15 @@ bool GLFWHost::key_pressed(int index, int key) const
     return glfwGetKey(window[index], key) == GLFW_PRESS;
 }
 
+void GLFWHost::set_window_title(int index, const std::string &title) const
+{
+    if (index < 0 || index >= _outputs_number || !window[index]) {
+        return;
+    }
+
+    glfwSetWindowTitle(window[index], title.c_str());
+}
+
 void GLFWHost::key_callback(GLFWwindow *window, int key, int, int action, int)
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
