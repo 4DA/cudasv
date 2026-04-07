@@ -33,6 +33,17 @@ NVIDIA notice in:
 That file retains its upstream NVIDIA notice and BSD-style redistribution
 terms in the file header.
 
+## Third-Party Assets
+
+### Citrus Orchard Road (HDRI)
+
+- Source: Poly Haven
+- Source URL: <https://polyhaven.com/a/citrus_orchard_road>
+- Authors: Dimitrios Savva (photography), Jarod Guest (processing)
+- License: CC0 1.0
+- Local file: `assets/citrus_orchard_ibl`
+- Modifications: none
+
 ## Practical Interpretation
 
 For repository users:
