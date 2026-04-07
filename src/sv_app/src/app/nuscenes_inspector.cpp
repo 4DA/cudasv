@@ -15,6 +15,14 @@
 namespace
 {
 
+struct InspectorControlState
+{
+    bool leftWasPressed = false;
+    bool rightWasPressed = false;
+    bool spaceWasPressed = false;
+    std::array<bool, 6> digitWasPressed = {};
+};
+
 struct MosaicSlot
 {
     camera::CameraRole role = camera::CameraRole::Unknown;
@@ -242,24 +250,47 @@ int run_nuscenes_inspector_loop(AppContext &app,
 
     uint64_t uploadedSourceSequence = std::numeric_limits<uint64_t>::max();
     bool firstPacketReported = false;
-    bool leftWasPressed = false;
-    bool rightWasPressed = false;
+    InspectorControlState controls = {};
+    bool focusModeEnabled = false;
+    std::size_t focusedSlotIndex = 1;
 
-    SPDLOG_INFO("NuScenes inspector controls: Left/Right arrows step through scene samples");
+    SPDLOG_INFO("NuScenes inspector controls: Left/Right arrows step through scene samples, "
+                "1-6 select a camera, Space toggles focused view");
 
     while (app.running && !glfwHost.should_close_any()) {
         const bool leftPressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_LEFT);
         const bool rightPressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_RIGHT);
+        const bool spacePressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_SPACE);
 
-        if (leftPressed && !leftWasPressed) {
+        if (leftPressed && !controls.leftWasPressed) {
             nuScenesSource->step_previous_sample();
         }
-        if (rightPressed && !rightWasPressed) {
+        if (rightPressed && !controls.rightWasPressed) {
             nuScenesSource->step_next_sample();
         }
+        if (spacePressed && !controls.spaceWasPressed) {
+            focusModeEnabled = !focusModeEnabled;
+            SPDLOG_INFO("NuScenes inspector view mode: {}",
+                        focusModeEnabled
+                            ? camera_role_to_string(slots[focusedSlotIndex].role)
+                            : "mosaic");
+        }
 
-        leftWasPressed = leftPressed;
-        rightWasPressed = rightPressed;
+        controls.leftWasPressed = leftPressed;
+        controls.rightWasPressed = rightPressed;
+        controls.spaceWasPressed = spacePressed;
+
+        for (std::size_t slotIndex = 0; slotIndex < slots.size(); ++slotIndex) {
+            const int glfwKey = GLFW_KEY_1 + static_cast<int>(slotIndex);
+            const bool digitPressed = glfwHost.key_pressed(outputIndex, glfwKey);
+            if (digitPressed && !controls.digitWasPressed[slotIndex]) {
+                focusedSlotIndex = slotIndex;
+                SPDLOG_INFO("NuScenes inspector selected camera [{}]: {}",
+                            slotIndex + 1,
+                            camera_role_to_string(slots[slotIndex].role));
+            }
+            controls.digitWasPressed[slotIndex] = digitPressed;
+        }
 
         videoio::FramePacket packet;
         if (!frameSource.get_next_frame(packet)) {
@@ -327,18 +358,25 @@ int run_nuscenes_inspector_loop(AppContext &app,
         const int tileWidth = displayWidth / 3;
         const int tileHeight = displayHeight / 2;
 
-        for (std::size_t index = 0; index < slots.size(); ++index) {
-            // Arrange the six cameras into a 3x2 grid:
-            // front row on top, rear row on bottom.
-            const int column = static_cast<int>(index % 3);
-            const int row = 1 - static_cast<int>(index / 3);
-            glViewport(column * tileWidth,
-                       row * tileHeight,
-                       tileWidth,
-                       tileHeight);
+        if (focusModeEnabled) {
+            glViewport(0, 0, displayWidth, displayHeight);
             glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, slots[index].texture);
+            glBindTexture(GL_TEXTURE_2D, slots[focusedSlotIndex].texture);
             glDrawArrays(GL_TRIANGLES, 0, 6);
+        } else {
+            for (std::size_t index = 0; index < slots.size(); ++index) {
+                // Arrange the six cameras into a 3x2 grid:
+                // front row on top, rear row on bottom.
+                const int column = static_cast<int>(index % 3);
+                const int row = 1 - static_cast<int>(index / 3);
+                glViewport(column * tileWidth,
+                           row * tileHeight,
+                           tileWidth,
+                           tileHeight);
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, slots[index].texture);
+                glDrawArrays(GL_TRIANGLES, 0, 6);
+            }
         }
 
         glfwHost.swap_buffers(outputIndex);
