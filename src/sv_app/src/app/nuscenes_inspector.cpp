@@ -20,6 +20,8 @@ struct InspectorControlState
 {
     bool leftWasPressed = false;
     bool rightWasPressed = false;
+    bool homeWasPressed = false;
+    bool endWasPressed = false;
     bool leftShiftWasPressed = false;
     bool rightShiftWasPressed = false;
     bool pWasPressed = false;
@@ -295,13 +297,15 @@ int run_nuscenes_inspector_loop(AppContext &app,
     double lastAutoplayStepTime = glfwGetTime();
 
     SPDLOG_INFO("NuScenes inspector controls: Left/Right arrows step through scene samples, "
-                "Shift+Left/Right jump by {}, P toggles autoplay, 1-6 select a camera, "
-                "Space toggles focused view",
+                "Shift+Left/Right jump by {}, Home/End jump to scene bounds, "
+                "P toggles autoplay, 1-6 select a camera, Space toggles focused view",
                 kFastStepCount);
 
     while (app.running && !glfwHost.should_close_any()) {
         const bool leftPressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_LEFT);
         const bool rightPressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_RIGHT);
+        const bool homePressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_HOME);
+        const bool endPressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_END);
         const bool leftShiftPressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_LEFT_SHIFT);
         const bool rightShiftPressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_RIGHT_SHIFT);
         const bool pPressed = glfwHost.key_pressed(outputIndex, GLFW_KEY_P);
@@ -313,6 +317,12 @@ int run_nuscenes_inspector_loop(AppContext &app,
         }
         if (rightPressed && !controls.rightWasPressed) {
             nuScenesSource->step_samples(fastStepRequested ? kFastStepCount : 1);
+        }
+        if (homePressed && !controls.homeWasPressed) {
+            nuScenesSource->set_sample_index(0);
+        }
+        if (endPressed && !controls.endWasPressed && nuScenesSource->sample_count() > 0) {
+            nuScenesSource->set_sample_index(nuScenesSource->sample_count() - 1);
         }
         if (pPressed && !controls.pWasPressed) {
             autoplayEnabled = !autoplayEnabled;
@@ -330,6 +340,8 @@ int run_nuscenes_inspector_loop(AppContext &app,
 
         controls.leftWasPressed = leftPressed;
         controls.rightWasPressed = rightPressed;
+        controls.homeWasPressed = homePressed;
+        controls.endWasPressed = endPressed;
         controls.leftShiftWasPressed = leftShiftPressed;
         controls.rightShiftWasPressed = rightShiftPressed;
         controls.pWasPressed = pPressed;

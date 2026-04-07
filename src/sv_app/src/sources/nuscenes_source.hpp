@@ -23,6 +23,7 @@ public:
     bool step_next_sample();
     bool step_previous_sample();
     bool step_samples(int delta);
+    bool set_sample_index(std::size_t index);
     std::size_t sample_count() const;
     std::size_t current_sample_index() const;
 

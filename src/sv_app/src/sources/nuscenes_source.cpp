@@ -730,6 +730,20 @@ bool NuScenesSource::step_samples(int delta)
     return true;
 }
 
+bool NuScenesSource::set_sample_index(std::size_t index)
+{
+    if (_samples.empty()) {
+        return false;
+    }
+    if (index >= _samples.size()) {
+        return false;
+    }
+
+    _currentSampleIndex = index;
+    _decoded_sample_ready = false;
+    return true;
+}
+
 std::size_t NuScenesSource::sample_count() const
 {
     return _samples.size();
