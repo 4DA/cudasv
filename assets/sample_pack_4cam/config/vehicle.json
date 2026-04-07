@@ -1,7 +1,11 @@
 {
-  "length": 4900.0,
-  "width": 1860.0,
-  "max_pulse": 256,
+  "length": 4587.0,
+  "width": 1876.0,
+  "max_pulse": 255,
   "steering_ratio": 1.0,
+  "track_front": 1617.0,
+  "track_rear": 1621.0,
+  "wheel_base": 2895.0,
+  "pulse_size_mm": 22.100000381469727,
   "wheel_diameter_mm": 431.79998779296875
 }

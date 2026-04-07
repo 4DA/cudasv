@@ -1,6 +1,6 @@
 {
   "vehicle_config": {
-    "model_path": "polestar_1_ver02.glb",
+    "model_path": "../glb/polestar_1_ver02.glb",
     "ibl_path": "",
     "wheelsConfig": {
       "front_left_steering": "Wheel_01_Steering",
@@ -15,7 +15,7 @@
     "use_velocity_for_wheels_animation": 1
   },
   "controls_config": {
-    "model_path": "camera_controls_new.glb",
+    "model_path": "../glb/camera_controls_new.glb",
     "controls": [
       {
         "component": "CameraMarker",
@@ -199,7 +199,6 @@
     "blind_right": 100.0,
     "texture_path": "vehicle_shadow.png"
   },
-
   "surround_view_debug_config": {
     "mode": 0,
     "camera_role": "front"
@@ -217,6 +216,5 @@
     "rear_anchor_offset_mm": 0.0,
     "left_anchor_offset_mm": 0.0,
     "right_anchor_offset_mm": 0.0
-   }
-
+  }
 }
