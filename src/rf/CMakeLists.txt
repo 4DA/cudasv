@@ -153,6 +153,8 @@ target_compile_options(${LIBRARY_NAME}
         -fPIC
         $<$<COMPILE_LANGUAGE:CUDA>:--compiler-options=-fPIC>
         $<$<COMPILE_LANGUAGE:CUDA>:-Xcudafe=--diag_suppress=20012>
+        $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<BOOL:${WITH_CUDA_COMPUTE_SANITIZER}>,$<NOT:$<CONFIG:Debug>>>:--generate-line-info>
+        $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<BOOL:${WITH_CUDA_COMPUTE_SANITIZER}>,$<CONFIG:Debug>>:-G>
 )
 target_compile_definitions(${LIBRARY_NAME} PRIVATE
     VERSION_STRING="${PROJECT_VERSION}"
