@@ -96,6 +96,11 @@ struct Atomics {
     uint32_t coarseCounter;  // coarse tiler
 
     uint32_t dbg_oft;        // misc
+
+    struct {
+        // pixel count for each material
+        uint32_t materialPixelCount[CUDARF_MAX_DRAW_PACKETS];
+    } visibuf;
 };
 
 struct Ctx

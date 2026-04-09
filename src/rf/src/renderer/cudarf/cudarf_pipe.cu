@@ -35,6 +35,7 @@
 #include "TAA.inl"
 #include "raster_naive.inl"
 #include "test.inl"
+#include "visibuf.inl"
 
 #include <cudarf/cudarf_profile.hpp>
 
@@ -320,6 +321,8 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
     cudarf::ShaderType commonShaderType = materials.at(matIds[0])->type;
 
+    std::fill_n(pipe.drawPacketMaterials, CUDARF_MAX_DRAW_PACKETS, 0xFFFFFFFFu);
+
     // build running sums of index and vertex count over draw packets, which
     // correspond to per-packet vtx/idx offsets within the combined streams
     for (auto id: drawPacketIds) {
@@ -520,7 +523,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
     // initialize atomics
     // --
-    cudarf::pipe::Atomics pipe_atomics;
+    cudarf::pipe::Atomics pipe_atomics{};
     pipe_atomics.subtris_count = total_triangles;
     pipe_atomics.null_tris = 0;
 
@@ -806,6 +809,23 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         CUDA_TIME_END(fine_raster_naive);
 
         CUDA_CHK_ERROR("fine_raster_naive");
+    }
+
+    // visibuf pixel countig stage
+    if (dev_geomOut)
+    {
+        dim3 blockSize2d(8, 8);
+        dim3 blockCount2d((desc->width - 1) / blockSize2d.x + 1,
+                          (desc->height - 1) / blockSize2d.y + 1);
+
+        CUDA_TIME_BEGIN(visibuf_count_pixels);
+        assert(dev_geomOut);
+        visibuf_count_pixels<<<blockCount2d, blockSize2d, 0, cuStream>>>
+            (desc->dev_pipeParams, dev_geomOut, desc->dev_pipeAtomics);
+
+        CUDA_TIME_END(visibuf_count_pixels);
+
+        CUDA_CHK_ERROR("visibuf_count_pixels");
     }
 
     // DEBUG: separate fragment shader stage
