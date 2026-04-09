@@ -159,6 +159,7 @@ target_compile_definitions(${LIBRARY_NAME} PRIVATE
     WITH_BUILTIN_LOGGING
 )
 target_compile_definitions(${LIBRARY_NAME} PUBLIC
+    $<$<BOOL:${WITH_TAA}>:WITH_TAA>
     CUDARF_ENABLE_CUDA_PROFILING=$<BOOL:${WITH_PROFILE_CUDA_TIME}>
 )
 target_include_directories(${LIBRARY_NAME}
