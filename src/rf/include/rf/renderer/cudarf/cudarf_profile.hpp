@@ -11,7 +11,6 @@
 
 #include <cuda_runtime.h>
 
-
 namespace cudarf
 {
 namespace profiling
@@ -45,9 +44,9 @@ public:
 
 private:
     const std::string name;
-    cudaEvent_t start;
-    cudaEvent_t stop;
-    cudaStream_t cuStream;
+    cudaEvent_t start = nullptr;
+    cudaEvent_t stop = nullptr;
+    cudaStream_t cuStream = 0;
 };
 
 template <typename TType, unsigned int TSizeMax>

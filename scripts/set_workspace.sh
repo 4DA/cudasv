@@ -27,6 +27,21 @@ normalize_build_type()
     esac
 }
 
+normalize_cuda_profiling()
+{
+    case "${1,,}" in
+        on)
+            echo "ON"
+            ;;
+        off)
+            echo "OFF"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
 function clear_vars()
 {
     export PATH="$(getconf PATH):$HOME/bin"
@@ -60,6 +75,7 @@ function set_vars()
     export CXX="g++"
     export CMAKE="cmake"
     export SV_BUILD_TYPE="Debug"
+    export SV_CUDA_PROFILING="OFF"
 }
 
 function print_vars()
@@ -67,6 +83,7 @@ function print_vars()
     printf "Current build configuration\n"
     printf "===========================\n"
     printf "Build type:\t\t$SV_BUILD_TYPE\n"
+    printf "CUDA profiling:\t\t$SV_CUDA_PROFILING\n"
     printf "Building at:\t\t$SV_PROJECT_TOP\n"
     printf "CC:\t\t\t$CC\n"
     printf "CXX:\t\t\t$CXX\n"
@@ -97,6 +114,24 @@ function set_build_type()
     echo "Build type set to $SV_BUILD_TYPE"
 }
 
+function set_cuda_profiling()
+{
+    if [ $# -ne 1 ]; then
+        echo "usage: set_cuda_profiling <on|off>"
+        return 1
+    fi
+
+    local normalized
+    normalized="$(normalize_cuda_profiling "$1")" || {
+        echo "Unsupported CUDA profiling mode: $1"
+        echo "Supported values: on, off"
+        return 1
+    }
+
+    export SV_CUDA_PROFILING="$normalized"
+    echo "CUDA profiling set to $SV_CUDA_PROFILING"
+}
+
 function c()
 {
     if [ -d "$SV_OUT" ]; then
@@ -124,7 +159,10 @@ function b()
     fi
 
     cd "$SV_OUT" || return 1
-    "$CMAKE" -G"Unix Makefiles" -DCMAKE_BUILD_TYPE="$SV_BUILD_TYPE" "$SV_PROJECT_TOP" || return 1
+    "$CMAKE" -G"Unix Makefiles" \
+        -DCMAKE_BUILD_TYPE="$SV_BUILD_TYPE" \
+        -DWITH_PROFILE_CUDA_TIME="$SV_CUDA_PROFILING" \
+        "$SV_PROJECT_TOP" || return 1
     cd "$SV_PROJECT_TOP" || return 1
 
     local build_threads="${MAX_BUILD_THREADS:-$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)}"

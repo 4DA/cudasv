@@ -101,9 +101,9 @@ engine::Error Engine::process(const videoio::RuntimeFramePacket4Cam &frame_packe
     cudaStream_t cudaStream = _impl->cudaOutputStreams[0];
     cudarf::Framebuffer meshGpuOutput = _impl->mesh_gpu_outputs[output_index];
 
-#ifdef DUMP_FRAME_TIMING
-    _impl->frameTimeDB->clear();
-#endif
+    if constexpr (CUDARF_ENABLE_CUDA_PROFILING) {
+        _impl->frameTimeDB->clear();
+    }
 
 #ifdef WITH_TAA
     configure_default_taa(cuda_rasterizer);
@@ -141,10 +141,10 @@ engine::Error Engine::process(const videoio::RuntimeFramePacket4Cam &frame_packe
         }
     }
 
-#ifdef DUMP_FRAME_TIMING
-    SPDLOG_INFO("{}", fmt::sprintf("frame counter: %u", _impl->frameCounter));
-    _impl->frameTimeDB->show();
-#endif
+    if constexpr (CUDARF_ENABLE_CUDA_PROFILING) {
+        SPDLOG_INFO("{}", fmt::sprintf("frame counter: %u", _impl->frameCounter));
+        _impl->frameTimeDB->show();
+    }
 
     CUDA_CHK(cudaStreamSynchronize(cudaStream));
     cuda_output->present(cuda_output->d_output);

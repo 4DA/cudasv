@@ -16,7 +16,6 @@ message(STATUS "${PROJECT_NAME}  API: ${${PROJECT_NAME}_API}")
 
 set(${PROJECT_NAME}_SOVERSION ${${PROJECT_NAME}_API})
 
-option(WITH_PROFILE_CUDA_TIME "Profile CUDARF cuda pipeline performance" OFF)
 option(WITH_ASAN "Enable address sanitizer" OFF)
 option(WITH_PTX "Enable separate PTX file generation" OFF)
 
@@ -140,10 +139,6 @@ if (WITH_ASAN)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -lasan")
 endif()
 
-if(WITH_PROFILE_CUDA_TIME)
-  add_definitions(-DPROFILE_CUDA_TIME -DDUMP_FRAME_TIMING)
-endif()
-
 add_library(
     ${LIBRARY_NAME} STATIC
     ${${PROJECT_NAME}_SOURCES}
@@ -162,6 +157,9 @@ target_compile_options(${LIBRARY_NAME}
 target_compile_definitions(${LIBRARY_NAME} PRIVATE
     VERSION_STRING="${PROJECT_VERSION}"
     WITH_BUILTIN_LOGGING
+)
+target_compile_definitions(${LIBRARY_NAME} PUBLIC
+    CUDARF_ENABLE_CUDA_PROFILING=$<BOOL:${WITH_PROFILE_CUDA_TIME}>
 )
 target_include_directories(${LIBRARY_NAME}
     PUBLIC

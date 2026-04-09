@@ -6,7 +6,6 @@ endif()
 
 project(sv_engine VERSION "1.0.0" LANGUAGES C CXX)
 
-option(WITH_PROFILE_CUDA_TIME "Profile CUDARF cuda pipeline performance" OFF)
 option(WITH_BUILD_NATIVE "Enable native x64-specific compile options" OFF)
 
 set (CMAKE_CXX_STANDARD 20)
@@ -76,9 +75,6 @@ if(NOT TARGET ${rfTarget})
 endif()
 
 add_library(sv_engine SHARED ${PUBLIC_HEADERS} ${SOURCE_FILES})
-if(WITH_PROFILE_CUDA_TIME)
-  target_compile_definitions(${PROJECT_NAME} PRIVATE PROFILE_CUDA_TIME DUMP_FRAME_TIMING)
-endif()
 
 find_package(glm REQUIRED CONFIG)
 

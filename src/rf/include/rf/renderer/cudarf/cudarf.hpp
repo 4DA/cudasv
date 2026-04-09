@@ -163,7 +163,7 @@ struct LaunchConfig
     LaunchConfig(bool withTexturing,
                  unsigned int frameCounter,
                  cudarf::Framebuffer nativeOutput,
-                 std::shared_ptr<cudarf::profiling::Events> eventDB = std::make_shared<cudarf::profiling::Events>("unnamed")):
+                 std::shared_ptr<cudarf::profiling::Events> eventDB = nullptr):
         withTexturing(withTexturing),
         frameCounter(frameCounter),
         nativeOutput(nativeOutput),

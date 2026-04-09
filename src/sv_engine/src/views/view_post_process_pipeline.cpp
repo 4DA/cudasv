@@ -76,9 +76,10 @@ void engine::view::ViewPostProcessPipeline::run(
                          skyFadeMaxV);
     }
 
-#ifdef DUMP_FRAME_TIMING
-    const auto composeInterval = composeTime.startInterval("compose", cudaStreams.rendering);
-#endif
+    int composeInterval = -1;
+    if constexpr (CUDARF_ENABLE_CUDA_PROFILING) {
+        composeInterval = composeTime.start_interval("compose", cudaStreams.rendering);
+    }
 
     cudarf::compose(meshGPUOutput,
                     sceneOutput,
@@ -90,7 +91,7 @@ void engine::view::ViewPostProcessPipeline::run(
                     outputBuffer,
                     cudaStreams.rendering);
 
-#ifdef DUMP_FRAME_TIMING
-    composeTime.stopInterval(composeInterval);
-#endif
+    if constexpr (CUDARF_ENABLE_CUDA_PROFILING) {
+        composeTime.stop_interval(composeInterval);
+    }
 }

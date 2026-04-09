@@ -17,6 +17,8 @@ endif()
 
 project(cudaSV LANGUAGES C CXX CUDA)
 
+option(WITH_PROFILE_CUDA_TIME "Profile CUDARF cuda pipeline performance" OFF)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)

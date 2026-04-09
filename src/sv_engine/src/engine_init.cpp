@@ -58,11 +58,11 @@ engine::Error Engine::init()
                                displayHeight,
                                _impl->cudaOutputStreams[outputIndex]);
 
-#if defined(DUMP_FRAME_TIMING)
-        const std::string timeDbName =
-            std::string("Output [") + std::to_string(outputIndex) + std::string("]");
-        _impl->outputRenderTimeDB[outputIndex] = _impl->frameTimeDB->add_child(timeDbName);
-#endif
+        if constexpr (CUDARF_ENABLE_CUDA_PROFILING) {
+            const std::string timeDbName =
+                std::string("Output [") + std::to_string(outputIndex) + std::string("]");
+            _impl->outputRenderTimeDB[outputIndex] = _impl->frameTimeDB->add_child(timeDbName);
+        }
     }
 
     SPDLOG_INFO("{}", fmt::sprintf("Start mesh loading"));
@@ -134,9 +134,9 @@ engine::Error Engine::init()
 
     cudarf::profiling::Events *eventDb = nullptr;
 
-#if defined(DUMP_FRAME_TIMING)
-    eventDb = _impl->frameTimeDB.get();
-#endif
+    if constexpr (CUDARF_ENABLE_CUDA_PROFILING) {
+        eventDb = _impl->frameTimeDB.get();
+    }
 
     _impl->view_3d->set_draw_list_renderer(
         std::make_unique<cudarf::DrawListRenderer>(_impl->world->scene(), eventDb));

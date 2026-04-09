@@ -40,14 +40,20 @@
 
 // profiling utilities
 // -------------------
-#ifdef PROFILE_CUDA_TIME
-#define CUDA_TIME_BEGIN(name) int __it_##name = launchConfig.eventDB->startInterval(#name, cuStream);
-#define CUDA_TIME_END(name) launchConfig.eventDB->stopInterval(__it_##name);
+#define CUDA_TIME_BEGIN(name)                                                   \
+    int __it_##name = -1;                                                       \
+    if constexpr (CUDARF_ENABLE_CUDA_PROFILING) {                               \
+        if (launchConfig.eventDB) {                                              \
+            __it_##name = launchConfig.eventDB->start_interval(#name, cuStream); \
+        }                                                                        \
+    }
 
-#else
-#define CUDA_TIME_BEGIN(name) {}
-#define CUDA_TIME_END(name) {}
-#endif // PROFILE_CUDA_TIME
+#define CUDA_TIME_END(name)                                                     \
+    if constexpr (CUDARF_ENABLE_CUDA_PROFILING) {                               \
+        if (__it_##name >= 0 && launchConfig.eventDB) {                          \
+            launchConfig.eventDB->stop_interval(__it_##name);                    \
+        }                                                                        \
+    }
 
 using namespace cudarf;
 using namespace cudarf::rast;
