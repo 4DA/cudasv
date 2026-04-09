@@ -213,7 +213,7 @@ struct PipeInternalBufferSet
     std::size_t maxIndexCount = 0;
 
     VertexOut *dev_bufVertexOut = NULL;   // vertex shader output
-    Triangle  *dev_primitives  = NULL;   // triangle setup output
+    Triangle  *dev_triangles   = NULL;   // triangle setup output
     void      *dev_tri_subtris;
 
     int32_t maxBinSegs = 0;
@@ -246,9 +246,9 @@ struct PipeParams {
     bool withDepthTest;
 
     // -----------------------------------------------------------------------
-    // Primitive counts
+    // Triangle counts
     // -----------------------------------------------------------------------
-    int32_t  numPrimitives;
+    int32_t  numTriangles;
     uint32_t maxSubtris;
 
     // -----------------------------------------------------------------------

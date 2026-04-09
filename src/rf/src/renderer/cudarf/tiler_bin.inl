@@ -176,14 +176,14 @@ __global__ void __launch_bounds__(CUDARF_BIN_WARPS * 32, 1)
 		batchPos = s_batchPos;
 
 		// all batches done?
-        if (batchPos >= pipe->numPrimitives) {
+        if (batchPos >= pipe->numTriangles) {
 			break;
         }
 
         // per-thread state
         int bufIndex = 0;
         int	bufCount = 0;
-        int batchEnd = ::min(batchPos + ctx.binBatchSize, pipe->numPrimitives);
+        int batchEnd = ::min(batchPos + ctx.binBatchSize, pipe->numTriangles);
 
         do {
 

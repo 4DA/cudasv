@@ -199,7 +199,7 @@ void visualize_velocity(const cudarf::Velocity *velocity, int width, int height,
 
 static void prepare_internal_buffers(PipeInternalBufferSet &bufferSet, std::size_t totalVertices, std::size_t indexCount)
 {
-    std::size_t total_primitives = indexCount;
+    std::size_t total_triangles = indexCount;
 
     if (totalVertices <= bufferSet.maxVertexCount && indexCount <= bufferSet.maxIndexCount) {
         return;
@@ -220,14 +220,14 @@ static void prepare_internal_buffers(PipeInternalBufferSet &bufferSet, std::size
     reinit_buf(&bufferSet.dev_bufVertexOut,
                totalVertices * sizeof(VertexOut));
 
-    reinit_buf(&bufferSet.dev_tri_subtris,  total_primitives * sizeof(uint8_t));
+    reinit_buf(&bufferSet.dev_tri_subtris,  total_triangles * sizeof(uint8_t));
 
 
-    // printf("%s[#prims: %d]\n", __func__, primitive_count);
+    // printf("%s[#triangles: %d]\n", __func__, triangle_count);
 
     // allocate buffers for vertex and triangle setup stage
     // --
-    reinit_buf(&bufferSet.dev_primitives, total_primitives * sizeof(cudarf::rast::Triangle));
+    reinit_buf(&bufferSet.dev_triangles, total_triangles * sizeof(cudarf::rast::Triangle));
 
     // estimate bin buffer sizes
     // --
@@ -235,7 +235,7 @@ static void prepare_internal_buffers(PipeInternalBufferSet &bufferSet, std::size
     int maxBinSegsSlack  = 1024;      // x 2137B  = 534KB
     bufferSet.maxBinSegs = std::max(bufferSet.maxBinSegs,
                    (int) std::max(numBins * CUDARF_BIN_STREAMS_SIZE,
-                                  (int) (total_primitives - 1) / CUDARF_BIN_SEG_SIZE + 1) + maxBinSegsSlack);
+                                  (int) (total_triangles - 1) / CUDARF_BIN_SEG_SIZE + 1) + maxBinSegsSlack);
 
     reinit_buf(&bufferSet.dev_binSegData, bufferSet.maxBinSegs * CUDARF_BIN_SEG_SIZE * sizeof(int32_t));
     reinit_buf(&bufferSet.dev_binSegNext, bufferSet.maxBinSegs * sizeof(int32_t));
@@ -244,9 +244,9 @@ static void prepare_internal_buffers(PipeInternalBufferSet &bufferSet, std::size
     // allocate debug buffers
     // --
     // CUDA_CHK(cudarf_cuda_free(bufferSet.dev_dbgbuf));
-    // CUDA_CHK(cudarf_cuda_malloc(&bufferSet.dev_dbgbuf, total_primitives * sizeof(int32_t)));
+    // CUDA_CHK(cudarf_cuda_malloc(&bufferSet.dev_dbgbuf, total_triangles * sizeof(int32_t)));
     // CUDA_CHK(cudaMemset(bufferSet.dev_dbgbuf, 0,
-    //                     total_primitives * sizeof(int32_t)));
+    //                     total_triangles * sizeof(int32_t)));
 
     // CUDA_CHK(cudarf_cuda_free(bufferSet.dev_dbgtiles));
     // CUDA_CHK(cudarf_cuda_malloc(&bufferSet.dev_dbgtiles, bufferSet.width * bufferSet.height * sizeof(int32_t)));
@@ -340,8 +340,8 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         ord++;
     }
 
-    unsigned int total_primitives = total_indices / PRIM_ELEMS;
-    SPDLOG_DEBUG("PIPE: draw packets to render: {} | prims: {}\n", drawPacketIds.size(), total_primitives);
+    unsigned int total_triangles = total_indices / PRIM_ELEMS;
+    SPDLOG_DEBUG("PIPE: draw packets to render: {} | triangles: {}\n", drawPacketIds.size(), total_triangles);
 
     // printf("----------------------------------\ndraw packets: %zu | total vertices = %u, indices = %u\n",
     //        drawPacketIds.size(), totalVertices, total_indices);
@@ -364,11 +364,11 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     prepare_internal_buffers(bufferSet, totalVertices, total_indices);
 
     // no necessity in cleaning this memory, it will be overwritten completely
-    // CUDA_CHK(cudaMemsetAsync(bufferSet.dev_primitives, 0,
-    //                          total_primitives * sizeof(cudarf::Triangle),
+    // CUDA_CHK(cudaMemsetAsync(bufferSet.dev_triangles, 0,
+    //                          total_triangles * sizeof(cudarf::Triangle),
     //                          cuStream));
 
-    CUDA_CHK(cudaMemsetAsync(bufferSet.dev_tri_subtris, 0, total_primitives * sizeof(uint8_t), cuStream));
+    CUDA_CHK(cudaMemsetAsync(bufferSet.dev_tri_subtris, 0, total_triangles * sizeof(uint8_t), cuStream));
 
     // init bin tiler buffers
     {
@@ -403,7 +403,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     }
     */
 
-    // reinit_buf(&bufferSet.dev_dbgbuf, total_primitives * sizeof(int32_t));
+    // reinit_buf(&bufferSet.dev_dbgbuf, total_triangles * sizeof(int32_t));
 
     // initialize constant memory
     // --
@@ -442,9 +442,9 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     pipe.common = params.common;
 #endif
 
-    pipe.tris = bufferSet.dev_primitives;
-    pipe.numPrimitives = total_primitives;
-    pipe.maxSubtris = total_primitives; // TODO: revise when we implement clipping
+    pipe.tris = bufferSet.dev_triangles;
+    pipe.numTriangles = total_triangles;
+    pipe.maxSubtris = total_triangles; // TODO: revise when we implement clipping
 
     pipe.triSubtris = static_cast<uint8_t *>(bufferSet.dev_tri_subtris);
     pipe.dbgbuf = bufferSet.dev_dbgbuf;
@@ -470,7 +470,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
         // number of triangles to be processed in tiler_bin kernel invocation
         pipe.binCtx.binBatchSize =
-            iclamp(total_primitives / (roundSize * minBatches), 1, maxRounds) * roundSize;
+            iclamp(total_triangles / (roundSize * minBatches), 1, maxRounds) * roundSize;
 
         pipe.binCtx.maxBinSegs = bufferSet.maxBinSegs;
         pipe.binCtx.binFirstSeg = desc->dev_binFirstSeg;
@@ -519,7 +519,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     // initialize atomics
     // --
     cudarf::pipe::Atomics pipe_atomics;
-    pipe_atomics.subtris_count = total_primitives;
+    pipe_atomics.subtris_count = total_triangles;
     pipe_atomics.null_tris = 0;
 
     pipe_atomics.bin_counter = 0;
@@ -615,26 +615,26 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
     {
         int threadsPerBlock = 256;
-        int blocksPerGrid = (total_primitives + threadsPerBlock - 1) / threadsPerBlock;
+        int blocksPerGrid = (total_triangles + threadsPerBlock - 1) / threadsPerBlock;
 
         if (launchConfig.withTexturing) {
             if (commonShaderType == SHADER_TYPE_PBR) {
                 triangle_assembly<cudarf::SHADER_TYPE_PBR, true><<<blocksPerGrid, threadsPerBlock, 0, cuStream>>>
-                    (desc->dev_pipeParams, total_primitives);
+                    (desc->dev_pipeParams, total_triangles);
             }
             else {
                 triangle_assembly<cudarf::SHADER_TYPE_UNLIT, true><<<blocksPerGrid, threadsPerBlock, 0, cuStream>>>
-                    (desc->dev_pipeParams, total_primitives);
+                    (desc->dev_pipeParams, total_triangles);
             }
         }
         else {
             if (commonShaderType == SHADER_TYPE_PBR) {
                 triangle_assembly<cudarf::SHADER_TYPE_PBR, false><<<blocksPerGrid, threadsPerBlock, 0, cuStream>>>
-                    (desc->dev_pipeParams, total_primitives);
+                    (desc->dev_pipeParams, total_triangles);
             }
             else {
                 triangle_assembly<cudarf::SHADER_TYPE_UNLIT, false><<<blocksPerGrid, threadsPerBlock, 0, cuStream>>>
-                    (desc->dev_pipeParams, total_primitives);
+                    (desc->dev_pipeParams, total_triangles);
             }
         }
 
@@ -646,12 +646,12 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     #ifdef DUMP_STAGE_OUTPUT
     {
         CUDA_CHK(cudaMemcpyAsync(&subtris, bufferSet.dev_tri_subtris,
-                            primitive_count * sizeof(uint8_t), cudaMemcpyDeviceToHost));
+                            triangle_count * sizeof(uint8_t), cudaMemcpyDeviceToHost));
 
-        CUDA_CHK(cudaMemcpyAsync(&triags, bufferSet.dev_primitives,
-                            primitive_count * sizeof(cudarf::rast::Triangle), cudaMemcpyDeviceToHost));
+        CUDA_CHK(cudaMemcpyAsync(&triags, bufferSet.dev_triangles,
+                            triangle_count * sizeof(cudarf::rast::Triangle), cudaMemcpyDeviceToHost));
 
-        for (unsigned int i = 0; i < primitive_count; i++) {
+        for (unsigned int i = 0; i < triangle_count; i++) {
             if (i >= 3) break;
 
             if (!subtris[i]) {continue;}
@@ -666,7 +666,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         // 512 threads
         CUDA_TIME_BEGIN(tiler_bin);
         tiler_bin<<<dim3(CUDARF_BIN_STREAMS_SIZE), dim3(32, CUDARF_BIN_WARPS), 0, cuStream>>>
-            (desc->dev_pipeParams, desc->dev_pipeAtomics, bufferSet.dev_primitives);
+            (desc->dev_pipeParams, desc->dev_pipeAtomics, bufferSet.dev_triangles);
 
         CUDA_CHK_ERROR("tiler_bin");
 
@@ -715,11 +715,11 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         // DEBUG: test to check that coarse tiler has processed all triangles
         // will flag if any triangle is culled/clipped
         // CUDA_CHK(cudaMemcpyAsync(&bin_tiler_mask, pipe.dbgbuf,
-        //                          total_primitives * sizeof(int32_t), cudaMemcpyDeviceToHost, cuStream));
+        //                          total_triangles * sizeof(int32_t), cudaMemcpyDeviceToHost, cuStream));
 
         // std::size_t unprocessedCount = 0;
 
-        // for (uint i = 0; i < total_primitives; i++) {
+        // for (uint i = 0; i < total_triangles; i++) {
         //     if (bin_tiler_mask[i] == 0) {unprocessedCount++;}
         // }
 
@@ -832,11 +832,11 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     {
         RasterizationOverrides overrides;
         int threadsPerBlock = 256;
-        int blocksPerGrid = (total_primitives + threadsPerBlock - 1) / threadsPerBlock;
+        int blocksPerGrid = (total_triangles + threadsPerBlock - 1) / threadsPerBlock;
 
         render_naive<<<blocksPerGrid, threadsPerBlock, 0, cuStream>>>(
             desc->dev_pipeParams, desc->dev_pipeAtomics,
-            desc->width, desc->height, bufferSet.dev_primitives, total_primitives,
+            desc->width, desc->height, bufferSet.dev_triangles, total_triangles,
             desc->dev_depthbuffer, desc->dev_framebuffer, overrides);
     }
     #endif

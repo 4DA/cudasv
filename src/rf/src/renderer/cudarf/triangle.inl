@@ -265,10 +265,10 @@ void setup_triangle(const cudarf::rast::PipeParams *pipe,
 template<cudarf::ShaderType TShaderType, bool TWithTex>
 __global__
 void triangle_assembly(const cudarf::rast::PipeParams *pipe,
-                       unsigned int primitive_count)
+                       unsigned int triangle_count)
 {
     unsigned int i = blockDim.x * blockIdx.x + threadIdx.x;
-    if (i >= primitive_count) {return;}
+    if (i >= triangle_count) {return;}
 
     int v = find_interval(3 * i,  pipe->idxOffsets, pipe->drawPacketCount);
     int drawPacketId = pipe->drawPacketOrder[v];

@@ -17,7 +17,7 @@ void test_bin_output(const cudarf::pipe::Ctx &desc, const cudarf::rast::PipePara
     auto binSegCount = std::unique_ptr<int32_t[]> (new int32_t[desc.internalBufs.maxBinSegs]);
     auto binFirstSeg = std::unique_ptr<int32_t[]> (new int32_t[binTotalL]);
 
-    std::unique_ptr<cudarf::rast::Triangle[]> triBuf(new cudarf::rast::Triangle[pipe.numPrimitives]);
+    std::unique_ptr<cudarf::rast::Triangle[]> triBuf(new cudarf::rast::Triangle[pipe.numTriangles]);
 
 
     CUDA_CHK(cudaMemcpyAsync(binTotal.get(), desc.dev_binTotal,
@@ -36,8 +36,8 @@ void test_bin_output(const cudarf::pipe::Ctx &desc, const cudarf::rast::PipePara
                         CUDARF_MAXBINS_SQR * CUDARF_BIN_STREAMS_SIZE * sizeof(int32_t),
                         cudaMemcpyDeviceToHost, cuStream));
 
-    CUDA_CHK(cudaMemcpyAsync(triBuf.get(), desc.internalBufs.dev_primitives,
-                        pipe.numPrimitives * sizeof(cudarf::rast::Triangle), cudaMemcpyDeviceToHost, cuStream));
+    CUDA_CHK(cudaMemcpyAsync(triBuf.get(), desc.internalBufs.dev_triangles,
+                        pipe.numTriangles * sizeof(cudarf::rast::Triangle), cudaMemcpyDeviceToHost, cuStream));
 
     cudaStreamSynchronize(cuStream);
 
@@ -84,7 +84,7 @@ void test_bin_output(const cudarf::pipe::Ctx &desc, const cudarf::rast::PipePara
 
     // atomic stats after bin tiler
 
-    printf("bin tiler input prims: %d, output prims: %d, subtris: %d, binSegs: %d (max: %d)\n",
+    printf("bin tiler input triangles: %d, output triangles: %d, subtris: %d, binSegs: %d (max: %d)\n",
            pipe_atomics.subtris_count, bin_prim_count, pipe_atomics.subtris_count, pipe_atomics.numBinSegs,
            desc.internalBufs.maxBinSegs);
 
@@ -111,9 +111,9 @@ void test_bin_output(const cudarf::pipe::Ctx &desc, const cudarf::rast::PipePara
     // DEBUG: test to check that bin tiler has processed all triangles
     // will flag if any triangle is culled/clipped
     // CUDA_CHK(cudaMemcpyAsync(&bin_tiler_mask, pipe.dbgbuf,
-    //                 primitive_count * sizeof(int32_t), cudaMemcpyDeviceToHost));
+    //                 triangle_count * sizeof(int32_t), cudaMemcpyDeviceToHost));
 
-    // for (uint i = 0; i < primitive_count; i++) {
+    // for (uint i = 0; i < triangle_count; i++) {
     //     if (bin_tiler_mask[i] != 1) {
     //         printf("WARNING triangle %d binned: %d\n", i, bin_tiler_mask[i]);
     //     }
