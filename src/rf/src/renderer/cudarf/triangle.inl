@@ -386,6 +386,8 @@ void triangle_assembly(const cudarf::rast::PipeParams *pipe,
                     w_rcp,
                     1.0 / area_f,
                     pipe->drawPacketMaterials[drawPacketId]);
+                pipe->tris[i].id = i;
+                pipe->tris[i].drawPacketId = drawPacketId;
                 return;
             }
         }

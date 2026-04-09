@@ -128,6 +128,7 @@ struct Ctx
     int32_t *dev_tileQData = NULL;
 
     cudarf::DepthValue *dev_depthbuffer = NULL;
+    cudarf::visibuf::GeomOutput *dev_geom_output = NULL;
 
 #ifdef WITH_TAA
     cudarf::Framebuffer rasterSurface;
@@ -228,7 +229,8 @@ void run_pipe(Ctx *desc,
               const std::vector<unsigned int> &matIds,
               const cudarf::MaterialMap &materials,
               const LaunchConfig &launchConfig,
-              const cudaStream_t &cuStream);
+              const cudaStream_t &cuStream,
+              cudarf::visibuf::GeomOutput *geom_output = nullptr);
 
 void run_pipe(Ctx *desc,
                     const cudarf::RenderParams &params,
@@ -240,7 +242,8 @@ void run_pipe(Ctx *desc,
                     const std::vector<unsigned int> &matIds,
                     const cudarf::MaterialMap &materials,
                     const LaunchConfig &launchConfig,
-                    const cudaStream_t &cuStream);
+                    const cudaStream_t &cuStream,
+                    cudarf::visibuf::GeomOutput *geom_output = nullptr);
 
 void begin_frame(Ctx *desc, unsigned int frameCounter, cudaStream_t cuStream);
 

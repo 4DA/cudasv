@@ -476,6 +476,9 @@ void cudarf::pipe::init(cudarf::pipe::Ctx *desc, int window_width, int window_he
     CUDA_CHK(cudarf_cuda_free(desc->dev_depthbuffer));
     // TODO: write method to initialize depth and set it here
     CUDA_CHK(cudarf_cuda_malloc(&desc->dev_depthbuffer,   desc->width * desc->height * sizeof(DepthValue)));
+    CUDA_CHK(cudarf_cuda_free(desc->dev_geom_output));
+    CUDA_CHK(cudarf_cuda_malloc(&desc->dev_geom_output,
+                                desc->width * desc->height * sizeof(cudarf::visibuf::GeomOutput)));
 
     SPDLOG_INFO("{}", fmt::sprintf("Depth buffer: %lu KB", desc->width * desc->height * sizeof(DepthValue) / 1024));
 
@@ -532,6 +535,8 @@ void cudarf::pipe::destroy(cudarf::pipe::Ctx *desc) {
 
     CUDA_CHK(cudarf_cuda_free(desc->dev_depthbuffer));
     desc->dev_depthbuffer = NULL;
+    CUDA_CHK(cudarf_cuda_free(desc->dev_geom_output));
+    desc->dev_geom_output = NULL;
 
 #ifdef WITH_TAA
     free_surface(desc->dev_framebuffer[0]);
@@ -609,7 +614,8 @@ void cudarf::pipe::draw_triangles(cudarf::pipe::Ctx* rasterization_desc,
                    materialIds,
                    materialMap,
                    launchConfig,
-                   cuStream
+                   cuStream,
+                   nullptr
      );
 
 }
@@ -617,6 +623,10 @@ void cudarf::pipe::draw_triangles(cudarf::pipe::Ctx* rasterization_desc,
 void cudarf::pipe::begin_frame(cudarf::pipe::Ctx *desc, unsigned int frameCounter, cudaStream_t cuStream)
 {
     cudarf::pipe::clear_depth(desc, cuStream);
+    CUDA_CHK(cudaMemsetAsync(desc->dev_geom_output,
+                             0xFF,
+                             sizeof(cudarf::visibuf::GeomOutput) * desc->width * desc->height,
+                             cuStream));
 
 #ifdef WITH_TAA
     cudarf::pipe::clear_framebuffer(desc, desc->rasterSurface, make_uchar4(0, 0, 0, 0), cuStream);

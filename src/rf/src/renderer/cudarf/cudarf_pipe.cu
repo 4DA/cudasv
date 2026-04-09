@@ -266,15 +266,16 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
                             const std::vector<unsigned int> &matIds,
                             const cudarf::MaterialMap &materials,
                             const cudarf::pipe::LaunchConfig &launchConfig,
-                            const cudaStream_t &cuStream)
+                            const cudaStream_t &cuStream,
+                            cudarf::visibuf::GeomOutput *dev_geomOut)
 {
     std::vector<cudarf::Uniforms> drawPacketUniforms(drawPacketIds.size(), uniforms);
 
 #ifdef WITH_TAA
     std::vector<cudarf::Uniforms> drawPacketUniformsHist(drawPacketIds.size(), uniformsHist);
-    cudarf::pipe::run_pipe(desc, params, drawPacketUniforms, drawPacketUniformsHist, drawPacketIds, matIds, materials, launchConfig, cuStream);
+    cudarf::pipe::run_pipe(desc, params, drawPacketUniforms, drawPacketUniformsHist, drawPacketIds, matIds, materials, launchConfig, cuStream, dev_geomOut);
 #else
-    cudarf::pipe::run_pipe(desc, params, drawPacketUniforms, drawPacketIds, matIds, materials, launchConfig, cuStream);
+    cudarf::pipe::run_pipe(desc, params, drawPacketUniforms, drawPacketIds, matIds, materials, launchConfig, cuStream, dev_geomOut);
 #endif
 
 }
@@ -290,7 +291,8 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
                             const std::vector<unsigned int> &matIds,
                             const cudarf::MaterialMap &materials,
                             const cudarf::pipe::LaunchConfig &launchConfig,
-                            const cudaStream_t &cuStream)
+                            const cudaStream_t &cuStream,
+                            cudarf::visibuf::GeomOutput *dev_geomOut)
 {
     assert(drawPacketIds.size() > 0);
     assert(drawPacketIds.size() == matIds.size());
@@ -764,19 +766,19 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
             if (params.with_blending) {
                 if (commonShaderType == SHADER_TYPE_PBR) {
                     fine_raster_naive<true, SHADER_TYPE_PBR, true><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer);
+                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, dev_geomOut);
                 } else {
                     fine_raster_naive<true, SHADER_TYPE_UNLIT, true><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer,  desc->dev_depthbuffer);
+                        (desc->dev_pipeParams, framebuffer,  desc->dev_depthbuffer, dev_geomOut);
                 }
             }
             else {
                 if (commonShaderType == SHADER_TYPE_PBR) {
                     fine_raster_naive<false, SHADER_TYPE_PBR, true><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer);
+                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, dev_geomOut);
                 } else {
                     fine_raster_naive<false, SHADER_TYPE_UNLIT, true><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer);
+                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, dev_geomOut);
                 }
             }
         }
@@ -784,19 +786,19 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
             if (params.with_blending) {
                 if (commonShaderType == SHADER_TYPE_PBR) {
                     fine_raster_naive<true, SHADER_TYPE_PBR, false><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer);
+                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, dev_geomOut);
                 } else {
                     fine_raster_naive<true, SHADER_TYPE_UNLIT, false><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer);
+                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, dev_geomOut);
                 }
             }
             else {
                 if (commonShaderType == SHADER_TYPE_PBR) {
                     fine_raster_naive<false, SHADER_TYPE_PBR, false><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer);
+                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, dev_geomOut);
                 } else {
                     fine_raster_naive<false, SHADER_TYPE_UNLIT, false><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer);
+                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, dev_geomOut);
                 }
             }
         }

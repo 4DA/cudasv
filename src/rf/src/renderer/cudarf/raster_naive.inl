@@ -42,7 +42,8 @@ template<bool TBlendingEnabled, cudarf::ShaderType TShaderType, bool TTexturingE
 __global__
 void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
                        cudarf::Framebuffer fb,
-                       cudarf::DepthValue *depthBuffer)
+                       cudarf::DepthValue *depthBuffer,
+                       cudarf::visibuf::GeomOutput *geomFb)
 {
     assert(fb);
 
@@ -165,6 +166,13 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
                 pipe->taa.velocityTex[outIdx] = velocity;
             }
 #endif
+        }
+
+        if (geomFb != nullptr && opaqueTriTop != -1) {
+            geomFb[outIdx] = {
+                pipe->tris[opaqueTriTop].id,
+                pipe->tris[opaqueTriTop].drawPacketId
+            };
         }
 
         depthBuffer[outIdx] = fragDepth;

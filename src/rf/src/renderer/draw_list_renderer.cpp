@@ -102,7 +102,8 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
                                      work.pbr.matIds,
                                      objMaterials,
                                      cudarf::pipe::LaunchConfig(true, frameCounter, output, opaqueTime),
-                                     cuStream);
+                                     cuStream,
+                                     rasterization_desc->dev_geom_output);
 
         if (opaqueTime != nullptr) {opaqueTime->stop_interval(opaqueTotal);}
     }
@@ -130,7 +131,8 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
                              work.flat.matIds,
                              objMaterials,
                              cudarf::pipe::LaunchConfig(true, frameCounter, output, opaqueTimeFlat),
-                             cuStream);
+                             cuStream,
+                             rasterization_desc->dev_geom_output);
 
         if (opaqueTimeFlat != nullptr) {opaqueTimeFlat->stop_interval(opaqueTotal);}
     }

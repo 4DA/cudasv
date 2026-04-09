@@ -112,6 +112,15 @@ using Vec3f = float3;
 using Vec2f = float2;
 using FBTexture = cudaTextureObject_t;
 using Velocity = float2;
+
+namespace visibuf
+{
+    struct GeomOutput {
+        uint32_t triId;
+        uint32_t drawPacketId;
+    };
+}
+
 }
 
 #endif
