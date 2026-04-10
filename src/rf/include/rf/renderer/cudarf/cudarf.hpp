@@ -100,6 +100,7 @@ struct Atomics {
     struct {
         // pixel count for each material
         uint32_t materialPixelCount[CUDARF_MAX_DRAW_PACKETS];
+        uint32_t materialOffsets[CUDARF_MAX_DRAW_PACKETS];
     } visibuf;
 };
 
@@ -134,6 +135,7 @@ struct Ctx
 
     cudarf::DepthValue *dev_depthbuffer = NULL;
     cudarf::visibuf::GeomOutput *dev_geom_output = NULL;
+    cudarf::visibuf::MaterialOffset *dev_materialOffsets = NULL;
 
 #ifdef WITH_TAA
     cudarf::Framebuffer rasterSurface;
@@ -234,8 +236,7 @@ void run_pipe(Ctx *desc,
               const std::vector<unsigned int> &matIds,
               const cudarf::MaterialMap &materials,
               const LaunchConfig &launchConfig,
-              const cudaStream_t &cuStream,
-              cudarf::visibuf::GeomOutput *geom_output = nullptr);
+              const cudaStream_t &cuStream);
 
 void run_pipe(Ctx *desc,
                     const cudarf::RenderParams &params,
@@ -247,8 +248,7 @@ void run_pipe(Ctx *desc,
                     const std::vector<unsigned int> &matIds,
                     const cudarf::MaterialMap &materials,
                     const LaunchConfig &launchConfig,
-                    const cudaStream_t &cuStream,
-                    cudarf::visibuf::GeomOutput *geom_output = nullptr);
+                    const cudaStream_t &cuStream);
 
 void begin_frame(Ctx *desc, unsigned int frameCounter, cudaStream_t cuStream);
 

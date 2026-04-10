@@ -13,6 +13,7 @@
 #include <atomic>
 #include <cctype>
 #include <cstdio>
+#include <set>
 
 #include <spdlog/spdlog.h>
 
@@ -267,16 +268,15 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
                             const std::vector<unsigned int> &matIds,
                             const cudarf::MaterialMap &materials,
                             const cudarf::pipe::LaunchConfig &launchConfig,
-                            const cudaStream_t &cuStream,
-                            cudarf::visibuf::GeomOutput *dev_geomOut)
+                            const cudaStream_t &cuStream)
 {
     std::vector<cudarf::Uniforms> drawPacketUniforms(drawPacketIds.size(), uniforms);
 
 #ifdef WITH_TAA
     std::vector<cudarf::Uniforms> drawPacketUniformsHist(drawPacketIds.size(), uniformsHist);
-    cudarf::pipe::run_pipe(desc, params, drawPacketUniforms, drawPacketUniformsHist, drawPacketIds, matIds, materials, launchConfig, cuStream, dev_geomOut);
+    cudarf::pipe::run_pipe(desc, params, drawPacketUniforms, drawPacketUniformsHist, drawPacketIds, matIds, materials, launchConfig, cuStream);
 #else
-    cudarf::pipe::run_pipe(desc, params, drawPacketUniforms, drawPacketIds, matIds, materials, launchConfig, cuStream, dev_geomOut);
+    cudarf::pipe::run_pipe(desc, params, drawPacketUniforms, drawPacketIds, matIds, materials, launchConfig, cuStream);
 #endif
 
 }
@@ -292,13 +292,39 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
                             const std::vector<unsigned int> &matIds,
                             const cudarf::MaterialMap &materials,
                             const cudarf::pipe::LaunchConfig &launchConfig,
-                            const cudaStream_t &cuStream,
-                            cudarf::visibuf::GeomOutput *dev_geomOut)
+                            const cudaStream_t &cuStream)
 {
     assert(drawPacketIds.size() > 0);
     assert(drawPacketIds.size() == matIds.size());
     assert(drawPacketIds.size() < CUDARF_DRAW_PACKET_BATCH_LIMIT);
     assert(uniforms.size() == drawPacketIds.size());
+
+#ifndef NDEBUG
+    {
+        // visibuf material-offset generation assumes the global material ids
+        // form a dense [0, materialCount) range.
+        assert(!materials.empty());
+
+        std::set<unsigned int> materialIdsDense;
+        for (const auto &[materialId, material]: materials) {
+            (void)material;
+            assert(materialId >= 0);
+            materialIdsDense.insert(static_cast<unsigned int>(materialId));
+        }
+
+        assert(materialIdsDense.size() == materials.size());
+
+        unsigned int expectedId = 0;
+        for (unsigned int materialId: materialIdsDense) {
+            assert(materialId == expectedId);
+            expectedId++;
+        }
+
+        for (unsigned int materialId: matIds) {
+            assert(materialId < materials.size());
+        }
+    }
+#endif
 
     cudarf::rast::PipeParams pipe;
 
@@ -769,19 +795,19 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
             if (params.with_blending) {
                 if (commonShaderType == SHADER_TYPE_PBR) {
                     fine_raster_naive<true, SHADER_TYPE_PBR, true><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, dev_geomOut);
+                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, desc->dev_geom_output);
                 } else {
                     fine_raster_naive<true, SHADER_TYPE_UNLIT, true><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer,  desc->dev_depthbuffer, dev_geomOut);
+                        (desc->dev_pipeParams, framebuffer,  desc->dev_depthbuffer, desc->dev_geom_output);
                 }
             }
             else {
                 if (commonShaderType == SHADER_TYPE_PBR) {
                     fine_raster_naive<false, SHADER_TYPE_PBR, true><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, dev_geomOut);
+                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, desc->dev_geom_output);
                 } else {
                     fine_raster_naive<false, SHADER_TYPE_UNLIT, true><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, dev_geomOut);
+                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, desc->dev_geom_output);
                 }
             }
         }
@@ -789,19 +815,19 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
             if (params.with_blending) {
                 if (commonShaderType == SHADER_TYPE_PBR) {
                     fine_raster_naive<true, SHADER_TYPE_PBR, false><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, dev_geomOut);
+                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, desc->dev_geom_output);
                 } else {
                     fine_raster_naive<true, SHADER_TYPE_UNLIT, false><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, dev_geomOut);
+                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, desc->dev_geom_output);
                 }
             }
             else {
                 if (commonShaderType == SHADER_TYPE_PBR) {
                     fine_raster_naive<false, SHADER_TYPE_PBR, false><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, dev_geomOut);
+                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, desc->dev_geom_output);
                 } else {
                     fine_raster_naive<false, SHADER_TYPE_UNLIT, false><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, dev_geomOut);
+                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, desc->dev_geom_output);
                 }
             }
         }
@@ -812,21 +838,57 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     }
 
     // visibuf pixel countig stage
-    if (dev_geomOut)
+    if (desc->dev_geom_output)
     {
         dim3 blockSize2d(8, 8);
         dim3 blockCount2d((desc->width - 1) / blockSize2d.x + 1,
                           (desc->height - 1) / blockSize2d.y + 1);
 
         CUDA_TIME_BEGIN(visibuf_count_pixels);
-        assert(dev_geomOut);
+        assert(desc->dev_geom_output);
         visibuf_count_pixels<<<blockCount2d, blockSize2d, 0, cuStream>>>
-            (desc->dev_pipeParams, dev_geomOut, desc->dev_pipeAtomics);
+            (desc->dev_pipeParams, desc->dev_geom_output, desc->dev_pipeAtomics);
 
         CUDA_TIME_END(visibuf_count_pixels);
 
         CUDA_CHK_ERROR("visibuf_count_pixels");
+
+        // CUDA_CHK(cudaMemcpyAsync(&pipe_atomics,
+        //                          desc->dev_pipeAtomics,
+        //                          sizeof(cudarf::pipe::Atomics),
+        //                          cudaMemcpyDeviceToHost,
+        //                          cuStream));
+        // CUDA_CHK(cudaStreamSynchronize(cuStream));
+
+        // std::vector<bool> printedMaterialIds(CUDARF_MAX_DRAW_PACKETS, false);
+        // printf("visibuf material pixel counts:");
+        // for (unsigned int matId: matIds) {
+        //     if (matId >= CUDARF_MAX_DRAW_PACKETS || printedMaterialIds[matId]) {
+        //         continue;
+        //     }
+
+        //     printedMaterialIds[matId] = true;
+        //     printf(" [mat %u]=%u", matId, pipe_atomics.visibuf.materialPixelCount[matId]);
+        // }
+        // printf("\n");
     }
+
+    // build material offsets using prefix sums
+    if (desc->dev_materialOffsets)
+    {
+        dim3 blockSize2d(materials.size(), 1);
+        dim3 blockCount2d(1, 1);
+
+        CUDA_TIME_BEGIN(visibuf_build_material_offsets);
+
+        visibuf_build_material_offsets<<<blockCount2d, blockSize2d, 0, cuStream>>>
+            (desc->dev_pipeParams, static_cast<uint32_t>(materials.size()), desc->dev_pipeAtomics, desc->dev_materialOffsets);
+
+        CUDA_TIME_END(visibuf_build_material_offsets);
+
+        CUDA_CHK_ERROR("visibuf_build_material_offsets");
+    }
+
 
     // DEBUG: separate fragment shader stage
     // if (!params.with_blending) {

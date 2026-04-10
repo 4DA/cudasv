@@ -35,3 +35,26 @@ void visibuf_count_pixels(const cudarf::rast::PipeParams *pipe,
     assert(matId < CUDARF_MAX_DRAW_PACKETS);
     atomicAdd(&g_atomics->visibuf.materialPixelCount[matId], 1);
 }
+
+__global__
+void visibuf_build_material_offsets(uint32_t materialCount,
+                                    cudarf::pipe::Atomics *g_atomics,
+                                    cudarf::visibuf::MaterialOffset *matOffset)
+
+{
+    uint32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (idx >= materialCount) {
+        return;
+    }
+
+    uint32_t S = 0;
+
+    for (uint32_t i = 0; i < materialCount; i++) {
+        if (i == idx) {
+            matOffset[idx] = {S, idx};
+        }
+
+        S += g_atomics->visibuf.materialPixelCount[i];
+    }
+}

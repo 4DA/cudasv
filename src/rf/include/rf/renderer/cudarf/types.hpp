@@ -119,6 +119,11 @@ namespace visibuf
         uint32_t triId;
         uint32_t drawPacketId;
     };
+
+    struct MaterialOffset {
+        uint32_t offset;
+        uint32_t materialId;
+    };
 }
 
 }
