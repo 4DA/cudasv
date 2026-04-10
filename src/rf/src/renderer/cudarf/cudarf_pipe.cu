@@ -323,7 +323,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     for (auto id: drawPacketIds) {
         assert(id < CUDARF_MAX_DRAW_PACKETS);
         drawPacketOrder[ord] = id;
-        pipe.drawPacketMaterials[ord] = matIds[ord];
+        pipe.drawPacketMaterials[id] = matIds[ord];
         totalVertices += desc->drawPackets[id].vertCount;
         total_indices += desc->drawPackets[id].index_count;
 
