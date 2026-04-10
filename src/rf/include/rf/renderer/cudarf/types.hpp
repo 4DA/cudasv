@@ -122,7 +122,11 @@ namespace visibuf
 
     struct MaterialOffset {
         uint32_t offset;
-        uint32_t materialId;
+    };
+
+    struct XYCommand {
+        uint32_t x;
+        uint32_t y;
     };
 }
 

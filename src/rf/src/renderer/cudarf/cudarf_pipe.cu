@@ -401,6 +401,15 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
     CUDA_CHK(cudaMemsetAsync(bufferSet.dev_tri_subtris, 0, total_triangles * sizeof(uint8_t), cuStream));
 
+    if (desc->dev_geom_output) {
+        // Geom output is consumed by visibuf stages in the current run_pipe call.
+        // Clear it here so stale draw-packet ids from earlier passes do not leak in.
+        CUDA_CHK(cudaMemsetAsync(desc->dev_geom_output,
+                                 0xFF,
+                                 sizeof(cudarf::visibuf::GeomOutput) * desc->width * desc->height,
+                                 cuStream));
+    }
+
     // init bin tiler buffers
     {
         CUDA_CHK(cudaMemsetAsync(desc->dev_binTotal, 0, CUDARF_MAXBINS_SQR * CUDARF_BIN_STREAMS_SIZE * sizeof(int32_t), cuStream));
@@ -874,7 +883,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     }
 
     // build material offsets using prefix sums
-    if (desc->dev_materialOffsets)
+    if (desc->dev_materialOffsets && desc->dev_xyCommands)
     {
         dim3 blockSize2d(materials.size(), 1);
         dim3 blockCount2d(1, 1);
@@ -882,11 +891,29 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         CUDA_TIME_BEGIN(visibuf_build_material_offsets);
 
         visibuf_build_material_offsets<<<blockCount2d, blockSize2d, 0, cuStream>>>
-            (desc->dev_pipeParams, static_cast<uint32_t>(materials.size()), desc->dev_pipeAtomics, desc->dev_materialOffsets);
+            (static_cast<uint32_t>(materials.size()), desc->dev_pipeAtomics, desc->dev_materialOffsets);
 
         CUDA_TIME_END(visibuf_build_material_offsets);
 
         CUDA_CHK_ERROR("visibuf_build_material_offsets");
+    }
+
+    // visibuf pixel countig stage
+    if (desc->dev_geom_output && desc->dev_materialOffsets && desc->dev_xyCommands)
+    {
+        dim3 blockSize2d(8, 8);
+        dim3 blockCount2d((desc->width - 1) / blockSize2d.x + 1,
+                          (desc->height - 1) / blockSize2d.y + 1);
+
+        CUDA_TIME_BEGIN(visibuf_build_xy_lists);
+        assert(desc->dev_geom_output);
+        visibuf_build_xy_lists<<<blockCount2d, blockSize2d, 0, cuStream>>>
+            (desc->dev_pipeParams, materials.size(), desc->dev_geom_output, desc->dev_pipeAtomics,
+             desc->dev_materialOffsets, desc->dev_xyCommands);
+
+        CUDA_TIME_END(visibuf_build_xy_lists);
+
+        CUDA_CHK_ERROR("visibuf_build_xy_lists");
     }
 
 

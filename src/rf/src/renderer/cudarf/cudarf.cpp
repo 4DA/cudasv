@@ -482,6 +482,9 @@ void cudarf::pipe::init(cudarf::pipe::Ctx *desc, int window_width, int window_he
     CUDA_CHK(cudarf_cuda_free(desc->dev_materialOffsets));
     CUDA_CHK(cudarf_cuda_malloc(&desc->dev_materialOffsets,
                                 CUDARF_MAX_DRAW_PACKETS * sizeof(cudarf::visibuf::MaterialOffset)));
+    CUDA_CHK(cudarf_cuda_free(desc->dev_xyCommands));
+    CUDA_CHK(cudarf_cuda_malloc(&desc->dev_xyCommands,
+                                desc->width * desc->height * sizeof(cudarf::visibuf::XYCommand)));
 
     SPDLOG_INFO("{}", fmt::sprintf("Depth buffer: %lu KB", desc->width * desc->height * sizeof(DepthValue) / 1024));
 
@@ -542,6 +545,8 @@ void cudarf::pipe::destroy(cudarf::pipe::Ctx *desc) {
     desc->dev_geom_output = NULL;
     CUDA_CHK(cudarf_cuda_free(desc->dev_materialOffsets));
     desc->dev_materialOffsets = NULL;
+    CUDA_CHK(cudarf_cuda_free(desc->dev_xyCommands));
+    desc->dev_xyCommands = NULL;
 
 #ifdef WITH_TAA
     free_surface(desc->dev_framebuffer[0]);
@@ -634,6 +639,10 @@ void cudarf::pipe::begin_frame(cudarf::pipe::Ctx *desc, unsigned int frameCounte
     CUDA_CHK(cudaMemsetAsync(desc->dev_materialOffsets,
                              0xFF,
                              sizeof(cudarf::visibuf::MaterialOffset) * CUDARF_MAX_DRAW_PACKETS,
+                             cuStream));
+    CUDA_CHK(cudaMemsetAsync(desc->dev_xyCommands,
+                             0xFF,
+                             sizeof(cudarf::visibuf::XYCommand) * desc->width * desc->height,
                              cuStream));
 
 #ifdef WITH_TAA

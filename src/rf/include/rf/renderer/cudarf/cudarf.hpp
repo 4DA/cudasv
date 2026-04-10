@@ -100,7 +100,9 @@ struct Atomics {
     struct {
         // pixel count for each material
         uint32_t materialPixelCount[CUDARF_MAX_DRAW_PACKETS];
-        uint32_t materialOffsets[CUDARF_MAX_DRAW_PACKETS];
+
+        // used for adding commands to XY buffer for each material subrange
+        uint32_t xyMaterialOffsets[CUDARF_MAX_DRAW_PACKETS];
     } visibuf;
 };
 
@@ -136,6 +138,7 @@ struct Ctx
     cudarf::DepthValue *dev_depthbuffer = NULL;
     cudarf::visibuf::GeomOutput *dev_geom_output = NULL;
     cudarf::visibuf::MaterialOffset *dev_materialOffsets = NULL;
+    cudarf::visibuf::XYCommand *dev_xyCommands = NULL;
 
 #ifdef WITH_TAA
     cudarf::Framebuffer rasterSurface;
