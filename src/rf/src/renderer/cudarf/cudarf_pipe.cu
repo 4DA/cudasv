@@ -768,15 +768,9 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         // }
     }
 
-    // fine raster phase
-    {
-        dim3 blockSize2d(8, 8);
-        dim3 blockCount2d((desc->width - 1) / blockSize2d.x + 1,
-                          (desc->height - 1) / blockSize2d.y + 1);
-
 #ifdef WITH_TAA
-        // passing cudarf::LinearSurface increases register pressure by 6 values, so
-        // we leak abstraction here for sake of performance
+        // passing cudarf::LinearSurface increases register pressure, so pass
+        // pointer here
 
         cudarf::Framebuffer framebuffer;
 
@@ -797,6 +791,12 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         }
 #endif
         assert(framebuffer);
+    // fine raster phase
+    {
+        dim3 blockSize2d(8, 8);
+        dim3 blockCount2d((desc->width - 1) / blockSize2d.x + 1,
+                          (desc->height - 1) / blockSize2d.y + 1);
+
 
         CUDA_TIME_BEGIN(fine_raster_naive);
 
@@ -898,7 +898,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         CUDA_CHK_ERROR("visibuf_build_material_offsets");
     }
 
-    // visibuf pixel countig stage
+    // visibuf pixel counting stage
     if (desc->dev_geom_output && desc->dev_materialOffsets && desc->dev_xyCommands)
     {
         dim3 blockSize2d(8, 8);
@@ -916,6 +916,36 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         CUDA_CHK_ERROR("visibuf_build_xy_lists");
     }
 
+    // fetch pixel counts for each material
+    // TODO: launch cuda kernels using smth like vulkan indirect dispatch
+    {
+        CUDA_CHK(cudaMemcpyAsync(&pipe_atomics,
+                                 desc->dev_pipeAtomics,
+                                 sizeof(cudarf::pipe::Atomics),
+                                 cudaMemcpyDeviceToHost,
+                                 cuStream));
+
+        CUDA_CHK(cudaStreamSynchronize(cuStream));
+    }
+
+
+    if (desc->dev_geom_output && desc->dev_materialOffsets && desc->dev_xyCommands)
+    {
+        for (auto i: matIds) {
+            dim3 blockSize(256);
+            dim3 blockCount(pipe_atomics.visibuf.materialPixelCount[i] - 1 / blockSize.x + 1);
+
+            CUDA_TIME_BEGIN(visibuf_material_pass);
+
+            visibuf_material_pass<<<blockCount, blockSize, 0, cuStream>>>
+                (desc->dev_pipeParams, desc->dev_geom_output, desc->dev_pipeAtomics,
+                 desc->dev_materialOffsets, desc->dev_xyCommands, i, framebuffer);
+
+            CUDA_TIME_END(visibuf_material_pass);
+
+            CUDA_CHK_ERROR("visibuf_material_pass");
+        }
+    }
 
     // DEBUG: separate fragment shader stage
     // if (!params.with_blending) {
