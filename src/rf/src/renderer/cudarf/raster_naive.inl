@@ -108,14 +108,7 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
     }
     else {
         if (opaqueTriTop != -1) {
-            fragColor = shade_fragment<TShaderType, TTexturingEnabled, true>(
-                pipe,
-                pipe->tris[opaqueTriTop],
-                baryTop,
-                fragOut);
-
-            fragColor.w = 1.0f;
-            fb::store(fb, x, y, fragColor);
+            // we shade opaque fragments in visibuf pass
 
 #ifdef WITH_TAA
             cudarf::Vec2f frag = make_vec2f((x + 0.5f) / pipe->windowWidth, (y + 0.5f) / pipe->windowHeight);
