@@ -1,32 +1,3 @@
-template<cudarf::ShaderType TShaderType, bool TWithTexturing>
-__device__ __inline__
-void compute_fragment(const cudarf::rast::Triangle &tri, const cudarf::Vec3f &bary, cudarf::rast::Fragment &frag)
-{
-    if (TShaderType == cudarf::SHADER_TYPE_UNLIT) {
-        cudarf::Color color[3] = {tri.col[0], tri.col[1], tri.col[2]};
-        frag.vertexColor = interpolate(bary, color);
-    }
-    else if (TShaderType == cudarf::SHADER_TYPE_PBR) {
-        // TODO: use bary_persp here
-        frag.pos_global = interp(bary, tri.v_world);
-        frag.normal = normalize(interp(bary, tri.normal));
-    }
-
-    // textures need perspective correct interpolation, not bare linear interpolation
-    if (TWithTexturing) {
-        float w_rcp = dot(bary, tri.w_rcp);
-        const cudarf::Vec3f bary_persp =
-            1.0f / w_rcp * bary * make_vec3f(tri.w_rcp.x, tri.w_rcp.y, tri.w_rcp.z);
-        frag.tex = interp(bary_persp, tri.tex);
-    }
-
-#ifdef WITH_TAA
-        frag.pos_ss_hist = interp(bary, tri.v_ss_hist);
-#endif
-
-    frag.materialId = tri.materialId;
-}
-
 // naive fine rasterization, assumptions:
 // - fragment shader doesn't change fragment depth
 
@@ -113,21 +84,10 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
         if (TBlendingEnabled) {
             isCovered = true;
 
-            compute_fragment<TShaderType, TTexturingEnabled>(tri, bary, fragOut);
-
             bool dstOpaque = (fragColor.w >= 1.0f);
-
-            if (TShaderType == cudarf::SHADER_TYPE_UNLIT) {
-                cudarf::Color src = compute_color_flat<TTexturingEnabled>(pipe, fragOut);
-                fragColor = make_color(src.w * to_rgb(src), src.w) + (1.0f - src.w) * fragColor;
-            }
-            // for opaque rendering frag shader is invoked only for topmost fragment
-            // --
-            else {
-                cudarf::Color colPBR = compute_color_pbr<TTexturingEnabled, false>(pipe, fragOut);
-                float alpha = colPBR.w;
-                fragColor = alpha * make_float4(to_rgb(colPBR), 1.0f) + (1.0f - alpha) * fragColor;
-            }
+            cudarf::Color shaded = shade_fragment<TShaderType, TTexturingEnabled, false>(pipe, tri, bary, fragOut);
+            float alpha = shaded.w;
+            fragColor = alpha * make_float4(to_rgb(shaded), 1.0f) + (1.0f - alpha) * fragColor;
 
             // we don't want to add alpha to opaque image
             if (dstOpaque) {fragColor.w = 1.0f;}
@@ -148,13 +108,11 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
     }
     else {
         if (opaqueTriTop != -1) {
-            compute_fragment<TShaderType, TTexturingEnabled>(pipe->tris[opaqueTriTop], baryTop, fragOut);
-            if (TShaderType == cudarf::SHADER_TYPE_UNLIT) {
-                fragColor = compute_color_flat<TTexturingEnabled>(pipe, fragOut);
-            } else if (TShaderType == cudarf::SHADER_TYPE_PBR) {
-                cudarf::Color linearColor = compute_color_pbr<TTexturingEnabled, true>(pipe, fragOut);
-                fragColor = make_float4(linearColor.x, linearColor.y, linearColor.z, 1.0f);
-            }
+            fragColor = shade_fragment<TShaderType, TTexturingEnabled, true>(
+                pipe,
+                pipe->tris[opaqueTriTop],
+                baryTop,
+                fragOut);
 
             fragColor.w = 1.0f;
             fb::store(fb, x, y, fragColor);

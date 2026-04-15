@@ -249,7 +249,40 @@ void visibuf_material_pass(const cudarf::rast::PipeParams *pipe,
     glm::vec2 ndc = 2.0f * glm::vec2(x + 0.5f, y + 0.5f) / windowSize - glm::vec2(1.0f, 1.0f);
 
     Barycentric bary = compute_barys(P0, P1, P2, ndc, windowSize);
-    cudarf::Color debugColor = make_vec4f(bary.lambda.x, bary.lambda.y, bary.lambda.z, 1.0f);
+    cudarf::Vec3f baryLambda = make_vec3f(bary.lambda.x, bary.lambda.y, bary.lambda.z);
+    cudarf::rast::Fragment frag;
 
-    fb::store(fb, x, y, debugColor);
+    const cudarf::Material &material = pipe->materials[matId];
+    bool withTexturing =
+        material.albedoTex.textureObject ||
+        material.emissiveTex.textureObject ||
+        material.occlusionTex.textureObject ||
+        material.metRoughTex.textureObject;
+
+    cudarf::Color shadedColor;
+
+    if (material.type == cudarf::SHADER_TYPE_UNLIT) {
+        shadedColor = withTexturing
+            ? shade_fragment<cudarf::SHADER_TYPE_UNLIT, true, false>(pipe, tri, baryLambda, frag)
+            : shade_fragment<cudarf::SHADER_TYPE_UNLIT, false, false>(pipe, tri, baryLambda, frag);
+    }
+    else {
+        bool withClearcoat = material.clearcoatFactor > 0.0f;
+        if (withTexturing) {
+            shadedColor = withClearcoat
+                ? shade_fragment<cudarf::SHADER_TYPE_PBR, true, true>(pipe, tri, baryLambda, frag)
+                : shade_fragment<cudarf::SHADER_TYPE_PBR, true, false>(pipe, tri, baryLambda, frag);
+        }
+        else {
+            shadedColor = withClearcoat
+                ? shade_fragment<cudarf::SHADER_TYPE_PBR, false, true>(pipe, tri, baryLambda, frag)
+                : shade_fragment<cudarf::SHADER_TYPE_PBR, false, false>(pipe, tri, baryLambda, frag);
+        }
+    }
+
+    fb::store(fb, x, y, shadedColor);
+
+    // DEBUG: write barycentric values to framebuffer
+    // cudarf::Color debugColor = make_vec4f(bary.lambda.x, bary.lambda.y, bary.lambda.z, 1.0f);
+    // fb::store(fb, x, y, debugColor);
 }
