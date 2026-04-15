@@ -928,12 +928,15 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         CUDA_CHK(cudaStreamSynchronize(cuStream));
     }
 
+    // build list of all material ids that participate in this draw call
+    std::set<uint32_t> activeMaterials;
+    std::copy(std::begin(matIds), std::end(matIds), std::inserter(activeMaterials, activeMaterials.end()));
 
     if (desc->dev_geom_output && desc->dev_materialOffsets && desc->dev_xyCommands)
     {
         CUDA_TIME_BEGIN(visibuf_material_pass);
 
-        for (auto i: matIds) {
+        for (auto i: activeMaterials) {
             dim3 blockSize(256);
             dim3 blockCount(pipe_atomics.visibuf.materialPixelCount[i] - 1 / blockSize.x + 1);
 
