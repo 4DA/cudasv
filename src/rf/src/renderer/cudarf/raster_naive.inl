@@ -107,17 +107,7 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
         }
     }
     else {
-        if (opaqueTriTop != -1) {
-            // we shade opaque fragments in visibuf pass
-
-#ifdef WITH_TAA
-            cudarf::Vec2f frag = make_vec2f((x + 0.5f) / pipe->windowWidth, (y + 0.5f) / pipe->windowHeight);
-            float2 velocity = make_float2(x + 0.5f, y + 0.5f) - fragOut.pos_ss_hist;
-            if (length(velocity) > pipe->taa.velocityThreshold) {
-                pipe->taa.velocityTex[outIdx] = velocity;
-            }
-#endif
-        }
+        // we shade opaque fragments in visibuf pass
 
         if (geomFb != nullptr && opaqueTriTop != -1) {
             geomFb[outIdx] = {
@@ -128,5 +118,4 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
 
         depthBuffer[outIdx] = fragDepth;
     }
-
 }

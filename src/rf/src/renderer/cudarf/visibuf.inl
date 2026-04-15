@@ -285,4 +285,14 @@ void visibuf_material_pass(const cudarf::rast::PipeParams *pipe,
     // DEBUG: write barycentric values to framebuffer
     // cudarf::Color debugColor = make_vec4f(bary.lambda.x, bary.lambda.y, bary.lambda.z, 1.0f);
     // fb::store(fb, x, y, debugColor);
+
+#ifdef WITH_TAA
+    int outIdx = x + (y * pipe->windowWidth);
+
+    float2 velocity = make_float2(x + 0.5f, y + 0.5f) - frag.pos_ss_hist;
+    if (length(velocity) > pipe->taa.velocityThreshold) {
+        pipe->taa.velocityTex[outIdx] = velocity;
+    }
+#endif
+
 }
