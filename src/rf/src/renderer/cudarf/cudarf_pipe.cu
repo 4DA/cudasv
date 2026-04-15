@@ -937,8 +937,14 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         CUDA_TIME_BEGIN(visibuf_material_pass);
 
         for (auto i: activeMaterials) {
+
+            unsigned int pixelCount = pipe_atomics.visibuf.materialPixelCount[i];
+            if (pixelCount == 0) {
+                continue;
+            }
+
             dim3 blockSize(256);
-            dim3 blockCount(pipe_atomics.visibuf.materialPixelCount[i] - 1 / blockSize.x + 1);
+            dim3 blockCount((pixelCount - 1) / blockSize.x + 1);
 
             visibuf_material_pass<<<blockCount, blockSize, 0, cuStream>>>
                 (desc->dev_pipeParams, desc->dev_geom_output, desc->dev_pipeAtomics,
