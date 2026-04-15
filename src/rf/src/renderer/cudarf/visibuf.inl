@@ -233,6 +233,14 @@ void visibuf_material_pass(const cudarf::rast::PipeParams *pipe,
 
     const cudarf::rast::Triangle &tri = pipe->tris[triId];
 
+    cudarf::Vec3f baryLambda;
+
+#ifdef VISIBUF_USE_AFFINE_OPAQUE_INTERPOLATION
+    // Match the legacy opaque path exactly by shading from affine screen-space
+    // barycentrics instead of the reconstructed perspective-correct basis.
+    cudarf::Vec2f fragWindow = make_vec2f(x + 0.5f, y + 0.5f);
+    baryLambda = compute_bary(tri, fragWindow);
+#else
     glm::vec2 windowSize((float)pipe->windowWidth, (float)pipe->windowHeight);
 
     // Reconstruct the clip-space inputs expected by compute_barys() from the
@@ -249,7 +257,9 @@ void visibuf_material_pass(const cudarf::rast::PipeParams *pipe,
     glm::vec2 ndc = 2.0f * glm::vec2(x + 0.5f, y + 0.5f) / windowSize - glm::vec2(1.0f, 1.0f);
 
     Barycentric bary = compute_barys(P0, P1, P2, ndc, windowSize);
-    cudarf::Vec3f baryLambda = make_vec3f(bary.lambda.x, bary.lambda.y, bary.lambda.z);
+    baryLambda = make_vec3f(bary.lambda.x, bary.lambda.y, bary.lambda.z);
+#endif
+
     cudarf::rast::Fragment frag;
 
     const cudarf::Material &material = pipe->materials[matId];
@@ -285,7 +295,7 @@ void visibuf_material_pass(const cudarf::rast::PipeParams *pipe,
     fb::store(fb, x, y, shadedColor);
 
     // DEBUG: write barycentric values to framebuffer
-    // cudarf::Color debugColor = make_vec4f(bary.lambda.x, bary.lambda.y, bary.lambda.z, 1.0f);
+    // cudarf::Color debugColor = make_vec4f(baryLambda.x, baryLambda.y, baryLambda.z, 1.0f);
     // fb::store(fb, x, y, debugColor);
 
 #ifdef WITH_TAA
