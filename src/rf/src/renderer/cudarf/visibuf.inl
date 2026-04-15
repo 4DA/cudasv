@@ -280,6 +280,8 @@ void visibuf_material_pass(const cudarf::rast::PipeParams *pipe,
         }
     }
 
+    shadedColor.w = 1.0f;
+
     fb::store(fb, x, y, shadedColor);
 
     // DEBUG: write barycentric values to framebuffer

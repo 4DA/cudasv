@@ -847,7 +847,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     }
 
     // visibuf pixel countig stage
-    if (desc->dev_geom_output)
+    if (!params.with_blending && desc->dev_geom_output)
     {
         dim3 blockSize2d(8, 8);
         dim3 blockCount2d((desc->width - 1) / blockSize2d.x + 1,
@@ -883,7 +883,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     }
 
     // build material offsets using prefix sums
-    if (desc->dev_materialOffsets && desc->dev_xyCommands)
+    if (!params.with_blending && desc->dev_materialOffsets && desc->dev_xyCommands)
     {
         dim3 blockSize2d(materials.size(), 1);
         dim3 blockCount2d(1, 1);
@@ -899,7 +899,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     }
 
     // visibuf pixel counting stage
-    if (desc->dev_geom_output && desc->dev_materialOffsets && desc->dev_xyCommands)
+    if (!params.with_blending && desc->dev_geom_output && desc->dev_materialOffsets && desc->dev_xyCommands)
     {
         dim3 blockSize2d(8, 8);
         dim3 blockCount2d((desc->width - 1) / blockSize2d.x + 1,
@@ -918,6 +918,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
     // fetch pixel counts for each material
     // TODO: launch cuda kernels using smth like vulkan indirect dispatch
+    if (!params.with_blending)
     {
         CUDA_CHK(cudaMemcpyAsync(&pipe_atomics,
                                  desc->dev_pipeAtomics,
@@ -932,7 +933,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     std::set<uint32_t> activeMaterials;
     std::copy(std::begin(matIds), std::end(matIds), std::inserter(activeMaterials, activeMaterials.end()));
 
-    if (desc->dev_geom_output && desc->dev_materialOffsets && desc->dev_xyCommands)
+    if (!params.with_blending && desc->dev_geom_output && desc->dev_materialOffsets && desc->dev_xyCommands)
     {
         CUDA_TIME_BEGIN(visibuf_material_pass);
 
@@ -955,41 +956,6 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
         CUDA_TIME_END(visibuf_material_pass);
     }
-
-    // DEBUG: separate fragment shader stage
-    // if (!params.with_blending) {
-    //     dim3 blockSize2d(8, 8);
-    //     dim3 blockCount2d((desc->width - 1) / blockSize2d.x + 1,
-    //                       (desc->height - 1) / blockSize2d.y + 1);
-
-    //     CUDA_TIME_BEGIN(fragmentShaderPBR);
-
-    //     if (commonShaderType == SHADER_TYPE_PBR) {
-    //         fragmentShaderPBR<<<blockCount2d, blockSize2d, 0, cuStream>>>
-    //             (desc->dev_pipeParams, desc->dev_framebuffer);
-    //     } else {
-    //         fragmentShaderFlat<<<blockCount2d, blockSize2d, 0, cuStream>>>
-    //             (desc->dev_pipeParams, desc->dev_framebuffer);
-    //     }
-
-    //     CUDA_TIME_END(fragmentShaderPBR);
-
-    //     CUDA_CHK_ERROR("fragmentShaderPBR");
-    // }
-
-    // DEBUG: triangle rasterizer
-    #if 0
-    {
-        RasterizationOverrides overrides;
-        int threadsPerBlock = 256;
-        int blocksPerGrid = (total_triangles + threadsPerBlock - 1) / threadsPerBlock;
-
-        render_naive<<<blocksPerGrid, threadsPerBlock, 0, cuStream>>>(
-            desc->dev_pipeParams, desc->dev_pipeAtomics,
-            desc->width, desc->height, bufferSet.dev_triangles, total_triangles,
-            desc->dev_depthbuffer, desc->dev_framebuffer, overrides);
-    }
-    #endif
 
     #ifdef VISUALIZE_BINS
     {
