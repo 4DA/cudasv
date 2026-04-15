@@ -36,6 +36,7 @@ set(SOURCE_FILES
     src/engine_init.cpp
     src/engine_frame.cpp
     src/engine_view_control.cpp
+    src/output_dump.cpp
     src/world.cpp
     src/sv_gl_common.cpp
 

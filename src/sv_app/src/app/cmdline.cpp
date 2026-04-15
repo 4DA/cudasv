@@ -54,6 +54,13 @@ int parse_cmdline(int argc, char **argv, CmdlineOpts &options)
             }
 
             options.rig_file = argv[++index];
+        } else if (!strcmp(argv[index], "--dump-frame")) {
+            if (index + 1 >= argc) {
+                SPDLOG_ERROR("--dump-frame requires a file path");
+                return -1;
+            }
+
+            options.dump_frame_path = argv[++index];
         } else if (!strcmp(argv[index], "--source-kind")) {
             if (index + 1 >= argc) {
                 SPDLOG_ERROR("--source-kind requires a value");

@@ -16,6 +16,7 @@ struct CmdlineOpts
     std::string sequence_id;
     std::array<std::string, camera::CAMERAS_TOTAL> files;
     std::string rig_file = "canonical-rig.json";
+    std::string dump_frame_path;
     int width = 0;
     int height = 0;
     int fps = 1000;

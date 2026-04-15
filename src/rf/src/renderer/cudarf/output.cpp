@@ -369,7 +369,10 @@ cudarf::CudaOutput::CudaOutput(int width, int height):
 cudarf::CudaOutput::~CudaOutput()
 {
     if (cpu_output) {
-        CUDA_CHK(cudarf_cuda_free(cpu_output));
+        CUDA_CHK(cudarf_cuda_free_host(cpu_output));
+    }
+
+    if (d_output) {
         CUDA_CHK(cudarf_cuda_free(d_output));
     }
 }

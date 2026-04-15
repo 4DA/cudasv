@@ -10,6 +10,8 @@
 #include <engine/frame_packet.hpp>
 #include <engine/video_source.hpp>
 
+#include <string>
+
 inline constexpr unsigned int SV_MAX_OUTPUTS = 3;
 
 namespace engine
@@ -112,6 +114,8 @@ struct Engine
                                float clear_color[4],
                                const Output &output,
                                int output_index);
+
+    engine::Error dump_output_png(const std::string &path, int output_index);
 
     engine::Error view_animate(int view, int viewpoint);
 

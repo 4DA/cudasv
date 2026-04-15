@@ -25,6 +25,7 @@ int run_application_loop(AppContext &app,
     vehicle::CANSignals demo_state;
     const videoio::SourceInfo &source_info = frame_source.info();
     RuntimeRenderBridge4CamContext runtime_render_bridge;
+    const bool dump_after_frame = !options.dump_frame_path.empty();
 
     if (!prepare_runtime_render_bridge_4cam_context(source_info, runtime_render_bridge)) {
         SPDLOG_ERROR("Failed to prepare the current 4-camera runtime compatibility bridge");
@@ -65,6 +66,8 @@ int run_application_loop(AppContext &app,
         }
         pthread_mutex_unlock(&app.access);
 
+        bool frame_dumped = false;
+
         for (std::size_t output_index = 0; output_index < SV_MAX_OUTPUTS; ++output_index) {
             if (!output_set.outputs[output_index].active) {
                 continue;
@@ -98,6 +101,22 @@ int run_application_loop(AppContext &app,
             }
             pthread_mutex_unlock(&app.access);
 
+            if (dump_after_frame) {
+                pthread_mutex_lock(&app.access);
+                const engine::Error dump_status =
+                    app.engine->dump_output_png(options.dump_frame_path,
+                                                static_cast<int>(output_index));
+                pthread_mutex_unlock(&app.access);
+
+                if (dump_status != engine::OK) {
+                    SPDLOG_ERROR("engine->dump_output_png() failed");
+                    return EXIT_FAILURE;
+                }
+
+                frame_dumped = true;
+                break;
+            }
+
             glfw_host.swap_buffers(output_index);
         }
 
@@ -105,6 +124,11 @@ int run_application_loop(AppContext &app,
             SPDLOG_ERROR("Failed to release frame packet back to source");
             return EXIT_FAILURE;
         }
+
+        if (frame_dumped) {
+            return EXIT_SUCCESS;
+        }
+
         frame_set_index = 1 - frame_set_index;
 
         usleep(1000000 / options.fps);
