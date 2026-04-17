@@ -143,9 +143,21 @@ function print_vars()
     printf "LD_LIBRARY_PATH:\t$LD_LIBRARY_PATH\n"
 }
 
+function print_workspace_options()
+{
+    printf "\nWorkspace toggle commands\n"
+    printf "=========================\n"
+    printf "set_build_type <Debug|Release|RelWithDebInfo|MinSizeRel> [current: %s]\n" "$SV_BUILD_TYPE"
+    printf "set_cuda_profiling <on|off> [current: %s]\n" "${SV_CUDA_PROFILING,,}"
+    printf "set_cuda_sanitizer <on|off> [current: %s]\n" "${SV_CUDA_SANITIZER,,}"
+    printf "set_taa <on|off> [current: %s]\n" "${SV_TAA,,}"
+    printf "set_force_affine_barycentrics <on|off> [current: %s]\n" "${SV_FORCE_AFFINE_BARYCENTRICS,,}"
+}
+
 clear_vars
 set_vars
 print_vars
+print_workspace_options
 
 function set_build_type()
 {
