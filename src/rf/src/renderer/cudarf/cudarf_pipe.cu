@@ -801,43 +801,66 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
         CUDA_TIME_BEGIN(fine_raster_naive);
 
+        bool useOpaqueVisibuf = !params.with_blending && launchConfig.withOpaqueVisibuf;
+        cudarf::visibuf::GeomOutput *geomOutput = useOpaqueVisibuf ? desc->dev_geom_output : nullptr;
+
         if (launchConfig.withTexturing) {
             if (params.with_blending) {
                 if (commonShaderType == SHADER_TYPE_PBR) {
-                    fine_raster_naive<true, SHADER_TYPE_PBR, true><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, desc->dev_geom_output);
+                    fine_raster_naive<true, false, SHADER_TYPE_PBR, true><<<blockCount2d, blockSize2d, 0, cuStream>>>
+                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, geomOutput);
                 } else {
-                    fine_raster_naive<true, SHADER_TYPE_UNLIT, true><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer,  desc->dev_depthbuffer, desc->dev_geom_output);
+                    fine_raster_naive<true, false, SHADER_TYPE_UNLIT, true><<<blockCount2d, blockSize2d, 0, cuStream>>>
+                        (desc->dev_pipeParams, framebuffer,  desc->dev_depthbuffer, geomOutput);
                 }
             }
             else {
                 if (commonShaderType == SHADER_TYPE_PBR) {
-                    fine_raster_naive<false, SHADER_TYPE_PBR, true><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, desc->dev_geom_output);
+                    if (launchConfig.withOpaqueVisibuf) {
+                        fine_raster_naive<false, true, SHADER_TYPE_PBR, true><<<blockCount2d, blockSize2d, 0, cuStream>>>
+                            (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, geomOutput);
+                    } else {
+                        fine_raster_naive<false, false, SHADER_TYPE_PBR, true><<<blockCount2d, blockSize2d, 0, cuStream>>>
+                            (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, geomOutput);
+                    }
                 } else {
-                    fine_raster_naive<false, SHADER_TYPE_UNLIT, true><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, desc->dev_geom_output);
+                    if (launchConfig.withOpaqueVisibuf) {
+                        fine_raster_naive<false, true, SHADER_TYPE_UNLIT, true><<<blockCount2d, blockSize2d, 0, cuStream>>>
+                            (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, geomOutput);
+                    } else {
+                        fine_raster_naive<false, false, SHADER_TYPE_UNLIT, true><<<blockCount2d, blockSize2d, 0, cuStream>>>
+                            (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, geomOutput);
+                    }
                 }
             }
         }
         else {
             if (params.with_blending) {
                 if (commonShaderType == SHADER_TYPE_PBR) {
-                    fine_raster_naive<true, SHADER_TYPE_PBR, false><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, desc->dev_geom_output);
+                    fine_raster_naive<true, false, SHADER_TYPE_PBR, false><<<blockCount2d, blockSize2d, 0, cuStream>>>
+                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, geomOutput);
                 } else {
-                    fine_raster_naive<true, SHADER_TYPE_UNLIT, false><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, desc->dev_geom_output);
+                    fine_raster_naive<true, false, SHADER_TYPE_UNLIT, false><<<blockCount2d, blockSize2d, 0, cuStream>>>
+                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, geomOutput);
                 }
             }
             else {
                 if (commonShaderType == SHADER_TYPE_PBR) {
-                    fine_raster_naive<false, SHADER_TYPE_PBR, false><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, desc->dev_geom_output);
+                    if (launchConfig.withOpaqueVisibuf) {
+                        fine_raster_naive<false, true, SHADER_TYPE_PBR, false><<<blockCount2d, blockSize2d, 0, cuStream>>>
+                            (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, geomOutput);
+                    } else {
+                        fine_raster_naive<false, false, SHADER_TYPE_PBR, false><<<blockCount2d, blockSize2d, 0, cuStream>>>
+                            (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, geomOutput);
+                    }
                 } else {
-                    fine_raster_naive<false, SHADER_TYPE_UNLIT, false><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, desc->dev_geom_output);
+                    if (launchConfig.withOpaqueVisibuf) {
+                        fine_raster_naive<false, true, SHADER_TYPE_UNLIT, false><<<blockCount2d, blockSize2d, 0, cuStream>>>
+                            (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, geomOutput);
+                    } else {
+                        fine_raster_naive<false, false, SHADER_TYPE_UNLIT, false><<<blockCount2d, blockSize2d, 0, cuStream>>>
+                            (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, geomOutput);
+                    }
                 }
             }
         }
@@ -847,15 +870,22 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         CUDA_CHK_ERROR("fine_raster_naive");
     }
 
+    bool useOpaqueVisibuf = !params.with_blending && launchConfig.withOpaqueVisibuf;
+
+    if (useOpaqueVisibuf) {
+        assert(desc->dev_geom_output);
+        assert(desc->dev_materialOffsets);
+        assert(desc->dev_xyCommands);
+    }
+
     // visibuf pixel countig stage
-    if (!params.with_blending && desc->dev_geom_output)
+    if (useOpaqueVisibuf)
     {
         dim3 blockSize2d(8, 8);
         dim3 blockCount2d((desc->width - 1) / blockSize2d.x + 1,
                           (desc->height - 1) / blockSize2d.y + 1);
 
         CUDA_TIME_BEGIN(visibuf_count_pixels);
-        assert(desc->dev_geom_output);
         visibuf_count_pixels<<<blockCount2d, blockSize2d, 0, cuStream>>>
             (desc->dev_pipeParams, desc->dev_geom_output, desc->dev_pipeAtomics);
 
@@ -884,7 +914,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     }
 
     // build material offsets using prefix sums
-    if (!params.with_blending && desc->dev_materialOffsets && desc->dev_xyCommands)
+    if (useOpaqueVisibuf)
     {
         dim3 blockSize2d(materials.size(), 1);
         dim3 blockCount2d(1, 1);
@@ -900,14 +930,13 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     }
 
     // visibuf pixel counting stage
-    if (!params.with_blending && desc->dev_geom_output && desc->dev_materialOffsets && desc->dev_xyCommands)
+    if (useOpaqueVisibuf)
     {
         dim3 blockSize2d(8, 8);
         dim3 blockCount2d((desc->width - 1) / blockSize2d.x + 1,
                           (desc->height - 1) / blockSize2d.y + 1);
 
         CUDA_TIME_BEGIN(visibuf_build_xy_lists);
-        assert(desc->dev_geom_output);
         visibuf_build_xy_lists<<<blockCount2d, blockSize2d, 0, cuStream>>>
             (desc->dev_pipeParams, materials.size(), desc->dev_geom_output, desc->dev_pipeAtomics,
              desc->dev_materialOffsets, desc->dev_xyCommands);
@@ -919,7 +948,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
     // fetch pixel counts for each material
     // TODO: launch cuda kernels using smth like vulkan indirect dispatch
-    if (!params.with_blending)
+    if (useOpaqueVisibuf)
     {
         CUDA_CHK(cudaMemcpyAsync(&pipe_atomics,
                                  desc->dev_pipeAtomics,
@@ -934,7 +963,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     std::set<uint32_t> activeMaterials;
     std::copy(std::begin(matIds), std::end(matIds), std::inserter(activeMaterials, activeMaterials.end()));
 
-    if (!params.with_blending && desc->dev_geom_output && desc->dev_materialOffsets && desc->dev_xyCommands)
+    if (useOpaqueVisibuf)
     {
         CUDA_TIME_BEGIN(visibuf_material_pass);
 

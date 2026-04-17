@@ -602,6 +602,7 @@ void cudarf::pipe::draw_triangles(cudarf::pipe::Ctx* rasterization_desc,
 
     cudarf::pipe::LaunchConfig launchConfig(
         false,
+        false,
         frameCounter,
         cudarf::pipe::get_internal_fb(rasterization_desc, frameCounter),
         nullptr);

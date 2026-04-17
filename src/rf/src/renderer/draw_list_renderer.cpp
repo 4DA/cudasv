@@ -42,6 +42,7 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
 #ifdef WITH_TAA
                               const DrawListRenderer::WorkDescription<rf::RENDER_PASS_OPAQUE> &workHist,
 #endif
+                              bool withOpaqueVisibuf,
                               cudarf::Framebuffer output,
                               unsigned int frameCounter,
                               cudaStream_t cuStream)
@@ -101,7 +102,11 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
                                      work.pbr.drawPacketIds,
                                      work.pbr.matIds,
                                      objMaterials,
-                                     cudarf::pipe::LaunchConfig(true, frameCounter, output, opaqueTime),
+                                     cudarf::pipe::LaunchConfig(true,
+                                                                withOpaqueVisibuf,
+                                                                frameCounter,
+                                                                output,
+                                                                opaqueTime),
                                      cuStream);
 
         if (opaqueTime != nullptr) {opaqueTime->stop_interval(opaqueTotal);}
@@ -129,7 +134,11 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
                              work.flat.drawPacketIds,
                              work.flat.matIds,
                              objMaterials,
-                             cudarf::pipe::LaunchConfig(true, frameCounter, output, opaqueTimeFlat),
+                             cudarf::pipe::LaunchConfig(true,
+                                                        withOpaqueVisibuf,
+                                                        frameCounter,
+                                                        output,
+                                                        opaqueTimeFlat),
                              cuStream);
 
         if (opaqueTimeFlat != nullptr) {opaqueTimeFlat->stop_interval(opaqueTotal);}
@@ -207,7 +216,11 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
                              work.pbr.drawPacketIds,
                              work.pbr.matIds,
                              objMaterials,
-                             cudarf::pipe::LaunchConfig(true, frameCounter, output, translucentTime),
+                             cudarf::pipe::LaunchConfig(true,
+                                                        false,
+                                                        frameCounter,
+                                                        output,
+                                                        translucentTime),
                              cuStream
             );
 
@@ -237,7 +250,11 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
                                      work.flat.drawPacketIds,
                                      work.flat.matIds,
                                      objMaterials,
-                                     cudarf::pipe::LaunchConfig(true, frameCounter, output, translucentTimeFlat),
+                                     cudarf::pipe::LaunchConfig(true,
+                                                                false,
+                                                                frameCounter,
+                                                                output,
+                                                                translucentTimeFlat),
                                      cuStream
             );
 

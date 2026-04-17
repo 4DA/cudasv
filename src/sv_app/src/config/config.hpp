@@ -229,8 +229,20 @@ inline void to_json(nlohmann::json &j, const ViewsConfig &config)
 }
 }
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(RendererConfig,
-                                   use_ibl)
+inline void from_json(const nlohmann::json &j, RendererConfig &config)
+{
+    config = {};
+    config.use_ibl = j.at("use_ibl").get<int>();
+    config.use_visibuf = j.value("use_visibuf", 1);
+}
+
+inline void to_json(nlohmann::json &j, const RendererConfig &config)
+{
+    j = nlohmann::json{
+        {"use_ibl", config.use_ibl},
+        {"use_visibuf", config.use_visibuf},
+    };
+}
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SurroundViewBlendConfig,
                                    front_left_start_deg,

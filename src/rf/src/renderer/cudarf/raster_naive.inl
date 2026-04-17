@@ -9,7 +9,7 @@
 // for translucent pass shader computation is called for each fragment and
 // results are stored out output framebuffer
 
-template<bool TBlendingEnabled, cudarf::ShaderType TShaderType, bool TTexturingEnabled>
+template<bool TBlendingEnabled, bool TWithOpaqueVisibuf, cudarf::ShaderType TShaderType, bool TTexturingEnabled>
 __global__
 void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
                        cudarf::Framebuffer fb,
@@ -99,7 +99,7 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
 
         } else {
             opaqueTriTop = tileSeg.queue[i];
-            baryTop = baryAffine;
+            baryTop = baryPersp;
             fragDepth = zw;
         }
     }
@@ -112,22 +112,32 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
         }
     }
     else {
-        // we shade opaque fragments in visibuf pass
-        // if (TShadeOpaque) {
-        //     fragColor = shade_fragment<TShaderType, TTexturingEnabled, true>(
-        //         pipe,
-        //         pipe->tris[opaqueTriTop],
-        //         baryTop,
-        //         fragOut);
-        // }
+        if constexpr (TWithOpaqueVisibuf) {
+            fragColor.w = 1.0f;
 
-        fragColor.w = 1.0f;
+            if (geomFb != nullptr && opaqueTriTop != -1) {
+                geomFb[outIdx] = {
+                    pipe->tris[opaqueTriTop].id,
+                    pipe->tris[opaqueTriTop].drawPacketId
+                };
+            }
+        } else {
+            if (opaqueTriTop != -1) {
+                fragColor = shade_fragment<TShaderType, TTexturingEnabled, true>(
+                    pipe,
+                    pipe->tris[opaqueTriTop],
+                    baryTop,
+                    fragOut);
+                fragColor.w = 1.0f;
+                fb::store(fb, x, y, fragColor);
 
-        if (geomFb != nullptr && opaqueTriTop != -1) {
-            geomFb[outIdx] = {
-                pipe->tris[opaqueTriTop].id,
-                pipe->tris[opaqueTriTop].drawPacketId
-            };
+#ifdef WITH_TAA
+                float2 velocity = make_float2(x + 0.5f, y + 0.5f) - fragOut.pos_ss_hist;
+                if (length(velocity) > pipe->taa.velocityThreshold) {
+                    pipe->taa.velocityTex[outIdx] = velocity;
+                }
+#endif
+            }
         }
 
         depthBuffer[outIdx] = fragDepth;

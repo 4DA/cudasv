@@ -99,6 +99,7 @@ void engine::view::ScenePassBuilder::render(
     rf::VirtualCamera &virtualCamera,
     const WorkSet &work,
     const WorkSet &history,
+    bool withOpaqueVisibuf,
     cudarf::Framebuffer output,
     unsigned int frameCounter,
     cudaStream_t cudaStream) const
@@ -110,6 +111,7 @@ void engine::view::ScenePassBuilder::render(
 #ifdef WITH_TAA
                             history.opaque,
 #endif
+                            withOpaqueVisibuf,
                             output,
                             frameCounter,
                             cudaStream);

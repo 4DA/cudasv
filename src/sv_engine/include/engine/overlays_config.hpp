@@ -113,6 +113,7 @@ struct CarUnderlayConfig
 struct RendererConfig
 {
     int use_ibl;
+    int use_visibuf = 1;
 } ;
 
 enum SurroundViewDebugMode

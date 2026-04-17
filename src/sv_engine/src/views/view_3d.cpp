@@ -251,6 +251,7 @@ void View3D::compose(videoio::FrameSet<camera::CAMERAS_TOTAL> frames_set,
                               *_virtualCamera,
                               sceneWork,
                               _postProcessPipeline->history(),
+                              _config->overlays_config.renderer_config.use_visibuf != 0,
                               internalFB,
                               frameCounter,
                               cudaStreams.rendering);

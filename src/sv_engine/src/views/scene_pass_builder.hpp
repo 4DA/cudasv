@@ -36,6 +36,7 @@ public:
                 rf::VirtualCamera &virtualCamera,
                 const WorkSet &work,
                 const WorkSet &history,
+                bool withOpaqueVisibuf,
                 cudarf::Framebuffer output,
                 unsigned int frameCounter,
                 cudaStream_t cudaStream) const;

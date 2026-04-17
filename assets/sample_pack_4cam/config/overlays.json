@@ -190,7 +190,8 @@
     "enabled": 1
   },
   "renderer_config": {
-    "use_ibl": 1
+    "use_ibl": 1,
+    "use_visibuf": 1
   },
   "underlay_config": {
     "blind_front": 300.0,

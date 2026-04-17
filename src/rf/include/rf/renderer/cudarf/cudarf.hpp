@@ -165,6 +165,7 @@ struct Ctx
 struct LaunchConfig
 {
     bool withTexturing;
+    bool withOpaqueVisibuf;
     unsigned int frameCounter;
 
     cudarf::Framebuffer nativeOutput;  // if set, used as output instead of internal fb
@@ -172,10 +173,12 @@ struct LaunchConfig
     std::shared_ptr<cudarf::profiling::Events> eventDB;
 
     LaunchConfig(bool withTexturing,
+                 bool withOpaqueVisibuf,
                  unsigned int frameCounter,
                  cudarf::Framebuffer nativeOutput,
                  std::shared_ptr<cudarf::profiling::Events> eventDB = nullptr):
         withTexturing(withTexturing),
+        withOpaqueVisibuf(withOpaqueVisibuf),
         frameCounter(frameCounter),
         nativeOutput(nativeOutput),
         eventDB(eventDB)

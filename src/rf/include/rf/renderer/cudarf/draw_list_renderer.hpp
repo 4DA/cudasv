@@ -73,6 +73,7 @@ public:
 #ifdef WITH_TAA
                  const DrawListRenderer::WorkDescription<rf::RENDER_PASS_OPAQUE> &workHist,
 #endif
+                 bool withOpaqueVisibuf,
                  cudarf::Framebuffer output,
                  unsigned int frameCounter,
                  cudaStream_t cuStream);
