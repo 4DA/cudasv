@@ -72,6 +72,21 @@ normalize_taa()
     esac
 }
 
+normalize_force_affine_barycentrics()
+{
+    case "${1,,}" in
+        on)
+            echo "ON"
+            ;;
+        off)
+            echo "OFF"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
 function clear_vars()
 {
     export PATH="$(getconf PATH):$HOME/bin"
@@ -108,6 +123,7 @@ function set_vars()
     export SV_CUDA_PROFILING="OFF"
     export SV_CUDA_SANITIZER="OFF"
     export SV_TAA="ON"
+    export SV_FORCE_AFFINE_BARYCENTRICS="OFF"
 }
 
 function print_vars()
@@ -118,6 +134,7 @@ function print_vars()
     printf "CUDA profiling:\t\t$SV_CUDA_PROFILING\n"
     printf "CUDA sanitizer:\t\t$SV_CUDA_SANITIZER\n"
     printf "TAA:\t\t\t$SV_TAA\n"
+    printf "Force affine bary:\t$SV_FORCE_AFFINE_BARYCENTRICS\n"
     printf "Building at:\t\t$SV_PROJECT_TOP\n"
     printf "CC:\t\t\t$CC\n"
     printf "CXX:\t\t\t$CXX\n"
@@ -202,6 +219,24 @@ function set_taa()
     echo "TAA set to $SV_TAA"
 }
 
+function set_force_affine_barycentrics()
+{
+    if [ $# -ne 1 ]; then
+        echo "usage: set_force_affine_barycentrics <on|off>"
+        return 1
+    fi
+
+    local normalized
+    normalized="$(normalize_force_affine_barycentrics "$1")" || {
+        echo "Unsupported affine barycentrics mode: $1"
+        echo "Supported values: on, off"
+        return 1
+    }
+
+    export SV_FORCE_AFFINE_BARYCENTRICS="$normalized"
+    echo "Force affine barycentrics set to $SV_FORCE_AFFINE_BARYCENTRICS"
+}
+
 function c()
 {
     if [ -d "$SV_OUT" ]; then
@@ -234,6 +269,7 @@ function b()
         -DWITH_PROFILE_CUDA_TIME="$SV_CUDA_PROFILING" \
         -DWITH_CUDA_COMPUTE_SANITIZER="$SV_CUDA_SANITIZER" \
         -DWITH_TAA="$SV_TAA" \
+        -DCUDARF_FORCE_AFFINE_BARYCENTRICS="$SV_FORCE_AFFINE_BARYCENTRICS" \
         "$SV_PROJECT_TOP" || return 1
     cd "$SV_PROJECT_TOP" || return 1
 

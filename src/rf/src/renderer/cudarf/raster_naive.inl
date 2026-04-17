@@ -59,7 +59,11 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
         cudarf::Vec2f frag = make_vec2f(x + 0.5f, y + 0.5f);
 
         cudarf::Vec3f baryAffine = compute_bary_affine(tri, frag);
+#ifdef CUDARF_FORCE_AFFINE_BARYCENTRICS
+        cudarf::Vec3f baryPersp = baryAffine;
+#else
         cudarf::Vec3f baryPersp = compute_bary_persp(baryAffine, tri.w_rcp);
+#endif
 
         // DEBUG: visualize triangle edges
         // if (fabs(bary.x) > 0.05 && fabs(bary.y) > 0.05 && fabs(bary.z) > 0.05) {

@@ -125,7 +125,7 @@ void visibuf_material_pass(const cudarf::rast::PipeParams *pipe,
     cudarf::Vec2f fragWindow = make_vec2f(x + 0.5f, y + 0.5f);
     cudarf::Vec3f baryAffine = compute_bary_affine2(tri, fragWindow);
 
-#ifdef VISIBUF_USE_AFFINE_OPAQUE_INTERPOLATION
+#ifdef CUDARF_FORCE_AFFINE_BARYCENTRICS
     // Match the legacy opaque path exactly by shading from affine screen-space
     // barycentrics instead of the reconstructed perspective-correct basis.
     baryLambda = baryAffine;
