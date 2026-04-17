@@ -265,19 +265,6 @@ void to_screen_space(const cudarf::rast::PipeParams *pipe, const cudarf::rast::T
     // sP2 = 0.5f * screen * (make_float2(tri.P2.x, tri.P2.y) + 1.0f);
 }
 
-
-// most straighforward approach: compute barycentric coordinates, given triangle
-// vertices in 3DP(NDC) space and raster coordinates
-// frag - fragment coordinates in NDC space
-__device__ __inline__ cudarf::Vec3f compute_bary(const cudarf::rast::Triangle &tri, const cudarf::Vec2f &frag)
-{
-    return tri.area_rcp * cudarf::Vec3f {
-        edge_function(tri.sP1, tri.sP2, frag),
-        edge_function(tri.sP2, tri.sP0, frag),
-        edge_function(tri.sP0, tri.sP1, frag)
-    };
-}
-
 // TBD
 int3 plane_equation(const float3 &values, const int2 &v0,
                     const int2 &d1, const int2 &d2,

@@ -40,36 +40,6 @@ struct MaterialData
     float alpha;
 };
 
-template<cudarf::ShaderType TShaderType, bool TTexturingEnabled>
-__device__ __inline__
-void compute_fragment(const cudarf::rast::Triangle &tri, const cudarf::Vec3f &bary, cudarf::rast::Fragment &frag)
-{
-    if (TShaderType == cudarf::SHADER_TYPE_UNLIT) {
-        cudarf::Color color[3] = {tri.col[0], tri.col[1], tri.col[2]};
-        frag.vertexColor = interpolate(bary, color);
-    }
-    else if (TShaderType == cudarf::SHADER_TYPE_PBR) {
-        // TODO: use bary_persp here
-        frag.pos_global = interp(bary, tri.v_world);
-        frag.normal = normalize(interp(bary, tri.normal));
-    }
-
-    // Texture coordinates need perspective-correct interpolation, not plain
-    // affine barycentrics in screen space.
-    if (TTexturingEnabled) {
-        float w_rcp = dot(bary, tri.w_rcp);
-        const cudarf::Vec3f bary_persp =
-            1.0f / w_rcp * bary * make_vec3f(tri.w_rcp.x, tri.w_rcp.y, tri.w_rcp.z);
-        frag.tex = interp(bary_persp, tri.tex);
-    }
-
-#ifdef WITH_TAA
-    frag.pos_ss_hist = interp(bary, tri.v_ss_hist);
-#endif
-
-    frag.materialId = tri.materialId;
-}
-
 
 // compute irradiance from spherical harmonics
 __device__
@@ -351,6 +321,29 @@ cudarf::Color compute_color_flat(const cudarf::rast::PipeParams *pipe, const cud
     return frag.vertexColor * material.baseColor * texCol;
 }
 
+template<cudarf::ShaderType TShaderType, bool TTexturingEnabled>
+__device__ __inline__
+void compute_fragment(const cudarf::rast::Triangle &tri, const cudarf::Vec3f &bary, cudarf::rast::Fragment &frag)
+{
+    if constexpr (TShaderType == cudarf::SHADER_TYPE_UNLIT) {
+        cudarf::Color color[3] = {tri.col[0], tri.col[1], tri.col[2]};
+        frag.vertexColor = interpolate(bary, color);
+    } else if constexpr(TShaderType == cudarf::SHADER_TYPE_PBR) {
+        frag.pos_global = interp(bary, tri.v_world);
+        frag.normal = normalize(interp(bary, tri.normal));
+    }
+
+    if constexpr(TTexturingEnabled) {
+        frag.tex = interp(bary, tri.tex);
+    }
+
+#ifdef WITH_TAA
+    frag.pos_ss_hist = interp(bary, tri.v_ss_hist);
+#endif
+
+    frag.materialId = tri.materialId;
+}
+
 template<cudarf::ShaderType TShaderType, bool TTexturingEnabled, bool TClearcoatEnabled>
 __device__ __inline__
 cudarf::Color shade_fragment(const cudarf::rast::PipeParams *pipe,
@@ -360,11 +353,11 @@ cudarf::Color shade_fragment(const cudarf::rast::PipeParams *pipe,
 {
     compute_fragment<TShaderType, TTexturingEnabled>(tri, bary, frag);
 
-    if (TShaderType == cudarf::SHADER_TYPE_UNLIT) {
+    if constexpr (TShaderType == cudarf::SHADER_TYPE_UNLIT) {
         return compute_color_flat<TTexturingEnabled>(pipe, frag);
+    } else {
+        return compute_color_pbr<TTexturingEnabled, TClearcoatEnabled>(pipe, frag);
     }
-
-    return compute_color_pbr<TTexturingEnabled, TClearcoatEnabled>(pipe, frag);
 }
 
 #endif

@@ -58,7 +58,8 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
 
         cudarf::Vec2f frag = make_vec2f(x + 0.5f, y + 0.5f);
 
-        cudarf::Vec3f bary = compute_bary(tri, frag);
+        cudarf::Vec3f baryAffine = compute_bary_affine(tri, frag);
+        cudarf::Vec3f baryPersp = compute_bary_persp(baryAffine, tri.w_rcp);
 
         // DEBUG: visualize triangle edges
         // if (fabs(bary.x) > 0.05 && fabs(bary.y) > 0.05 && fabs(bary.z) > 0.05) {
@@ -66,7 +67,7 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
         // }
 
         // TODO: implement DirectX fill rules?
-        float zw = dot(bary, tri.zw);
+        float zw = dot(baryAffine, tri.zw);
 
         // clip fragments to the near/far planes (like GL_ZERO_TO_ONE)
         if(zw < 0.0f || zw > 1.0f) {
@@ -77,7 +78,7 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
 
         // TODO: implement rasterzation rule for edges? conservative raster?
         // discard fragments outside the triangle
-        if (!bary_in_bounds(bary)) {continue;}
+        if (!bary_in_bounds(baryAffine)) {continue;}
 
         // with blending frag shader is invoked on each fragment
         // --
@@ -85,7 +86,7 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
             isCovered = true;
 
             bool dstOpaque = (fragColor.w >= 1.0f);
-            cudarf::Color shaded = shade_fragment<TShaderType, TTexturingEnabled, false>(pipe, tri, bary, fragOut);
+            cudarf::Color shaded = shade_fragment<TShaderType, TTexturingEnabled, false>(pipe, tri, baryPersp, fragOut);
             float alpha = shaded.w;
             fragColor = alpha * make_float4(to_rgb(shaded), 1.0f) + (1.0f - alpha) * fragColor;
 
@@ -94,7 +95,7 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
 
         } else {
             opaqueTriTop = tileSeg.queue[i];
-            baryTop = bary;
+            baryTop = baryAffine;
             fragDepth = zw;
         }
     }
@@ -108,6 +109,15 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
     }
     else {
         // we shade opaque fragments in visibuf pass
+        // if (TShadeOpaque) {
+        //     fragColor = shade_fragment<TShaderType, TTexturingEnabled, true>(
+        //         pipe,
+        //         pipe->tris[opaqueTriTop],
+        //         baryTop,
+        //         fragOut);
+        // }
+
+        fragColor.w = 1.0f;
 
         if (geomFb != nullptr && opaqueTriTop != -1) {
             geomFb[outIdx] = {

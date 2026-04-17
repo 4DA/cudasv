@@ -32,6 +32,7 @@
 #include "cubemap.inl"
 #include "frame_conventions.inl"
 #include "framebuffer.inl"
+#include "frag_interpolation.inl"
 #include "fragment.inl"
 #include "TAA.inl"
 #include "raster_naive.inl"
