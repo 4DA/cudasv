@@ -323,22 +323,27 @@ cudarf::Color compute_color_flat(const cudarf::rast::PipeParams *pipe, const cud
 
 template<cudarf::ShaderType TShaderType, bool TTexturingEnabled>
 __device__ __inline__
-void compute_fragment(const cudarf::rast::Triangle &tri, const cudarf::Vec3f &bary, cudarf::rast::Fragment &frag)
+void compute_fragment(const cudarf::rast::Triangle &tri,
+                      const cudarf::Vec3f &baryAffine,
+                      const cudarf::Vec3f &baryPersp,
+                      cudarf::rast::Fragment &frag)
 {
+    (void)baryAffine;
+
     if constexpr (TShaderType == cudarf::SHADER_TYPE_UNLIT) {
         cudarf::Color color[3] = {tri.col[0], tri.col[1], tri.col[2]};
-        frag.vertexColor = interpolate(bary, color);
+        frag.vertexColor = interpolate(baryPersp, color);
     } else if constexpr(TShaderType == cudarf::SHADER_TYPE_PBR) {
-        frag.pos_global = interp(bary, tri.v_world);
-        frag.normal = normalize(interp(bary, tri.normal));
+        frag.pos_global = interp(baryPersp, tri.v_world);
+        frag.normal = normalize(interp(baryPersp, tri.normal));
     }
 
     if constexpr(TTexturingEnabled) {
-        frag.tex = interp(bary, tri.tex);
+        frag.tex = interp(baryPersp, tri.tex);
     }
 
 #ifdef WITH_TAA
-    frag.pos_ss_hist = interp(bary, tri.v_ss_hist);
+    frag.pos_ss_hist = interp(baryPersp, tri.v_ss_hist);
 #endif
 
     frag.materialId = tri.materialId;
@@ -348,10 +353,11 @@ template<cudarf::ShaderType TShaderType, bool TTexturingEnabled, bool TClearcoat
 __device__ __inline__
 cudarf::Color shade_fragment(const cudarf::rast::PipeParams *pipe,
                              const cudarf::rast::Triangle &tri,
-                             const cudarf::Vec3f &bary,
+                             const cudarf::Vec3f &baryAffine,
+                             const cudarf::Vec3f &baryPersp,
                              cudarf::rast::Fragment &frag)
 {
-    compute_fragment<TShaderType, TTexturingEnabled>(tri, bary, frag);
+    compute_fragment<TShaderType, TTexturingEnabled>(tri, baryAffine, baryPersp, frag);
 
     if constexpr (TShaderType == cudarf::SHADER_TYPE_UNLIT) {
         return compute_color_flat<TTexturingEnabled>(pipe, frag);

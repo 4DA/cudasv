@@ -166,20 +166,26 @@ void visibuf_material_pass(const cudarf::rast::PipeParams *pipe,
 
     if (material.type == cudarf::SHADER_TYPE_UNLIT) {
         shadedColor = withTexturing
-            ? shade_fragment<cudarf::SHADER_TYPE_UNLIT, true, false>(pipe, tri, baryLambda, frag)
-            : shade_fragment<cudarf::SHADER_TYPE_UNLIT, false, false>(pipe, tri, baryLambda, frag);
+            ? shade_fragment<cudarf::SHADER_TYPE_UNLIT, true, false>(
+                pipe, tri, make_vec3f(0.0f, 0.0f, 0.0f), baryLambda, frag)
+            : shade_fragment<cudarf::SHADER_TYPE_UNLIT, false, false>(
+                pipe, tri, make_vec3f(0.0f, 0.0f, 0.0f), baryLambda, frag);
     }
     else {
         bool withClearcoat = material.clearcoatFactor > 0.0f;
         if (withTexturing) {
             shadedColor = withClearcoat
-                ? shade_fragment<cudarf::SHADER_TYPE_PBR, true, true>(pipe, tri, baryLambda, frag)
-                : shade_fragment<cudarf::SHADER_TYPE_PBR, true, false>(pipe, tri, baryLambda, frag);
+                ? shade_fragment<cudarf::SHADER_TYPE_PBR, true, true>(
+                    pipe, tri, make_vec3f(0.0f, 0.0f, 0.0f), baryLambda, frag)
+                : shade_fragment<cudarf::SHADER_TYPE_PBR, true, false>(
+                    pipe, tri, make_vec3f(0.0f, 0.0f, 0.0f), baryLambda, frag);
         }
         else {
             shadedColor = withClearcoat
-                ? shade_fragment<cudarf::SHADER_TYPE_PBR, false, true>(pipe, tri, baryLambda, frag)
-                : shade_fragment<cudarf::SHADER_TYPE_PBR, false, false>(pipe, tri, baryLambda, frag);
+                ? shade_fragment<cudarf::SHADER_TYPE_PBR, false, true>(
+                    pipe, tri, make_vec3f(0.0f, 0.0f, 0.0f), baryLambda, frag)
+                : shade_fragment<cudarf::SHADER_TYPE_PBR, false, false>(
+                    pipe, tri, make_vec3f(0.0f, 0.0f, 0.0f), baryLambda, frag);
         }
     }
 

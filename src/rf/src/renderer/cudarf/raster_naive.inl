@@ -26,7 +26,8 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
 
     cudarf::rast::Fragment fragOut;
     bool isCovered = false;
-    cudarf::Vec3f baryTop;
+    cudarf::Vec3f baryAffineTop;
+    cudarf::Vec3f baryPerspTop;
     int opaqueTriTop = -1;
 
     int tileX = x / CUDARF_TILE_SZ;
@@ -90,7 +91,8 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
             isCovered = true;
 
             bool dstOpaque = (fragColor.w >= 1.0f);
-            cudarf::Color shaded = shade_fragment<TShaderType, TTexturingEnabled, false>(pipe, tri, baryPersp, fragOut);
+            cudarf::Color shaded = shade_fragment<TShaderType, TTexturingEnabled, false>(
+                pipe, tri, baryAffine, baryPersp, fragOut);
             float alpha = shaded.w;
             fragColor = alpha * make_float4(to_rgb(shaded), 1.0f) + (1.0f - alpha) * fragColor;
 
@@ -99,7 +101,8 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
 
         } else {
             opaqueTriTop = tileSeg.queue[i];
-            baryTop = baryPersp;
+            baryAffineTop = baryAffine;
+            baryPerspTop = baryPersp;
             fragDepth = zw;
         }
     }
@@ -126,7 +129,8 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
                 fragColor = shade_fragment<TShaderType, TTexturingEnabled, true>(
                     pipe,
                     pipe->tris[opaqueTriTop],
-                    baryTop,
+                    baryAffineTop,
+                    baryPerspTop,
                     fragOut);
                 fragColor.w = 1.0f;
                 fb::store(fb, x, y, fragColor);
