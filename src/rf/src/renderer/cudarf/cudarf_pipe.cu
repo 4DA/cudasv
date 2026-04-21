@@ -14,6 +14,7 @@
 #include <cctype>
 #include <cstdio>
 #include <set>
+#include <map>
 
 #include <spdlog/spdlog.h>
 
@@ -300,34 +301,37 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     assert(drawPacketIds.size() < CUDARF_DRAW_PACKET_BATCH_LIMIT);
     assert(uniforms.size() == drawPacketIds.size());
 
-#ifndef NDEBUG
+    cudarf::rast::PipeParams pipe;
+
+    assert(materials.size() < CUDARF_MAX_MATERIALS);
+
+    std::fill_n(pipe.drawPacketMaterials, CUDARF_MAX_DRAW_PACKETS, 0xFFFFFFFFu);
+
+    std::map<unsigned int, unsigned int> activeGlobalIds; // global mat id ->
+                                                          // dense mat id mapping
+
+    // build dense list of materials actually used in rendering
     {
-        // visibuf material-offset generation assumes the global material ids
-        // form a dense [0, materialCount) range.
-        assert(!materials.empty());
+        unsigned int ord = 0;
+        unsigned int maxDenseId = 0;
 
-        std::set<unsigned int> materialIdsDense;
-        for (const auto &[materialId, material]: materials) {
-            (void)material;
-            assert(materialId >= 0);
-            materialIdsDense.insert(static_cast<unsigned int>(materialId));
-        }
+        for (const auto &dpId: drawPacketIds) {
+            auto matId = matIds[ord];
 
-        assert(materialIdsDense.size() == materials.size());
+            if (activeGlobalIds.find(matId) == activeGlobalIds.end()) {
+                activeGlobalIds[matId] = maxDenseId;
+                pipe.materials[maxDenseId] = *materials.at(matId);
+                pipe.drawPacketMaterials[dpId] = maxDenseId;
+                maxDenseId++;
+            } else {
+                pipe.drawPacketMaterials[dpId] = activeGlobalIds[matId];
+            }
 
-        unsigned int expectedId = 0;
-        for (unsigned int materialId: materialIdsDense) {
-            assert(materialId == expectedId);
-            expectedId++;
-        }
-
-        for (unsigned int materialId: matIds) {
-            assert(materialId < materials.size());
+            ord++;
         }
     }
-#endif
 
-    cudarf::rast::PipeParams pipe;
+    unsigned int activeMaterialCount = activeGlobalIds.size();
 
     int rasterizerW = round_up_to_mult_pwr(desc->width, CUDARF_BIN_LOG2 + CUDARF_TILE_LOG2);
     int rasterizerH = round_up_to_mult_pwr(desc->height, CUDARF_BIN_LOG2 + CUDARF_TILE_LOG2);
@@ -348,14 +352,12 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
     cudarf::ShaderType commonShaderType = materials.at(matIds[0])->type;
 
-    std::fill_n(pipe.drawPacketMaterials, CUDARF_MAX_DRAW_PACKETS, 0xFFFFFFFFu);
 
     // build running sums of index and vertex count over draw packets, which
     // correspond to per-packet vtx/idx offsets within the combined streams
     for (auto id: drawPacketIds) {
         assert(id < CUDARF_MAX_DRAW_PACKETS);
         drawPacketOrder[ord] = id;
-        pipe.drawPacketMaterials[id] = matIds[ord];
         totalVertices += desc->drawPackets[id].vertCount;
         total_indices += desc->drawPackets[id].index_count;
 
@@ -527,12 +529,6 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         pipe.tileQHeaders = desc->dev_tileQHeaders;
         pipe.tileQData = desc->dev_tileQData;
         pipe.tileQLimit = desc->tileQLimit;
-    }
-
-    assert(materials.size() < CUDARF_MAX_MATERIALS);
-
-    for (const auto &it: materials) {
-        pipe.materials[it.first] = *it.second;
     }
 
     // set PBR context
@@ -938,7 +934,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
         CUDA_TIME_BEGIN(visibuf_build_xy_lists);
         visibuf_build_xy_lists<<<blockCount2d, blockSize2d, 0, cuStream>>>
-            (desc->dev_pipeParams, materials.size(), desc->dev_geom_output, desc->dev_pipeAtomics,
+            (desc->dev_pipeParams, activeMaterialCount, desc->dev_geom_output, desc->dev_pipeAtomics,
              desc->dev_materialOffsets, desc->dev_xyCommands);
 
         CUDA_TIME_END(visibuf_build_xy_lists);
@@ -959,15 +955,11 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         CUDA_CHK(cudaStreamSynchronize(cuStream));
     }
 
-    // build list of all material ids that participate in this draw call
-    std::set<uint32_t> activeMaterials;
-    std::copy(std::begin(matIds), std::end(matIds), std::inserter(activeMaterials, activeMaterials.end()));
-
     if (useOpaqueVisibuf)
     {
         CUDA_TIME_BEGIN(visibuf_material_pass);
 
-        for (auto i: activeMaterials) {
+        for (unsigned int i = 0; i < activeGlobalIds.size(); i++) {
 
             unsigned int pixelCount = pipe_atomics.visibuf.materialPixelCount[i];
             if (pixelCount == 0) {
