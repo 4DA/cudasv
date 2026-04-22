@@ -56,6 +56,8 @@ void visibuf_build_material_offsets(uint32_t materialCount,
 
         S += g_atomics->visibuf.materialPixelCount[i];
     }
+
+    atomicAdd(&g_atomics->visibuf.totalVisibleFrags, g_atomics->visibuf.materialPixelCount[idx]);
 }
 
 __global__
@@ -75,42 +77,33 @@ void visibuf_build_xy_lists(const cudarf::rast::PipeParams *pipe,
 
     cudarf::visibuf::GeomOutput info = geomFb[inIdx];
 
-    if (info.drawPacketId == 0xFFFFFFFFu || info.triId == 0xFFFFFFFFu) {
-        return;
-    }
-
-    if (info.drawPacketId >= CUDARF_MAX_DRAW_PACKETS) {
-        return;
-    }
+    if (info.drawPacketId == 0xFFFFFFFFu || info.triId == 0xFFFFFFFFu) {return;}
+    if (info.drawPacketId >= CUDARF_MAX_DRAW_PACKETS) {return;}
 
     uint32_t matId = pipe->drawPacketMaterials[info.drawPacketId];
 
-    // should not happen for valid drawPacketId
-    if(matId == 0xFFFFFFFFu) {
-        return;
-    }
+    if(matId == 0xFFFFFFFFu || matId >= materialCount) {return;}
 
     uint32_t matOffset = matOffsets[matId].offset;
     uint32_t pixOffset = atomicAdd(&g_atomics->visibuf.xyMaterialOffsets[matId], 1);
-    xyCommands[matOffset + pixOffset] = {x, y};
+    xyCommands[matOffset + pixOffset] = {x, y, matId};
 }
 
 __global__
 void visibuf_material_pass(const cudarf::rast::PipeParams *pipe,
                            const cudarf::visibuf::GeomOutput *geomFb,
                            cudarf::pipe::Atomics *g_atomics,
-                           const cudarf::visibuf::MaterialOffset *matOffsets,
                            const cudarf::visibuf::XYCommand *xyCommands,
-                           unsigned int matId,
                            cudarf::Framebuffer fb)
 {
-    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int tx = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int ty = blockIdx.y * blockDim.y + threadIdx.y;
+    unsigned int i = tx + (ty * pipe->windowWidth);
 
-    if (i >= g_atomics->visibuf.materialPixelCount[matId]) {return;}
+    if (tx >= pipe->windowWidth || ty >= pipe->windowHeight) {return;}
+    if (i >= g_atomics->visibuf.totalVisibleFrags) {return;}
 
-    unsigned int xyOffset = matOffsets[matId].offset + i;
-
-    auto [x, y] = xyCommands[xyOffset];
+    auto [x, y, matId] = xyCommands[i];
 
     int inIdx = x + (y * pipe->windowWidth);
     cudarf::visibuf::GeomOutput info = geomFb[inIdx];

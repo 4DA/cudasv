@@ -103,6 +103,9 @@ struct Atomics {
 
         // used for adding commands to XY buffer for each material subrange
         uint32_t xyMaterialOffsets[CUDARF_MAX_DRAW_PACKETS];
+
+        // total number of visible fragments
+        uint32_t totalVisibleFrags;
     } visibuf;
 };
 

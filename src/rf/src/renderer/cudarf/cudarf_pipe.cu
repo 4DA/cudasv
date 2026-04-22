@@ -912,13 +912,13 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     // build material offsets using prefix sums
     if (useOpaqueVisibuf)
     {
-        dim3 blockSize2d(materials.size(), 1);
+        dim3 blockSize2d(activeMaterialCount, 1);
         dim3 blockCount2d(1, 1);
 
         CUDA_TIME_BEGIN(visibuf_material_offsets);
 
         visibuf_build_material_offsets<<<blockCount2d, blockSize2d, 0, cuStream>>>
-            (static_cast<uint32_t>(materials.size()), desc->dev_pipeAtomics, desc->dev_materialOffsets);
+            (static_cast<uint32_t>(activeMaterialCount), desc->dev_pipeAtomics, desc->dev_materialOffsets);
 
         CUDA_TIME_END(visibuf_material_offsets);
 
@@ -942,39 +942,19 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         CUDA_CHK_ERROR("visibuf_build_xy_lists");
     }
 
-    // fetch pixel counts for each material
-    // TODO: launch cuda kernels using smth like vulkan indirect dispatch
-    if (useOpaqueVisibuf)
-    {
-        CUDA_CHK(cudaMemcpyAsync(&pipe_atomics,
-                                 desc->dev_pipeAtomics,
-                                 sizeof(cudarf::pipe::Atomics),
-                                 cudaMemcpyDeviceToHost,
-                                 cuStream));
-
-        CUDA_CHK(cudaStreamSynchronize(cuStream));
-    }
-
     if (useOpaqueVisibuf)
     {
         CUDA_TIME_BEGIN(visibuf_material_pass);
 
-        for (unsigned int i = 0; i < activeGlobalIds.size(); i++) {
+        dim3 blockSize2d(16, 16);
+        dim3 blockCount2d((desc->width - 1) / blockSize2d.x + 1,
+                          (desc->height - 1) / blockSize2d.y + 1);
 
-            unsigned int pixelCount = pipe_atomics.visibuf.materialPixelCount[i];
-            if (pixelCount == 0) {
-                continue;
-            }
+        visibuf_material_pass<<<blockCount2d, blockSize2d, 0, cuStream>>>
+            (desc->dev_pipeParams, desc->dev_geom_output, desc->dev_pipeAtomics,
+             desc->dev_xyCommands, framebuffer);
 
-            dim3 blockSize(256);
-            dim3 blockCount((pixelCount - 1) / blockSize.x + 1);
-
-            visibuf_material_pass<<<blockCount, blockSize, 0, cuStream>>>
-                (desc->dev_pipeParams, desc->dev_geom_output, desc->dev_pipeAtomics,
-                 desc->dev_materialOffsets, desc->dev_xyCommands, i, framebuffer);
-
-            CUDA_CHK_ERROR("visibuf_material_pass");
-        }
+        CUDA_CHK_ERROR("visibuf_material_pass");
 
         CUDA_TIME_END(visibuf_material_pass);
     }
