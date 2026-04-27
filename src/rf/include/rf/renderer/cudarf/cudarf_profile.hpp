@@ -56,6 +56,13 @@ struct Ringbuffer {
         std::fill(std::begin(values), std::end(values), std::numeric_limits<float>::lowest());
     }
 
+    void clear()
+    {
+        first = 0;
+        size = 0;
+        std::fill(std::begin(values), std::end(values), std::numeric_limits<float>::lowest());
+    }
+
     void add(TType value)
     {
         unsigned int dst;
@@ -113,6 +120,7 @@ public:
     void stop_interval(int handle);
     void show(unsigned int oft = 0);
     void clear();
+    void clear_history();
     std::shared_ptr<Events> add_child(const std::string &name);
 
 private:

@@ -102,6 +102,9 @@ engine::Error Engine::process(const videoio::RuntimeFramePacket4Cam &frame_packe
     cudarf::Framebuffer meshGpuOutput = _impl->mesh_gpu_outputs[output_index];
 
     if constexpr (CUDARF_ENABLE_CUDA_PROFILING) {
+        if (_impl->frameCounter == 0) {
+            _impl->frameTimeDB->clear_history();
+        }
         _impl->frameTimeDB->clear();
     }
 

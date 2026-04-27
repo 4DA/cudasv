@@ -64,6 +64,15 @@ void profiling::Events::clear()
     }
 }
 
+void profiling::Events::clear_history()
+{
+    history.clear();
+
+    for (auto &child : children) {
+        child->clear_history();
+    }
+}
+
 void profiling::Events::show(unsigned int oft)
 {
     char pad[oft + 1];
