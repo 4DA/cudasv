@@ -120,10 +120,6 @@ namespace visibuf
         uint32_t drawPacketId;
     };
 
-    struct MaterialOffset {
-        uint32_t offset;
-    };
-
     struct XYCommand {
         uint32_t x;
         uint32_t y;

@@ -331,8 +331,6 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         }
     }
 
-    unsigned int activeMaterialCount = activeGlobalIds.size();
-
     int rasterizerW = round_up_to_mult_pwr(desc->width, CUDARF_BIN_LOG2 + CUDARF_TILE_LOG2);
     int rasterizerH = round_up_to_mult_pwr(desc->height, CUDARF_BIN_LOG2 + CUDARF_TILE_LOG2);
 
@@ -870,62 +868,10 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
     if (useOpaqueVisibuf) {
         assert(desc->dev_geom_output);
-        assert(desc->dev_materialOffsets);
         assert(desc->dev_xyCommands);
     }
 
-    // visibuf pixel countig stage
-    if (useOpaqueVisibuf)
-    {
-        dim3 blockSize2d(8, 8);
-        dim3 blockCount2d((desc->width - 1) / blockSize2d.x + 1,
-                          (desc->height - 1) / blockSize2d.y + 1);
-
-        CUDA_TIME_BEGIN(visibuf_count_pixels);
-        visibuf_count_pixels<<<blockCount2d, blockSize2d, 0, cuStream>>>
-            (desc->dev_pipeParams, desc->dev_geom_output, desc->dev_pipeAtomics);
-
-        CUDA_TIME_END(visibuf_count_pixels);
-
-        CUDA_CHK_ERROR("visibuf_count_pixels");
-
-        // CUDA_CHK(cudaMemcpyAsync(&pipe_atomics,
-        //                          desc->dev_pipeAtomics,
-        //                          sizeof(cudarf::pipe::Atomics),
-        //                          cudaMemcpyDeviceToHost,
-        //                          cuStream));
-        // CUDA_CHK(cudaStreamSynchronize(cuStream));
-
-        // std::vector<bool> printedMaterialIds(CUDARF_MAX_DRAW_PACKETS, false);
-        // printf("visibuf material pixel counts:");
-        // for (unsigned int matId: matIds) {
-        //     if (matId >= CUDARF_MAX_DRAW_PACKETS || printedMaterialIds[matId]) {
-        //         continue;
-        //     }
-
-        //     printedMaterialIds[matId] = true;
-        //     printf(" [mat %u]=%u", matId, pipe_atomics.visibuf.materialPixelCount[matId]);
-        // }
-        // printf("\n");
-    }
-
-    // build material offsets using prefix sums
-    if (useOpaqueVisibuf)
-    {
-        dim3 blockSize2d(activeMaterialCount, 1);
-        dim3 blockCount2d(1, 1);
-
-        CUDA_TIME_BEGIN(visibuf_material_offsets);
-
-        visibuf_build_material_offsets<<<blockCount2d, blockSize2d, 0, cuStream>>>
-            (static_cast<uint32_t>(activeMaterialCount), desc->dev_pipeAtomics, desc->dev_materialOffsets);
-
-        CUDA_TIME_END(visibuf_material_offsets);
-
-        CUDA_CHK_ERROR("visibuf_build_material_offsets");
-    }
-
-    // visibuf pixel counting stage
+    // build compact list of visible opaque fragments
     if (useOpaqueVisibuf)
     {
         dim3 blockSize2d(8, 8);
@@ -934,8 +880,8 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
         CUDA_TIME_BEGIN(visibuf_build_xy_lists);
         visibuf_build_xy_lists<<<blockCount2d, blockSize2d, 0, cuStream>>>
-            (desc->dev_pipeParams, activeMaterialCount, desc->dev_geom_output, desc->dev_pipeAtomics,
-             desc->dev_materialOffsets, desc->dev_xyCommands);
+            (desc->dev_pipeParams, desc->dev_geom_output, desc->dev_pipeAtomics,
+             desc->dev_xyCommands);
 
         CUDA_TIME_END(visibuf_build_xy_lists);
 

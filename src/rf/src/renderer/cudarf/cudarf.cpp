@@ -479,9 +479,6 @@ void cudarf::pipe::init(cudarf::pipe::Ctx *desc, int window_width, int window_he
     CUDA_CHK(cudarf_cuda_free(desc->dev_geom_output));
     CUDA_CHK(cudarf_cuda_malloc(&desc->dev_geom_output,
                                 desc->width * desc->height * sizeof(cudarf::visibuf::GeomOutput)));
-    CUDA_CHK(cudarf_cuda_free(desc->dev_materialOffsets));
-    CUDA_CHK(cudarf_cuda_malloc(&desc->dev_materialOffsets,
-                                CUDARF_MAX_DRAW_PACKETS * sizeof(cudarf::visibuf::MaterialOffset)));
     CUDA_CHK(cudarf_cuda_free(desc->dev_xyCommands));
     CUDA_CHK(cudarf_cuda_malloc(&desc->dev_xyCommands,
                                 desc->width * desc->height * sizeof(cudarf::visibuf::XYCommand)));
@@ -543,8 +540,6 @@ void cudarf::pipe::destroy(cudarf::pipe::Ctx *desc) {
     desc->dev_depthbuffer = NULL;
     CUDA_CHK(cudarf_cuda_free(desc->dev_geom_output));
     desc->dev_geom_output = NULL;
-    CUDA_CHK(cudarf_cuda_free(desc->dev_materialOffsets));
-    desc->dev_materialOffsets = NULL;
     CUDA_CHK(cudarf_cuda_free(desc->dev_xyCommands));
     desc->dev_xyCommands = NULL;
 
@@ -636,10 +631,6 @@ void cudarf::pipe::begin_frame(cudarf::pipe::Ctx *desc, unsigned int frameCounte
     CUDA_CHK(cudaMemsetAsync(desc->dev_geom_output,
                              0xFF,
                              sizeof(cudarf::visibuf::GeomOutput) * desc->width * desc->height,
-                             cuStream));
-    CUDA_CHK(cudaMemsetAsync(desc->dev_materialOffsets,
-                             0xFF,
-                             sizeof(cudarf::visibuf::MaterialOffset) * CUDARF_MAX_DRAW_PACKETS,
                              cuStream));
     CUDA_CHK(cudaMemsetAsync(desc->dev_xyCommands,
                              0xFF,
