@@ -874,7 +874,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     // build compact list of visible opaque fragments
     if (useOpaqueVisibuf)
     {
-        dim3 blockSize2d(8, 8);
+        dim3 blockSize2d(CUDARF_VISIBUF_XY_BLOCK_SIZE, CUDARF_VISIBUF_XY_BLOCK_SIZE);
         dim3 blockCount2d((desc->width - 1) / blockSize2d.x + 1,
                           (desc->height - 1) / blockSize2d.y + 1);
 

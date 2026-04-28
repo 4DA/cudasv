@@ -89,6 +89,10 @@
 #define CUDARF_DEPTH_MAX (1 << 15)
 #define CUDARF_DEPTH_RANGE (CUDARF_DEPTH_MAX - CUDARF_DEPTH_MIN)
 
+// visibuf
+// --
+#define CUDARF_VISIBUF_XY_BLOCK_SIZE  16
+
 #define PRIM_ELEMS 3
 
 #define CUDARF_MAX_CONSTMEM_SZ (4 * sizeof(cudarf::rast::PipeParams))
