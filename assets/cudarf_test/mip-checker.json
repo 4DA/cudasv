@@ -1,0 +1,7 @@
+{
+  "name": "mip_checker",
+  "glb_path": "mip-checker.glb",
+  "position": [0.0, 0.0, 1.5],
+  "rotation": [90.0, 0.0, 0.0],
+  "scale": [1.0, 1.0, 1.0]
+}
