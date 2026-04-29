@@ -253,7 +253,9 @@ __device__ float4 compute_color_pbr(const cudarf::rast::PipeParams *pipe, const 
     materialData.n = n;
 
     cudarf::ColorRGB comp_diffuse =
-        compute_spherical(pipe->sphericalHarmonics, n, materialData.albedoColor);
+        compute_spherical(pipe->sphericalHarmonics,
+                          to_vec3f(cudarf::shading::vehicle_frame_to_cubemap_frame(to_glm(n))),
+                          materialData.albedoColor);
 
     float3 emissive = mat.emissive;
 
