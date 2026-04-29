@@ -116,6 +116,16 @@ struct RendererConfig
     int use_visibuf = 1;
 } ;
 
+struct TestScenarioConfig
+{
+    int enabled = 0;
+    std::string name;
+    std::string glb_path;
+    float position[3] = {0.0f, 0.0f, 0.0f};
+    float rotation[3] = {0.0f, 0.0f, 0.0f};
+    float scale[3] = {1.0f, 1.0f, 1.0f};
+};
+
 enum SurroundViewDebugMode
 {
     SURROUND_VIEW_DEBUG_NORMAL = 0,
@@ -150,6 +160,9 @@ struct OverlaysConfig
 {
     // 3D renderer config
     RendererConfig renderer_config;
+
+    // Optional extra test asset loaded under the vehicle root.
+    TestScenarioConfig test_scenario_config;
 
     // Surround-view overlap/blending policy
     SurroundViewBlendConfig surround_view_blend_config;

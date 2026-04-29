@@ -14,10 +14,36 @@
 
 using namespace engine;
 
+namespace
+{
+
+glm::quat make_rotation_quat_xyz_deg(const float rotationDeg[3])
+{
+    const float x = glm::radians(rotationDeg[0]);
+    const float y = glm::radians(rotationDeg[1]);
+    const float z = glm::radians(rotationDeg[2]);
+
+    const glm::quat qx = glm::angleAxis(x, glm::vec3(1.0f, 0.0f, 0.0f));
+    const glm::quat qy = glm::angleAxis(y, glm::vec3(0.0f, 1.0f, 0.0f));
+    const glm::quat qz = glm::angleAxis(z, glm::vec3(0.0f, 0.0f, 1.0f));
+
+    return glm::normalize(qz * qy * qx);
+}
+
+rf::TRSTransform make_test_scenario_transform(const TestScenarioConfig &config)
+{
+    return rf::TRSTransform(glm::vec3(config.position[0], config.position[1], config.position[2]),
+                            make_rotation_quat_xyz_deg(config.rotation),
+                            glm::vec3(config.scale[0], config.scale[1], config.scale[2]));
+}
+
+} // namespace
+
 engine::Error Engine::init()
 {
     OverlaysConfig *overlays_config = &config.overlays_config;
     VehicleModelConfig *vehicle_model_config = &overlays_config->vehicle_config;
+    TestScenarioConfig *test_scenario_config = &overlays_config->test_scenario_config;
 
     _impl->world = std::make_unique<World>();
     _impl->frameTimeDB = std::make_shared<cudarf::profiling::Events>("frameTime");
@@ -88,6 +114,38 @@ engine::Error Engine::init()
     assert(_impl->world->scene().get_materials_count() > 0);
 
     SPDLOG_INFO("{}", fmt::sprintf("Done loading mesh. OK"));
+
+    if (test_scenario_config->enabled) {
+        std::string scenarioName = test_scenario_config->name.empty()
+                                       ? "test_scenario"
+                                       : test_scenario_config->name;
+        std::string scenarioPrefix = "test::" + scenarioName + "::";
+        std::string scenarioRootName = "TestScenarioRoot::" + scenarioName;
+
+        rf::SceneComponent *scenarioRoot =
+            _impl->world->scene().add_scene_component(scenarioRootName,
+                                                      make_test_scenario_transform(*test_scenario_config),
+                                                      _impl->world->vehicle_component());
+
+        _impl->testScenarioModels.emplace_back();
+        _impl->testScenarioAnimations.emplace_back();
+
+        if (!loader::load_gltf_model(_impl->cuda_rasterizers[0].get(),
+                                     test_scenario_config->glb_path,
+                                     _impl->world->scene(),
+                                     scenarioRoot,
+                                     scenarioPrefix,
+                                     _impl->testScenarioAnimations.back(),
+                                     _impl->testScenarioModels.back(),
+                                     nullptr,
+                                     _impl->cudaOutputStreams[0]))
+        {
+            SPDLOG_ERROR("Failed to load test scenario '{}'", scenarioName);
+            return ERROR;
+        }
+
+        SPDLOG_INFO("Loaded test scenario '{}' under VehicleRoot", scenarioName);
+    }
 
     if (_impl->world->init(_impl->cuda_rasterizers[0].get(),
                            &config,

@@ -18,6 +18,7 @@
 #include "app/demo_vehicle_signal_provider.hpp"
 #include "app/glfw_host.hpp"
 #include "app/nuscenes_inspector.hpp"
+#include "app/test_scenario.hpp"
 #include "compat/runtime_source_bridge_4cam.hpp"
 #include "sources/source_factory.hpp"
 #include "sources/source_validation.hpp"
@@ -142,6 +143,15 @@ int main(int argc, char* argv[])
 
     if (cmdline.source_kind != videoio::SourceKind::NuScenes) {
         load_config(&app.engine->config, "configs.json");
+    }
+
+    if (!cmdline.test_scenario_file.empty()) {
+        if (!svapp::load_test_scenario_config(
+                cmdline.test_scenario_file,
+                app.engine->config.overlays_config.test_scenario_config))
+        {
+            return -1;
+        }
     }
 
     if (cmdline.width <= 0 || cmdline.height <= 0) {

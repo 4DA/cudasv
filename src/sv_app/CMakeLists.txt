@@ -31,6 +31,7 @@ find_package(glm REQUIRED CONFIG)
 add_executable(sv_app
   src/main.cpp
   src/app/cmdline.cpp
+  src/app/test_scenario.cpp
   src/app/glfw_host.cpp
   src/app/demo_vehicle_signal_provider.cpp
   src/app/nuscenes_inspector.cpp

@@ -2,9 +2,11 @@
 
 #include <array>
 #include <memory>
+#include <vector>
 
 #include <engine/engine.hpp>
 
+#include <rf/renderer/animation.hpp>
 #include <rf/renderer/cudarf/cudarf.hpp>
 #include <rf/renderer/cudarf/output.hpp>
 #include <rf/renderer/cudarf/draw_list_renderer.hpp>
@@ -30,6 +32,9 @@ struct EngineImpl
 
     std::shared_ptr<cudarf::profiling::Events> frameTimeDB = nullptr;
     std::array<std::shared_ptr<cudarf::profiling::Events>, SV_MAX_OUTPUTS> outputRenderTimeDB;
+
+    std::vector<tinygltf::Model> testScenarioModels;
+    std::vector<rf::AnimationMap> testScenarioAnimations;
 
     unsigned int frameCounter = 0;
 };
