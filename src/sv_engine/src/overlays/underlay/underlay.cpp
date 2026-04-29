@@ -98,6 +98,7 @@ int Underlay::init(cudarf::pipe::Ctx *desc, rf::Scene &scene, const Config *conf
     material->roughness = 1.0f;
     material->type = cudarf::SHADER_TYPE_UNLIT;
     material->albedoTex.textureObject = underlay_image;
+    material->isDoubleSided = false;
 
     loader::add_naive_mesh(desc,
                            underlayCompoName,

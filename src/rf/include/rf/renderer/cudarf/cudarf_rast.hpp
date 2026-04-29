@@ -280,6 +280,7 @@ struct PipeParams {
 
     unsigned int idxOffsets[CUDARF_DRAW_PACKET_BATCH_LIMIT];   // prefix sum of index counts
     unsigned int drawPacketMaterials[CUDARF_MAX_DRAW_PACKETS];
+    bool         drawPacketDoubleSided[CUDARF_MAX_DRAW_PACKETS];
 
     // -----------------------------------------------------------------------
     // Triangle setup output / bin tiler input

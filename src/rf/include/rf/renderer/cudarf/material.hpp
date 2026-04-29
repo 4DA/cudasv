@@ -47,6 +47,7 @@ struct Material {
     float clearcoatFactor;
     float clearcoatRoughness;
     bool isTranslucent;
+    bool isDoubleSided;
     Texture albedoTex;
     Texture emissiveTex;
     Texture occlusionTex;

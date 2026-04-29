@@ -514,6 +514,7 @@ create_material(const tinygltf::Model &model,
     newMat->metallic = metallicFactor;
     newMat->roughness = roughnessFactor;
     newMat->isTranslucent = !isOpaque;
+    newMat->isDoubleSided = isDoubleSided;
     newMat->albedoTex = albedoTexture;
     newMat->emissiveTex = emissiveTexture;
     newMat->occlusionTex = occlusionTexture;

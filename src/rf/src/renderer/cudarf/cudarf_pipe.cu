@@ -322,9 +322,11 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
                 activeGlobalIds[matId] = maxDenseId;
                 pipe.materials[maxDenseId] = *materials.at(matId);
                 pipe.drawPacketMaterials[dpId] = maxDenseId;
+                pipe.drawPacketDoubleSided[dpId] = materials.at(matId)->isDoubleSided;
                 maxDenseId++;
             } else {
                 pipe.drawPacketMaterials[dpId] = activeGlobalIds[matId];
+                pipe.drawPacketDoubleSided[dpId] = materials.at(matId)->isDoubleSided;
             }
 
             ord++;

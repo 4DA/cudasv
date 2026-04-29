@@ -347,7 +347,10 @@ void triangle_assembly(const cudarf::rast::PipeParams *pipe,
 
             if (edge_function(p0, p1, p2) >> (CUDARF_SUBPIXEL_LOG2 - 1) == 0) {return;}
 
-            if (pipe->withFaceCulling && area_f <= 0.0f) {
+            const bool withPacketFaceCulling =
+                pipe->withFaceCulling && !pipe->drawPacketDoubleSided[drawPacketId];
+
+            if (withPacketFaceCulling && area_f <= 0.0f) {
                 return;
             }
 
