@@ -1,4 +1,6 @@
+#include <cctype>
 #include <fstream>
+#include <sstream>
 
 #include <spdlog/spdlog.h>
 #include <spdlog/fmt/bundled/printf.h>
@@ -16,33 +18,46 @@ SphericalHarmonics SphericalHarmonics::load_from_file(const std::string &file)
 {
     std::vector<glm::vec3> result;
     std::ifstream fin(file, std::ios::in);
-    std::size_t line = 0;
+    std::size_t shLine = 0;
+    std::size_t fileLine = 0;
 
     if (!fin.good()) {
         SPDLOG_ERROR("{}", fmt::sprintf("Error opening %s", file.c_str()));
         return SphericalHarmonics();
     }
 
-    // skip all comment lines starting with '#' symbol
-    while (fin.peek() == '#') {
-        std::string unused;
-        std::getline(fin, unused);
-    }
+    std::string line;
+    while (shLine < SphericalHarmonics::ROWS_COUNT && std::getline(fin, line)) {
+        fileLine++;
 
-    while(line < SphericalHarmonics::ROWS_COUNT) {
-        float R = 0.0f; float G = 0.0f; float B = 0.0f;
-        fin >> R; fin >> G; fin >> B;
+        const std::size_t commentPos = line.find("//");
+        if (commentPos != std::string::npos) {
+            line.erase(commentPos);
+        }
 
-        if (fin.eof()) {break;}
+        for (char &ch : line) {
+            if (!(std::isdigit(static_cast<unsigned char>(ch)) ||
+                  ch == '+' || ch == '-' || ch == '.' || ch == 'e' || ch == 'E')) {
+                ch = ' ';
+            }
+        }
 
-        SPDLOG_INFO("{}", fmt::sprintf("SH coefs(%zu): %f, %f, %f", line, R, G, B));
+        std::istringstream iss(line);
+        float R = 0.0f;
+        float G = 0.0f;
+        float B = 0.0f;
+        if (!(iss >> R >> G >> B)) {
+            continue;
+        }
+
+        SPDLOG_INFO("{}", fmt::sprintf("SH coefs(%zu): %f, %f, %f", shLine, R, G, B));
         result.push_back(glm::vec3(R, G, B));
-        line++;
+        shLine++;
     }
 
    if (result.size() != SphericalHarmonics::ROWS_COUNT) {
-        SPDLOG_ERROR("{}", fmt::sprintf("Incorrect SH rows count: %zu",
-            result.size(), SphericalHarmonics::ROWS_COUNT));
+        SPDLOG_ERROR("{}", fmt::sprintf("Incorrect SH rows count: %zu (expected %zu) in %s",
+            result.size(), SphericalHarmonics::ROWS_COUNT, file.c_str()));
     }
 
     return SphericalHarmonics{result};
