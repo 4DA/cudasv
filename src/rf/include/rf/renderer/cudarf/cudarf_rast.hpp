@@ -132,6 +132,7 @@ struct Triangle {
     float2 tex[3];
 
     unsigned char materialId;
+    uint8_t isBackFacing;
     uint32_t id;
     uint32_t drawPacketId;
 

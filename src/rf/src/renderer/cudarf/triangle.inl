@@ -192,7 +192,8 @@ void setup_triangle(const cudarf::rast::PipeParams *pipe,
                     float2 t0, float2 t1, float2 t2,
                     cudarf::Color c0, cudarf::Color c1, cudarf::Color c2,
                     cudarf::Vec2f sP0, cudarf::Vec2f sP1, cudarf::Vec2f sP2,
-                    float3 w_rcp, float area_rcp, unsigned int materialId)
+                    float3 w_rcp, float area_rcp, unsigned int materialId,
+                    bool isBackFacing)
 {
 
     float2 screen = make_float2((float)pipe->windowWidth, (float)pipe->windowHeight);
@@ -248,6 +249,7 @@ void setup_triangle(const cudarf::rast::PipeParams *pipe,
     compute_aabb_screen(pipe, *out, out->flo, out->fhi);
 
     out->materialId = materialId;
+    out->isBackFacing = isBackFacing ? 1u : 0u;
 
     // TODO this optimization produces artifacats:
     // some fragments on tri borders are not rasterized
@@ -343,13 +345,15 @@ void triangle_assembly(const cudarf::rast::PipeParams *pipe,
             cudarf::Vec2f sP2 = 0.5f * screen * (make_float2(P2.x, P2.y) + 1.0f);
 
             float area_f = edge_function(sP0, sP1, sP2);
+            const bool isBackFacing = area_f <= 0.0f;
 
             if (edge_function(p0, p1, p2) >> (CUDARF_SUBPIXEL_LOG2 - 1) == 0) {return;}
 
+            const bool isDoubleSided = pipe->drawPacketDoubleSided[drawPacketId];
             const bool withPacketFaceCulling =
-                pipe->withFaceCulling && !pipe->drawPacketDoubleSided[drawPacketId];
+                pipe->withFaceCulling && !isDoubleSided;
 
-            if (withPacketFaceCulling && area_f <= 0.0f) {
+            if (withPacketFaceCulling && isBackFacing) {
                 return;
             }
 
@@ -387,7 +391,8 @@ void triangle_assembly(const cudarf::rast::PipeParams *pipe,
                     sP0, sP1, sP2,
                     w_rcp,
                     1.0 / area_f,
-                    pipe->drawPacketMaterials[drawPacketId]);
+                    pipe->drawPacketMaterials[drawPacketId],
+                    isDoubleSided && isBackFacing);
                 pipe->tris[i].id = i;
                 pipe->tris[i].drawPacketId = drawPacketId;
                 return;

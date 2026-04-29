@@ -338,6 +338,9 @@ void compute_fragment(const cudarf::rast::Triangle &tri,
     } else if constexpr(TShaderType == cudarf::SHADER_TYPE_PBR) {
         frag.pos_global = interp(baryPersp, tri.v_world);
         frag.normal = normalize(interp(baryPersp, tri.normal));
+        if (tri.isBackFacing) {
+            frag.normal = -frag.normal;
+        }
     }
 
     if constexpr(TTexturingEnabled) {
