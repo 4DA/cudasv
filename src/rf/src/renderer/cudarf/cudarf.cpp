@@ -56,7 +56,8 @@ cudarf::Uniforms cudarf::make_uniforms(const glm::mat4 &P,
                                        const glm::mat4 &M)
 {
     glm::mat4 PVM = P * V * M;
-    return cudarf::Uniforms{PVM, M};
+    glm::mat4 N = glm::mat4(glm::transpose(glm::inverse(glm::mat3(M))));
+    return cudarf::Uniforms{PVM, M, N};
 }
 
 cudarf::CommonUniforms cudarf::make_common(const glm::mat4 &P,

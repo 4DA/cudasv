@@ -114,8 +114,7 @@ void vertex_transform(const cudarf::rast::PipeParams *pipe,
     if (i >= vertex_count) { return; }
 
     cudarf::rast::VertexIn *vertexBuffer = pipe->drawPackets[drawPacketId].dev_bufVertex;
-    // TODO normals must be transformed by inverse transposed matrix
-    cudarf::Vec4f N = uniforms.M * make_vec4f(vertexBuffer[vIdx].nor, 0.0f);
+    cudarf::Vec4f N = uniforms.N * make_vec4f(vertexBuffer[vIdx].nor, 0.0f);
 
     glm::mat4 PVM;
 

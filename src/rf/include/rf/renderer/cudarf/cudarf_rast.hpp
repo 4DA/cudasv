@@ -46,6 +46,7 @@ namespace cudarf
 struct Uniforms {
     glm::mat4 PVM;
     glm::mat4 M;         // used for PBR world-space shading
+    glm::mat4 N;         // inverse-transpose normal matrix
 };
 
 struct CommonUniforms {
