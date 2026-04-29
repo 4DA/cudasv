@@ -26,6 +26,7 @@ int run_application_loop(AppContext &app,
     const videoio::SourceInfo &source_info = frame_source.info();
     RuntimeRenderBridge4CamContext runtime_render_bridge;
     const bool dump_after_frame = !options.dump_frame_path.empty();
+    int rendered_frames = 0;
 
     if (!prepare_runtime_render_bridge_4cam_context(source_info, runtime_render_bridge)) {
         SPDLOG_ERROR("Failed to prepare the current 4-camera runtime compatibility bridge");
@@ -101,7 +102,7 @@ int run_application_loop(AppContext &app,
             }
             pthread_mutex_unlock(&app.access);
 
-            if (dump_after_frame) {
+            if (dump_after_frame && rendered_frames == options.dump_frame_number) {
                 pthread_mutex_lock(&app.access);
                 const engine::Error dump_status =
                     app.engine->dump_output_png(options.dump_frame_path,
@@ -129,6 +130,7 @@ int run_application_loop(AppContext &app,
             return EXIT_SUCCESS;
         }
 
+        rendered_frames++;
         frame_set_index = 1 - frame_set_index;
 
         usleep(1000000 / options.fps);

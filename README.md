@@ -155,6 +155,19 @@ sv_app --frames frames/right.png frames/left.png frames/front.png frames/rear.pn
        --height 1080
 ```
 
+To dump a specific rendered frame to PNG:
+
+```bash
+sv_app --frames frames/right.png frames/left.png frames/front.png frames/rear.png \
+       --rig canonical-rig.json \
+       --width 1920 \
+       --height 1080 \
+       --dump-frame /tmp/cudasv.png \
+       --dump-frame-number 8
+```
+
+If `--dump-frame-number` is omitted, frame `0` is dumped.
+
 There is also a sample launcher script in the sample pack:
 
 ```bash

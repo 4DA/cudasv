@@ -61,6 +61,24 @@ int parse_cmdline(int argc, char **argv, CmdlineOpts &options)
             }
 
             options.dump_frame_path = argv[++index];
+        } else if (!strcmp(argv[index], "--dump-frame-number")) {
+            if (index + 1 >= argc) {
+                SPDLOG_ERROR("--dump-frame-number requires an integer value");
+                return -1;
+            }
+
+            options.dump_frame_number = atoi(argv[++index]);
+            if (options.dump_frame_number < 0) {
+                SPDLOG_ERROR("--dump-frame-number must be >= 0");
+                return -1;
+            }
+        } else if (!strcmp(argv[index], "--test-scenario")) {
+            if (index + 1 >= argc) {
+                SPDLOG_ERROR("--test-scenario requires a file path");
+                return -1;
+            }
+
+            options.test_scenario_file = argv[++index];
         } else if (!strcmp(argv[index], "--source-kind")) {
             if (index + 1 >= argc) {
                 SPDLOG_ERROR("--source-kind requires a value");
