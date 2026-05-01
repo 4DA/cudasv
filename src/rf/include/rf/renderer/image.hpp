@@ -4,6 +4,7 @@
 #include <array>
 #include <functional>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace rf

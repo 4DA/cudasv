@@ -85,7 +85,7 @@ int Underlay::init(cudarf::pipe::Ctx *desc, rf::Scene &scene, const Config *conf
     this->underlay_config = &config->overlays_config.underlay_config;
 
     underlay_image_description = rf::load_image(underlay_config->texture_path, false, true);
-    underlay_image = rf::create_cuda_texture(underlay_image_description, cudaAddressModeClamp, cuStream);
+    underlay_image = cudarf::create_cuda_texture(underlay_image_description, cudaAddressModeClamp, 1, cuStream);
     assert(underlay_image);
 
     rf::NaiveMeshPtr mesh = generate_underlay_mesh(config);

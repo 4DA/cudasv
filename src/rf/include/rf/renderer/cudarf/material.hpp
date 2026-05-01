@@ -5,6 +5,7 @@
 #include <unordered_map>
 
 #include <rf/renderer/glm_common.hpp>
+#include <rf/renderer/cudarf/texture.hpp>
 
 namespace cudarf
 {
@@ -12,30 +13,6 @@ enum ShaderType {
     SHADER_TYPE_PBR = 0,
     SHADER_TYPE_UNLIT = 1,
     SHADER_TYPE_COUNT = 2,
-};
-
-struct Texture {
-    cudaTextureObject_t textureObject;
-    bool hasUVTransform;
-    glm::mat3 uvTransform;
-    unsigned int channels;
-
-    __device__ __host__ Texture(cudaTextureObject_t textureObject,
-                                bool hasUVTransform,
-                                glm::mat3 uvTransform,
-                                unsigned int channels):
-        textureObject(textureObject),
-        hasUVTransform(hasUVTransform),
-        uvTransform(uvTransform),
-        channels(channels)
-        {}
-
-    __device__ __host__ Texture():
-        textureObject(0),
-        hasUVTransform(false),
-        uvTransform(1.0f),
-        channels(0)
-        {}
 };
 
 struct Material {

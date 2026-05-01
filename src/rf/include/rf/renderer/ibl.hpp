@@ -4,7 +4,7 @@
 
 #include <cuda_runtime.h>
 
-#include "texture.hpp"
+#include <rf/renderer/image.hpp>
 #include "cudarf/material.hpp"
 
 namespace rf

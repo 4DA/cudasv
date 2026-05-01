@@ -13,7 +13,7 @@
 #include <rf/renderer/ibl.hpp>
 #include <rf/renderer/scene_component.hpp>
 #include <rf/renderer/point_light_component.hpp>
-#include <rf/renderer/texture.hpp>
+#include <rf/renderer/image.hpp>
 
 // Rendering pass influence on rendering operations order
 namespace rf

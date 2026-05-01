@@ -6,7 +6,7 @@
 #include <vector>
 
 #include <cuda_runtime.h>
-#include <rf/renderer/texture.hpp>
+#include <rf/renderer/image.hpp>
 
 #include "glcommon.hpp"
 
@@ -19,10 +19,15 @@ void log_duration(const std::string &message,
                   const Duration& duration,
                   unsigned int indent = 0);
 
-cudaTextureObject_t create_cuda_texture(rf::Image desc,
-                                        cudaTextureAddressMode addressMode,
-                                        cudaStream_t cuStream);
 } // namespace rf
 
+
+namespace cudarf
+{
+cudaTextureObject_t create_cuda_texture(rf::Image desc,
+                                        cudaTextureAddressMode addressMode,
+                                        int mipLevels,
+                                        cudaStream_t cuStream);
+}
 
 #endif

@@ -11,7 +11,7 @@
 
 #include <rf/renderer/glm_common.hpp>
 #include <rf/renderer/material.hpp>
-#include <rf/renderer/texture.hpp>
+#include <rf/renderer/image.hpp>
 #include <rf/renderer/utils.hpp>
 
 #include "material.hpp"
@@ -227,7 +227,7 @@ std::optional<cudarf::Texture> load_gltf_image(const tinygltf::Model &model,
         return std::nullopt;
     }
 
-    cudaTextureObject_t texObj = rf::create_cuda_texture(image, cudaAddressModeWrap, cuStream);
+    cudaTextureObject_t texObj = cudarf::create_cuda_texture(image, cudaAddressModeWrap, 1, cuStream);
 
     if (uvTransform) {
         return cudarf::Texture(texObj, true, *uvTransform, image.channels);
@@ -235,11 +235,6 @@ std::optional<cudarf::Texture> load_gltf_image(const tinygltf::Model &model,
 
     return cudarf::Texture(texObj, false, glm::mat3(1.0f), image.channels);
 }
-
-struct LoadedTexture {
-    cudarf::Texture texture;
-    std::optional<glm::mat3> uv_transform;
-};
 
 std::optional<int> get_parameter_texture_index(const tinygltf::Parameter &parameter,
                                                const char *label)
@@ -253,11 +248,11 @@ std::optional<int> get_parameter_texture_index(const tinygltf::Parameter &parame
     return texIndex;
 }
 
-std::optional<LoadedTexture> load_pbr_texture(const tinygltf::Model &model,
-                                              int tex_index,
-                                              const tinygltf::ExtensionMap &extensions,
-                                              const char *label,
-                                              cudaStream_t cuStream)
+std::optional<cudarf::Texture> load_pbr_texture(const tinygltf::Model &model,
+                                                int tex_index,
+                                                const tinygltf::ExtensionMap &extensions,
+                                                const char *label,
+                                                cudaStream_t cuStream)
 {
     if (tex_index < 0 || tex_index >= static_cast<int>(model.textures.size())) {
         SPDLOG_ERROR("Bad texture id: {}", tex_index);
@@ -281,7 +276,7 @@ std::optional<LoadedTexture> load_pbr_texture(const tinygltf::Model &model,
         return std::nullopt;
     }
 
-    return LoadedTexture{*tex, uvTransform};
+    return tex;
 }
 
 std::string get_material_name(const tinygltf::Material *gltfMaterial,
@@ -396,10 +391,10 @@ create_material(const tinygltf::Model &model,
                 return nullptr;
             }
 
-            albedoTexture = loaded->texture;
-            albedoTexChannels = loaded->texture.channels;
-            if (loaded->uv_transform) {
-                uvt.transforms[rf::UVTransform::TEXTURE_KEY_BASECOLOR] = *loaded->uv_transform;
+            albedoTexture = *loaded;
+            albedoTexChannels = loaded->channels;
+            if (loaded->hasUVTransform) {
+                uvt.transforms[rf::UVTransform::TEXTURE_KEY_BASECOLOR] = loaded->uvTransform;
             }
         }
 
@@ -429,10 +424,10 @@ create_material(const tinygltf::Model &model,
                 return nullptr;
             }
 
-            metRoughTexture = loaded->texture;
-            OMRTexChannels = loaded->texture.channels;
-            if (loaded->uv_transform) {
-                uvt.transforms[rf::UVTransform::TEXTURE_KEY_METROUGH] = *loaded->uv_transform;
+            metRoughTexture = *loaded;
+            OMRTexChannels = loaded->channels;
+            if (loaded->hasUVTransform) {
+                uvt.transforms[rf::UVTransform::TEXTURE_KEY_METROUGH] = loaded->uvTransform;
             }
         }
 
@@ -448,10 +443,10 @@ create_material(const tinygltf::Model &model,
                 return nullptr;
             }
 
-            normalTexture = loaded->texture;
-            normalTexChannels = loaded->texture.channels;
-            if (loaded->uv_transform) {
-                uvt.transforms[rf::UVTransform::TEXTURE_KEY_NORMAL] = *loaded->uv_transform;
+            normalTexture = *loaded;
+            normalTexChannels = loaded->channels;
+            if (loaded->hasUVTransform) {
+                uvt.transforms[rf::UVTransform::TEXTURE_KEY_NORMAL] = loaded->uvTransform;
             }
         }
 
@@ -466,8 +461,8 @@ create_material(const tinygltf::Model &model,
                 return nullptr;
             }
 
-            occlusionTexture = loaded->texture;
-            OMRTexChannels = loaded->texture.channels;
+            occlusionTexture = *loaded;
+            OMRTexChannels = loaded->channels;
         }
 
         auto emissiveIt = gltfMaterial->additionalValues.find("emissiveTexture");
@@ -486,11 +481,11 @@ create_material(const tinygltf::Model &model,
                 return nullptr;
             }
 
-            emissiveTexture = loaded->texture;
-            emissiveTexChannels = loaded->texture.channels;
+            emissiveTexture = *loaded;
+            emissiveTexChannels = loaded->channels;
             isEmissive = true;
-            if (loaded->uv_transform) {
-                uvt.transforms[rf::UVTransform::TEXTURE_KEY_EMISSIVE] = *loaded->uv_transform;
+            if (loaded->hasUVTransform) {
+                uvt.transforms[rf::UVTransform::TEXTURE_KEY_EMISSIVE] = loaded->uvTransform;
             }
         }
     }

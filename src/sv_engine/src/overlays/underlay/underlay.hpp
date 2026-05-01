@@ -10,7 +10,7 @@
 #include <rf/renderer/cudarf/cudarf.hpp>
 
 #include <rf/renderer/gltf_common.hpp>
-#include <rf/renderer/texture.hpp>
+#include <rf/renderer/image.hpp>
 #include <rf/renderer/scene.hpp>
 
 /// root component name for car underlay

@@ -66,7 +66,8 @@ set(
     ${CMAKE_CURRENT_SOURCE_DIR}/include/rf/renderer/scene_component.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/rf/renderer/virtual_camera.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/rf/renderer/trs_transform.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/rf/renderer/texture.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/rf/renderer/image.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/rf/renderer/cudarf/texture.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/rf/renderer/scene.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/rf/renderer/renderer.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/rf/renderer/gltf_loader.hpp
@@ -108,7 +109,8 @@ set(
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/virtual_camera.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/animation.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/mesh_geometry.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/texture.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/image.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/cudarf/texture.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/ibl.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/utils.cpp
 
