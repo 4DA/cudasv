@@ -324,6 +324,13 @@ void create_surface(cudaSurfaceObject_t &fb,
                     int height,
                     const cudaStream_t &cuStream);
 
+void create_array_texture(cudaTextureObject_t &outTex,
+                          cudaArray_t array,
+                          cudaTextureAddressMode addressMode);
+
+void create_array_surface(cudaSurfaceObject_t &outSurf,
+                          cudaArray_t array);
+
 void free_surface(cudarf::LinearSurface &fb);
 void free_surface(cudaSurfaceObject_t &fb);
 

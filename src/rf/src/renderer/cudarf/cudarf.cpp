@@ -290,9 +290,39 @@ void cudarf::create_surface(cudaSurfaceObject_t &fb,
     surfRes.resType = cudaResourceTypeArray;
     surfRes.res.array.array = cuArray;
 
-    CUDA_CHK(cudaCreateSurfaceObject(&fb, &surfRes));
+    create_array_surface(fb, cuArray);
 }
 
+void cudarf::create_array_surface(cudaSurfaceObject_t &outSurf,
+                                  cudaArray_t array)
+{
+    cudaResourceDesc surfRes;
+    std::memset(&surfRes, 0, sizeof(cudaResourceDesc));
+    surfRes.resType = cudaResourceTypeArray;
+    surfRes.res.array.array = array;
+
+    CUDA_CHK(cudaCreateSurfaceObject(&outSurf, &surfRes));
+}
+
+void cudarf::create_array_texture(cudaTextureObject_t &outTex,
+                                  cudaArray_t array,
+                                  cudaTextureAddressMode addressMode)
+{
+    cudaResourceDesc texRes;
+    std::memset(&texRes, 0, sizeof(cudaResourceDesc));
+    texRes.resType = cudaResourceTypeArray;
+    texRes.res.array.array = array;
+
+    cudaTextureDesc texDescr;
+    std::memset(&texDescr, 0, sizeof(cudaTextureDesc));
+    texDescr.normalizedCoords = true;
+    texDescr.filterMode = cudaFilterModeLinear;
+    texDescr.addressMode[0] = addressMode;
+    texDescr.addressMode[1] = addressMode;
+    texDescr.readMode = cudaReadModeNormalizedFloat;
+
+    CUDA_CHK(cudaCreateTextureObject(&outTex, &texRes, &texDescr, NULL));
+}
 
 void cudarf::create_surface(cudaSurfaceObject_t &outSurface,
                             cudaTextureObject_t &outTexture,
@@ -309,31 +339,8 @@ void cudarf::create_surface(cudaSurfaceObject_t &outSurface,
 
     CUDA_CHK(cudaMallocArray(&cuArray, &channelDesc, width, height, 0));
 
-    cudaResourceDesc surfRes;
-    std::memset(&surfRes, 0, sizeof(cudaResourceDesc));
-    surfRes.resType = cudaResourceTypeArray;
-    surfRes.res.array.array = cuArray;
-
-    CUDA_CHK(cudaCreateSurfaceObject(&outSurface, &surfRes));
-
-    // create texture for reading
-    // --
-    cudaResourceDesc texRes;
-    memset(&texRes, 0, sizeof(cudaResourceDesc));
-
-    texRes.resType = cudaResourceTypeArray;
-    texRes.res.array.array = cuArray;
-
-    cudaTextureDesc texDescr;
-    memset(&texDescr, 0, sizeof(cudaTextureDesc));
-
-    texDescr.normalizedCoords = true;
-    texDescr.filterMode = cudaFilterModeLinear;
-    texDescr.addressMode[0] = cudaAddressModeClamp;
-    texDescr.addressMode[1] =  cudaAddressModeClamp;
-    texDescr.readMode = cudaReadModeNormalizedFloat;
-
-    CUDA_CHK(cudaCreateTextureObject(&outTexture, &texRes, &texDescr, NULL));
+    create_array_surface(outSurface, cuArray);
+    create_array_texture(outTexture, cuArray, cudaAddressModeClamp);
 
     return;
 }
@@ -366,22 +373,7 @@ void cudarf::create_surface(cudarf::LinearSurface &outSurface,
 
     CUDA_CHK(cudaMallocArray(&outSurface.texArray, &channelDesc, width, height, 0));
 
-    cudaResourceDesc texRes;
-    memset(&texRes, 0, sizeof(cudaResourceDesc));
-
-    texRes.resType = cudaResourceTypeArray;
-    texRes.res.array.array = outSurface.texArray;
-
-    cudaTextureDesc texDescr;
-    memset(&texDescr, 0, sizeof(cudaTextureDesc));
-
-    texDescr.normalizedCoords = true;
-    texDescr.filterMode = cudaFilterModeLinear;
-    texDescr.addressMode[0] = cudaAddressModeClamp;
-    texDescr.addressMode[1] =  cudaAddressModeClamp;
-    texDescr.readMode = cudaReadModeNormalizedFloat;
-
-    CUDA_CHK(cudaCreateTextureObject(&outTexture, &texRes, &texDescr, NULL));
+    create_array_texture(outTexture, outSurface.texArray, cudaAddressModeClamp);
 
     return;
 }
