@@ -85,8 +85,9 @@ int Underlay::init(cudarf::pipe::Ctx *desc, rf::Scene &scene, const Config *conf
     this->underlay_config = &config->overlays_config.underlay_config;
 
     underlay_image_description = rf::load_image(underlay_config->texture_path, false, true);
-    underlay_image = cudarf::create_cuda_texture(underlay_image_description, cudaAddressModeClamp, 1, cuStream);
-    assert(underlay_image);
+    auto underlayTexture = cudarf::create_cuda_texture(underlay_image_description, cudaAddressModeClamp, 1, cuStream);
+    assert(underlayTexture);
+    underlay_image = underlayTexture->textureObject;
 
     rf::NaiveMeshPtr mesh = generate_underlay_mesh(config);
 
@@ -97,7 +98,7 @@ int Underlay::init(cudarf::pipe::Ctx *desc, rf::Scene &scene, const Config *conf
     material->metallic = 0.0f;
     material->roughness = 1.0f;
     material->type = cudarf::SHADER_TYPE_UNLIT;
-    material->albedoTex.textureObject = underlay_image;
+    material->albedoTex = *underlayTexture;
     material->isDoubleSided = false;
 
     loader::add_naive_mesh(desc,

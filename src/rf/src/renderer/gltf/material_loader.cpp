@@ -25,6 +25,8 @@ const std::string UV_TRANSFORM_SCALE = "scale";
 const std::string UV_TRANSFORM_ROTATION = "rotation";
 const std::string UV_TRANSFORM_TEXCOORD = "texCoord";
 
+const unsigned int ALBEDO_MIP_COUNT = 6;
+
 std::optional<glm::vec2> get_texture_transform_vec2(const tinygltf::Value::Object &object,
                                                     const std::string &key)
 {
@@ -177,6 +179,7 @@ std::optional<cudarf::Texture> load_gltf_image(const tinygltf::Model &model,
                                                const std::string &image_name,
                                                const std::string &usageStr,
                                                std::optional<glm::mat3> uvTransform,
+                                               unsigned int mipCount,
                                                cudaStream_t cuStream)
 {
     if (image_id < 0 || image_id >= static_cast<int>(model.images.size())) {
@@ -227,13 +230,18 @@ std::optional<cudarf::Texture> load_gltf_image(const tinygltf::Model &model,
         return std::nullopt;
     }
 
-    cudaTextureObject_t texObj = cudarf::create_cuda_texture(image, cudaAddressModeWrap, 1, cuStream);
+    auto texOpt = cudarf::create_cuda_texture(image, cudaAddressModeWrap, mipCount, cuStream);
 
-    if (uvTransform) {
-        return cudarf::Texture(texObj, true, *uvTransform, image.channels);
+    if (!texOpt) {
+        return texOpt;
     }
 
-    return cudarf::Texture(texObj, false, glm::mat3(1.0f), image.channels);
+    if (uvTransform) {
+        texOpt->hasUVTransform = true;
+        texOpt->uvTransform = *uvTransform;
+    }
+
+    return texOpt;
 }
 
 std::optional<int> get_parameter_texture_index(const tinygltf::Parameter &parameter,
@@ -252,6 +260,7 @@ std::optional<cudarf::Texture> load_pbr_texture(const tinygltf::Model &model,
                                                 int tex_index,
                                                 const tinygltf::ExtensionMap &extensions,
                                                 const char *label,
+                                                unsigned int mipCount,
                                                 cudaStream_t cuStream)
 {
     if (tex_index < 0 || tex_index >= static_cast<int>(model.textures.size())) {
@@ -271,7 +280,7 @@ std::optional<cudarf::Texture> load_pbr_texture(const tinygltf::Model &model,
         return std::nullopt;
     }
 
-    auto tex = load_gltf_image(model, image_id, name, label, uvTransform, cuStream);
+    auto tex = load_gltf_image(model, image_id, name, label, uvTransform, mipCount, cuStream);
     if (!tex) {
         return std::nullopt;
     }
@@ -386,6 +395,7 @@ create_material(const tinygltf::Model &model,
                                            pbr.baseColorTexture.index,
                                            pbr.baseColorTexture.extensions,
                                            "albedo",
+                                           ALBEDO_MIP_COUNT,
                                            cuStream);
             if (!loaded) {
                 return nullptr;
@@ -419,6 +429,7 @@ create_material(const tinygltf::Model &model,
                                            pbr.metallicRoughnessTexture.index,
                                            pbr.metallicRoughnessTexture.extensions,
                                            "met-rough",
+                                           1,
                                            cuStream);
             if (!loaded) {
                 return nullptr;
@@ -438,6 +449,7 @@ create_material(const tinygltf::Model &model,
                                            gltfMaterial->normalTexture.index,
                                            gltfMaterial->normalTexture.extensions,
                                            "normal-tex",
+                                           1,
                                            cuStream);
             if (!loaded) {
                 return nullptr;
@@ -456,7 +468,7 @@ create_material(const tinygltf::Model &model,
                 return nullptr;
             }
 
-            auto loaded = load_pbr_texture(model, *texId, {}, "occlusion", cuStream);
+            auto loaded = load_pbr_texture(model, *texId, {}, "occlusion", 1, cuStream);
             if (!loaded) {
                 return nullptr;
             }
@@ -476,6 +488,7 @@ create_material(const tinygltf::Model &model,
                                            *texId,
                                            gltfMaterial->emissiveTexture.extensions,
                                            "emissive",
+                                           1,
                                            cuStream);
             if (!loaded) {
                 return nullptr;

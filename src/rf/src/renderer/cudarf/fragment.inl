@@ -227,7 +227,7 @@ __device__ float4 compute_color_pbr(const cudarf::rast::PipeParams *pipe, const 
         glm::vec3 uv(frag.tex.x, frag.tex.y, 0.0f);
         uv = uv * mat.albedoTex.uvTransform;
 
-        float4 texVal = tex2D<float4>(mat.albedoTex.textureObject, uv.x, uv.y);
+        float4 texVal = tex2DLod<float4>(mat.albedoTex.textureObject, uv.x, uv.y, 0.0f);
         float3 rgb = to_vec3f(texVal);
         rgb = cudarf::shading::srgb_to_linear(rgb);
         mat.baseColor.x *= rgb.x;

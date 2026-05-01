@@ -110,7 +110,7 @@ set(
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/animation.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/mesh_geometry.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/image.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/cudarf/texture.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/cudarf/texture.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/ibl.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/utils.cpp
 

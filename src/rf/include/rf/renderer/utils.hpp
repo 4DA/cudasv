@@ -21,13 +21,4 @@ void log_duration(const std::string &message,
 
 } // namespace rf
 
-
-namespace cudarf
-{
-cudaTextureObject_t create_cuda_texture(rf::Image desc,
-                                        cudaTextureAddressMode addressMode,
-                                        int mipLevels,
-                                        cudaStream_t cuStream);
-}
-
 #endif

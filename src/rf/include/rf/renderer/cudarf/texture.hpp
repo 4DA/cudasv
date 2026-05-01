@@ -9,35 +9,42 @@ namespace cudarf
 {
 struct Texture {
     cudaTextureObject_t textureObject;
-    bool hasUVTransform;
-    glm::mat3 uvTransform;
     unsigned int channels;
 
     int mipLevels;
     cudaArray *dev_array;
-    cudaMipmappedArray *dev_mipmappedArray;
+    cudaMipmappedArray *dev_mipmapArray;
+
+    bool hasUVTransform;
+    glm::mat3 uvTransform;
 
     __device__ __host__ Texture(cudaTextureObject_t textureObject,
                                 bool hasUVTransform,
                                 glm::mat3 uvTransform,
                                 unsigned int channels):
         textureObject(textureObject),
+        channels(channels),
+        mipLevels(1),
+        dev_array(nullptr),
+        dev_mipmapArray(nullptr),
         hasUVTransform(hasUVTransform),
-        uvTransform(uvTransform),
-        channels(channels)
+        uvTransform(uvTransform)
         {}
 
     __device__ __host__ Texture():
         textureObject(0),
+        channels(0),
+        mipLevels(0),
+        dev_array(nullptr),
+        dev_mipmapArray(nullptr),
         hasUVTransform(false),
-        uvTransform(1.0f),
-        channels(0)
+        uvTransform(1.0f)
         {}
 };
 
-cudaTextureObject_t create_cuda_texture(rf::Image image,
-                                        cudaTextureAddressMode addressMode,
-                                        int mipLevels,
-                                        cudaStream_t cuStream);
+std::optional<Texture> create_cuda_texture(rf::Image image,
+                                           cudaTextureAddressMode addressMode,
+                                           unsigned int mipLevels,
+                                           cudaStream_t cuStream);
 }
 #endif
