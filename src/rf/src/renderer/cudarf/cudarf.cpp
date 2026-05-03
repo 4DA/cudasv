@@ -306,7 +306,8 @@ void cudarf::create_array_surface(cudaSurfaceObject_t &outSurf,
 
 void cudarf::create_array_texture(cudaTextureObject_t &outTex,
                                   cudaArray_t array,
-                                  cudaTextureAddressMode addressMode)
+                                  cudaTextureAddressMode addressMode,
+                                  bool usePointUnnormalized)
 {
     cudaResourceDesc texRes;
     std::memset(&texRes, 0, sizeof(cudaResourceDesc));
@@ -315,10 +316,12 @@ void cudarf::create_array_texture(cudaTextureObject_t &outTex,
 
     cudaTextureDesc texDescr;
     std::memset(&texDescr, 0, sizeof(cudaTextureDesc));
-    texDescr.normalizedCoords = true;
-    texDescr.filterMode = cudaFilterModeLinear;
+    texDescr.normalizedCoords = usePointUnnormalized ? 0 : 1;
+    texDescr.filterMode = usePointUnnormalized ? cudaFilterModePoint
+                                               : cudaFilterModeLinear;
     texDescr.addressMode[0] = addressMode;
     texDescr.addressMode[1] = addressMode;
+    texDescr.addressMode[2] = cudaAddressModeClamp;
     texDescr.readMode = cudaReadModeNormalizedFloat;
 
     CUDA_CHK(cudaCreateTextureObject(&outTex, &texRes, &texDescr, NULL));

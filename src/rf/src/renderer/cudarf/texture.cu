@@ -8,6 +8,7 @@
 #include <rf/renderer/cudarf/cudarf.hpp>
 
 #include "helpers.hpp"
+#include "helpers_cudavec.inl"
 
 __device__ uchar4 float4_to_uchar4(float4 v)
 {
@@ -15,11 +16,11 @@ __device__ uchar4 float4_to_uchar4(float4 v)
     v.y = fminf(fmaxf(v.y, 0.0f), 1.0f);
     v.z = fminf(fmaxf(v.z, 0.0f), 1.0f);
     v.w = fminf(fmaxf(v.w, 0.0f), 1.0f);
-    return make_uchar4(
-        (unsigned char)lrintf(v.x * 255.0f),
-        (unsigned char)lrintf(v.y * 255.0f),
-        (unsigned char)lrintf(v.z * 255.0f),
-        (unsigned char)lrintf(v.w * 255.0f));
+
+    return make_uchar4((unsigned char)lrintf(v.x * 255.0f),
+                       (unsigned char)lrintf(v.y * 255.0f),
+                       (unsigned char)lrintf(v.z * 255.0f),
+                       (unsigned char)lrintf(v.w * 255.0f));
 }
 
 __global__ void mip_downsample2x(cudaTextureObject_t srcTex,
@@ -32,11 +33,18 @@ __global__ void mip_downsample2x(cudaTextureObject_t srcTex,
 
     if (x >= width || y >= height) {return;}
 
-    float nX = (x+0.5f) / width;
-    float nY = (y+0.5f) / height;
+    float tX = 2.0f * x + 0.5f;
+    float tY = 2.0f * y + 0.5f;
 
-    float4 value = tex2D<float4>(srcTex, nX, nY);
-    surf2Dwrite(float4_to_uchar4(value), output, x * sizeof(uchar4), y);
+    float4 v0 = tex2D<float4>(srcTex, tX,        tY);
+    float4 v1 = tex2D<float4>(srcTex, tX + 1.0f, tY);
+    float4 v2 = tex2D<float4>(srcTex, tX,        tY + 1.0f);
+    float4 v3 = tex2D<float4>(srcTex, tX + 1.0f, tY + 1.0f);
+
+    surf2Dwrite(float4_to_uchar4((v0 + v1 + v2 + v3) * 0.25f),
+                output,
+                x * sizeof(uchar4),
+                y);
 }
 
 namespace
@@ -65,7 +73,11 @@ void generate_texture_mips(cudaMipmappedArray *dev_mipmapArray,
         cudaTextureObject_t srcTex;
         cudaSurfaceObject_t dstSurf;
 
-        cudarf::create_array_texture(srcTex, dev_mipLevelArray0, cudaAddressModeClamp);
+        cudarf::create_array_texture(srcTex,
+                                     dev_mipLevelArray0,
+                                     cudaAddressModeClamp,
+                                     true);
+
         cudarf::create_array_surface(dstSurf, dev_mipLevelArray1);
 
         dim3 blockSize(32, 32);
@@ -78,7 +90,6 @@ void generate_texture_mips(cudaMipmappedArray *dev_mipmapArray,
 
         cudaDestroySurfaceObject(dstSurf);
         cudaDestroyTextureObject(srcTex);
-
     }
 }
 }

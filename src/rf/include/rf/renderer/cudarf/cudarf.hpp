@@ -326,7 +326,8 @@ void create_surface(cudaSurfaceObject_t &fb,
 
 void create_array_texture(cudaTextureObject_t &outTex,
                           cudaArray_t array,
-                          cudaTextureAddressMode addressMode);
+                          cudaTextureAddressMode addressMode,
+                          bool usePointUnnormalized = false);
 
 void create_array_surface(cudaSurfaceObject_t &outSurf,
                           cudaArray_t array);
