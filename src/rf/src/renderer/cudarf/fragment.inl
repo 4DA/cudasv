@@ -317,7 +317,7 @@ cudarf::Color compute_color_flat(const cudarf::rast::PipeParams *pipe, const cud
         // uncomment if KHR_TEXTURE_TRANSFORM is used on flat material
         // uv = uv * material.albedoTex.uvTransform;
 
-        texCol = tex2D<float4>(material.albedoTex.textureObject, uv.x, uv.y);
+        texCol = tex2DLod<float4>(material.albedoTex.textureObject, uv.x, uv.y, frag.albedoLod);
     }
 
     return frag.vertexColor * material.baseColor * texCol;
