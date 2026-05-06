@@ -10,6 +10,8 @@ namespace cudarf
 struct Texture {
     cudaTextureObject_t textureObject;
     unsigned int channels;
+    unsigned int width;
+    unsigned int height;
 
     int mipLevels;
     cudaArray *dev_array;
@@ -21,9 +23,13 @@ struct Texture {
     __device__ __host__ Texture(cudaTextureObject_t textureObject,
                                 bool hasUVTransform,
                                 glm::mat3 uvTransform,
-                                unsigned int channels):
+                                unsigned int channels,
+                                unsigned int width,
+                                unsigned int height):
         textureObject(textureObject),
         channels(channels),
+        width(width),
+        height(height),
         mipLevels(1),
         dev_array(nullptr),
         dev_mipmapArray(nullptr),
@@ -34,6 +40,8 @@ struct Texture {
     __device__ __host__ Texture():
         textureObject(0),
         channels(0),
+        width(0),
+        height(0),
         mipLevels(0),
         dev_array(nullptr),
         dev_mipmapArray(nullptr),

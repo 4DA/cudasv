@@ -227,7 +227,7 @@ __device__ float4 compute_color_pbr(const cudarf::rast::PipeParams *pipe, const 
         glm::vec3 uv(frag.tex.x, frag.tex.y, 0.0f);
         uv = uv * mat.albedoTex.uvTransform;
 
-        float4 texVal = tex2DLod<float4>(mat.albedoTex.textureObject, uv.x, uv.y, 0.0f);
+        float4 texVal = tex2DLod<float4>(mat.albedoTex.textureObject, uv.x, uv.y, frag.albedoLod);
         float3 rgb = to_vec3f(texVal);
         rgb = cudarf::shading::srgb_to_linear(rgb);
         mat.baseColor.x *= rgb.x;
@@ -323,15 +323,69 @@ cudarf::Color compute_color_flat(const cudarf::rast::PipeParams *pipe, const cud
     return frag.vertexColor * material.baseColor * texCol;
 }
 
+__device__ __inline__
+glm::vec4 make_clip_pos_for_deriv(const float2 &screenPos,
+                                  float invW,
+                                  const glm::vec2 &windowSize)
+{
+    float w = 1.0f / invW;
+    glm::vec2 ndc = 2.0f * glm::vec2(screenPos.x, screenPos.y) / windowSize - glm::vec2(1.0f, 1.0f);
+    return glm::vec4(ndc * w, 0.0f, w);
+}
+
+template<bool TTexturingEnabled>
+__device__ __inline__
+cudarf::Vec3f compute_shading_bary(const cudarf::rast::PipeParams *pipe,
+                                   const cudarf::rast::Triangle &tri,
+                                   int x,
+                                   int y,
+                                   float &albedoLod)
+{
+    cudarf::Vec2f fragWindow = make_vec2f(x + 0.5f, y + 0.5f);
+    cudarf::Vec3f baryAffine = compute_bary_affine2(tri, fragWindow);
+    albedoLod = 0.0f;
+
+#ifdef CUDARF_FORCE_AFFINE_BARYCENTRICS
+    return baryAffine;
+#else
+    if constexpr (!TTexturingEnabled) {
+        return compute_bary_persp(baryAffine, tri.w_rcp);
+    } else {
+        glm::vec2 windowSize((float)pipe->windowWidth, (float)pipe->windowHeight);
+
+        glm::vec4 P0 = make_clip_pos_for_deriv(tri.sP0, tri.w_rcp.x, windowSize);
+        glm::vec4 P1 = make_clip_pos_for_deriv(tri.sP1, tri.w_rcp.y, windowSize);
+        glm::vec4 P2 = make_clip_pos_for_deriv(tri.sP2, tri.w_rcp.z, windowSize);
+        glm::vec2 ndc = 2.0f * glm::vec2(x + 0.5f, y + 0.5f) / windowSize - glm::vec2(1.0f, 1.0f);
+
+        cudarf::Barycentric bary = compute_bary_persp_deriv(P0, P1, P2, ndc, windowSize);
+
+        const cudarf::Material &material = pipe->materials[tri.materialId];
+        if (material.albedoTex.textureObject && material.albedoTex.mipLevels > 1) {
+            float2 duv_dx = interp(bary.ddx, tri.tex);
+            float2 duv_dy = interp(bary.ddy, tri.tex);
+            float2 texDim = make_float2(material.albedoTex.width,
+                                        material.albedoTex.height);
+
+            float2 dTdx = duv_dx * texDim;
+            float2 dTdy = duv_dy * texDim;
+            float rho = max(length(dTdx), length(dTdy));
+            float lod = log2f(max(rho, 1e-8f));
+            float maxLod = float(material.albedoTex.mipLevels - 1);
+            albedoLod = clamp(lod, 0.0f, maxLod);
+        }
+
+        return make_vec3f(bary.lambda.x, bary.lambda.y, bary.lambda.z);
+    }
+#endif
+}
+
 template<cudarf::ShaderType TShaderType, bool TTexturingEnabled>
 __device__ __inline__
 void compute_fragment(const cudarf::rast::Triangle &tri,
-                      const cudarf::Vec3f &baryAffine,
                       const cudarf::Vec3f &baryPersp,
                       cudarf::rast::Fragment &frag)
 {
-    (void)baryAffine;
-
     if constexpr (TShaderType == cudarf::SHADER_TYPE_UNLIT) {
         cudarf::Color color[3] = {tri.col[0], tri.col[1], tri.col[2]};
         frag.vertexColor = interpolate(baryPersp, color);
@@ -358,11 +412,17 @@ template<cudarf::ShaderType TShaderType, bool TTexturingEnabled, bool TClearcoat
 __device__ __inline__
 cudarf::Color shade_fragment(const cudarf::rast::PipeParams *pipe,
                              const cudarf::rast::Triangle &tri,
-                             const cudarf::Vec3f &baryAffine,
-                             const cudarf::Vec3f &baryPersp,
+                             int x,
+                             int y,
                              cudarf::rast::Fragment &frag)
 {
-    compute_fragment<TShaderType, TTexturingEnabled>(tri, baryAffine, baryPersp, frag);
+    float albedoLod;
+    cudarf::Vec3f baryPersp =
+        compute_shading_bary<TTexturingEnabled>(pipe, tri, x, y, albedoLod);
+
+    compute_fragment<TShaderType, TTexturingEnabled>(tri, baryPersp, frag);
+
+    frag.albedoLod = albedoLod;
 
     if constexpr (TShaderType == cudarf::SHADER_TYPE_UNLIT) {
         return compute_color_flat<TTexturingEnabled>(pipe, frag);

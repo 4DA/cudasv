@@ -85,42 +85,11 @@ void visibuf_material_pass(const cudarf::rast::PipeParams *pipe,
 
     const cudarf::rast::Triangle &tri = pipe->tris[triId];
 
-    cudarf::Vec3f baryLambda;
-
-    cudarf::Vec2f fragWindow = make_vec2f(x + 0.5f, y + 0.5f);
-    cudarf::Vec3f baryAffine = compute_bary_affine2(tri, fragWindow);
-
-#ifdef CUDARF_FORCE_AFFINE_BARYCENTRICS
-    // Match the legacy opaque path exactly by shading from affine screen-space
-    // barycentrics instead of the reconstructed perspective-correct basis.
-    baryLambda = baryAffine;
-#else
-
-    // TODO: to be used when derivatives are needed
-    // glm::vec2 windowSize((float)pipe->windowWidth, (float)pipe->windowHeight);
-
-    // // Reconstruct the clip-space inputs expected by compute_barys() from the
-    // // stored screen-space vertex positions plus per-vertex 1/w.
-    // auto make_clip_pos = [windowSize](const float2 &screenPos, float invW) {
-    //     float w = 1.0f / invW;
-    //     glm::vec2 ndc = 2.0f * glm::vec2(screenPos.x, screenPos.y) / windowSize - glm::vec2(1.0f, 1.0f);
-    //     return glm::vec4(ndc * w, 0.0f, w);
-    // };
-
-    // glm::vec4 P0 = make_clip_pos(tri.sP0, tri.w_rcp.x);
-    // glm::vec4 P1 = make_clip_pos(tri.sP1, tri.w_rcp.y);
-    // glm::vec4 P2 = make_clip_pos(tri.sP2, tri.w_rcp.z);
-    // glm::vec2 ndc = 2.0f * glm::vec2(x + 0.5f, y + 0.5f) / windowSize - glm::vec2(1.0f, 1.0f);
-
-    // Barycentric bary = compute_bary_persp_deriv(P0, P1, P2, ndc, windowSize);
-    // baryLambda = make_vec3f(bary.lambda.x, bary.lambda.y, bary.lambda.z);
-
-    baryLambda = compute_bary_persp(baryAffine, tri.w_rcp);
-#endif
+    const cudarf::Material &material = pipe->materials[matId];
 
     cudarf::rast::Fragment frag;
 
-    const cudarf::Material &material = pipe->materials[matId];
+
     bool withTexturing =
         material.albedoTex.textureObject ||
         material.emissiveTex.textureObject ||
@@ -132,25 +101,25 @@ void visibuf_material_pass(const cudarf::rast::PipeParams *pipe,
     if (material.type == cudarf::SHADER_TYPE_UNLIT) {
         shadedColor = withTexturing
             ? shade_fragment<cudarf::SHADER_TYPE_UNLIT, true, false>(
-                pipe, tri, make_vec3f(0.0f, 0.0f, 0.0f), baryLambda, frag)
+                pipe, tri, x, y, frag)
             : shade_fragment<cudarf::SHADER_TYPE_UNLIT, false, false>(
-                pipe, tri, make_vec3f(0.0f, 0.0f, 0.0f), baryLambda, frag);
+                pipe, tri, x, y, frag);
     }
     else {
         bool withClearcoat = material.clearcoatFactor > 0.0f;
         if (withTexturing) {
             shadedColor = withClearcoat
                 ? shade_fragment<cudarf::SHADER_TYPE_PBR, true, true>(
-                    pipe, tri, make_vec3f(0.0f, 0.0f, 0.0f), baryLambda, frag)
+                    pipe, tri, x, y, frag)
                 : shade_fragment<cudarf::SHADER_TYPE_PBR, true, false>(
-                    pipe, tri, make_vec3f(0.0f, 0.0f, 0.0f), baryLambda, frag);
+                    pipe, tri, x, y, frag);
         }
         else {
             shadedColor = withClearcoat
                 ? shade_fragment<cudarf::SHADER_TYPE_PBR, false, true>(
-                    pipe, tri, make_vec3f(0.0f, 0.0f, 0.0f), baryLambda, frag)
+                    pipe, tri, x, y, frag)
                 : shade_fragment<cudarf::SHADER_TYPE_PBR, false, false>(
-                    pipe, tri, make_vec3f(0.0f, 0.0f, 0.0f), baryLambda, frag);
+                    pipe, tri, x, y, frag);
         }
     }
 

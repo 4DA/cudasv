@@ -499,6 +499,13 @@ static T interp(float3 bary, T val[3])
     return bary.x * val[0] + bary.y * val[1] + bary.z * val[2];
 }
 
+template <typename T>
+__host__ __device__ __attribute__((unused))
+static T interp(glm::vec3 bary, T val[3])
+{
+    return bary.x * val[0] + bary.y * val[1] + bary.z * val[2];
+}
+
 __attribute__((unused)) __host__ __device__
 static float4 to_float4(const cudarf::Vec4f &src)
 {

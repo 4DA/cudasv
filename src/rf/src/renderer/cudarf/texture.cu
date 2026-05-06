@@ -213,7 +213,12 @@ std::optional<cudarf::Texture> cudarf::create_cuda_texture(rf::Image image,
     }
     CUDA_CHK(cudaCreateTextureObject(&tex, &texRes, &texDescr, NULL));
 
-    cudarf::Texture result(tex, false, glm::mat3(1.0f), image.channels);
+    cudarf::Texture result(tex,
+                           false,
+                           glm::mat3(1.0f),
+                           image.channels,
+                           image.w,
+                           image.h);
 
     result.dev_array = cuArray;
     result.dev_mipmapArray = dev_mipmapArray;

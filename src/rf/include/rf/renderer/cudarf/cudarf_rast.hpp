@@ -154,6 +154,8 @@ struct Fragment {
     float3 normal;
     float2 tex;
 
+    float albedoLod;
+
 #ifdef WITH_TAA
     float2 pos_ss_hist;
 #endif

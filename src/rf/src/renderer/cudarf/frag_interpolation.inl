@@ -1,9 +1,12 @@
+namespace cudarf
+{
 struct Barycentric
 {
     glm::vec3 lambda;
     glm::vec3 ddx;
     glm::vec3 ddy;
 };
+}
 
 // most straighforward approach: compute barycentric coordinates, given triangle
 // vertices in 3DP(NDC) space and raster coordinates
@@ -68,9 +71,9 @@ glm::vec3 rcp(glm::vec3 src)
 //    gradients that can be used for later attribute differentials.
 
 __device__
-Barycentric compute_bary_persp_deriv(glm::vec4 P0, glm::vec4 P1, glm::vec4 P2, glm::vec2 ndc, glm::vec2 winSize)
+cudarf::Barycentric compute_bary_persp_deriv(glm::vec4 P0, glm::vec4 P1, glm::vec4 P2, glm::vec2 ndc, glm::vec2 winSize)
 {
-    Barycentric ret;
+    cudarf::Barycentric ret;
 
     // Perspective-correct interpolation works in 1/w, so convert the clip-space
     // vertex w components into reciprocal form once up front.
