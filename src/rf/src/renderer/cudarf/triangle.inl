@@ -114,8 +114,6 @@ void vertex_transform(const cudarf::rast::PipeParams *pipe,
     if (i >= vertex_count) { return; }
 
     cudarf::rast::VertexIn *vertexBuffer = pipe->drawPackets[drawPacketId].dev_bufVertex;
-    cudarf::Vec4f N = uniforms.N * make_vec4f(vertexBuffer[vIdx].nor, 0.0f);
-
     glm::mat4 PVM;
 
 #ifdef WITH_TAA
@@ -127,7 +125,7 @@ void vertex_transform(const cudarf::rast::PipeParams *pipe,
         // compute screen space position of vertex in history frame
         float4 pos_3dhp_hist = PVM_hist * make_vec4f(vertexBuffer[vIdx].pos, 1.0f);
         pipe->vertexOut[i].pos_ss_hist = clip_to_window(to_vec2f(pos_3dhp_hist / pos_3dhp_hist.w),
-                                                         pipe->windowWidth, pipe->windowHeight);
+                                                        pipe->windowWidth, pipe->windowHeight);
     } else {
         PVM = uniforms.PVM;
     }
@@ -137,11 +135,18 @@ void vertex_transform(const cudarf::rast::PipeParams *pipe,
 
     pipe->vertexOut[i].pos_3dhp = PVM * make_vec4f(vertexBuffer[vIdx].pos, 1.0f);
 
-    if (TShaderType == cudarf::SHADER_TYPE_PBR) {
+    if constexpr (TShaderType == cudarf::SHADER_TYPE_PBR) {
+        cudarf::Vec4f N = uniforms.N * make_vec4f(vertexBuffer[vIdx].nor, 0.0f);
+
+        float bitan_sgn = vertexBuffer[vIdx].tan.w;
+        cudarf::Vec4f T = uniforms.N * make_vec4f(to_vec3f(vertexBuffer[vIdx].tan), 0.0f);
+
         pipe->vertexOut[i].pos_world = to_vec3f(uniforms.M * make_vec4f(vertexBuffer[vIdx].pos, 1.0f));
         pipe->vertexOut[i].nor = normalize(to_vec3f(N));
+        pipe->vertexOut[i].tan = normalize(to_vec3f(T));
+        pipe->vertexOut[i].bitan_sgn = bitan_sgn;
     }
-    else if (TShaderType == cudarf::SHADER_TYPE_UNLIT) {
+    else if constexpr (TShaderType == cudarf::SHADER_TYPE_UNLIT) {
         pipe->vertexOut[i].col = vertexBuffer[vIdx].col;
     }
 
@@ -190,6 +195,8 @@ void setup_triangle(const cudarf::rast::PipeParams *pipe,
 #endif
                     float3 n0, float3 n1, float3 n2,
                     float2 t0, float2 t1, float2 t2,
+                    float3 tan0, float3 tan1, float3 tan2,
+                    float3 bitan_sgn,
                     cudarf::Color c0, cudarf::Color c1, cudarf::Color c2,
                     cudarf::Vec2f sP0, cudarf::Vec2f sP1, cudarf::Vec2f sP2,
                     float3 w_rcp, float area_rcp, unsigned int materialId,
@@ -206,6 +213,14 @@ void setup_triangle(const cudarf::rast::PipeParams *pipe,
         out->normal[0] = n0;
         out->normal[1] = n1;
         out->normal[2] = n2;
+
+        out->tangent[0] = tan0;
+        out->tangent[1] = tan1;
+        out->tangent[2] = tan2;
+
+        out->bitan_sgn = ((bitan_sgn.x > 0.0f ? 1 : 0)) |
+            ((bitan_sgn.y > 0.0f ? 1 : 0) << 1) |
+            ((bitan_sgn.z > 0.0f ? 1 : 0) << 2);
 
         out->v_world[0] = v_world0;
         out->v_world[1] = v_world1;
@@ -385,6 +400,12 @@ void triangle_assembly(const cudarf::rast::PipeParams *pipe,
                     vtx[vidx.x].tex,
                     vtx[vidx.y].tex,
                     vtx[vidx.z].tex,
+                    vtx[vidx.x].tan,
+                    vtx[vidx.y].tan,
+                    vtx[vidx.z].tan,
+                    make_vec3f(vtx[vidx.x].bitan_sgn,
+                               vtx[vidx.y].bitan_sgn,
+                               vtx[vidx.z].bitan_sgn),
                     vtx[vidx.x].col,
                     vtx[vidx.y].col,
                     vtx[vidx.z].col,

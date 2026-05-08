@@ -92,6 +92,7 @@ void visibuf_material_pass(const cudarf::rast::PipeParams *pipe,
 
     bool withTexturing =
         material.albedoTex.textureObject ||
+        material.normalTex.textureObject ||
         material.emissiveTex.textureObject ||
         material.occlusionTex.textureObject ||
         material.metRoughTex.textureObject;
@@ -107,6 +108,7 @@ void visibuf_material_pass(const cudarf::rast::PipeParams *pipe,
     }
     else {
         bool withClearcoat = material.clearcoatFactor > 0.0f;
+
         if (withTexturing) {
             shadedColor = withClearcoat
                 ? shade_fragment<cudarf::SHADER_TYPE_PBR, true, true>(

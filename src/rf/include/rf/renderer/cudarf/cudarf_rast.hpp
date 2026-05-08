@@ -87,6 +87,7 @@ struct VertexIn {
     Vec3f pos;
     Vec3f nor;
     Vec2f tex;
+    Vec4f tan;
     Color col;
 };
 
@@ -100,6 +101,8 @@ struct VertexOut {
     Color col;
     Vec3f pos_world;
     float3 nor;
+    Vec3f tan;
+    float bitan_sgn;
     float2 tex;
     float2 jitter;
 };
@@ -129,6 +132,8 @@ struct Triangle {
     float3 v_world[3];
     Color col[3];
     float3 normal[3];
+    float3 tangent[3];
+    int bitan_sgn;
     float2 tex[3];
 
     unsigned char materialId;
@@ -139,19 +144,16 @@ struct Triangle {
     Triangle() = default;
 };
 
-struct TriData {
-    Color col[3];
-    float2 tex[3];
-    float3 v_world[3];
-    float3 normal[3];
-};
-
 struct Fragment {
     unsigned char materialId;
 
     cudarf::Color vertexColor;
     float3 pos_global;
+
     float3 normal;
+    float3 tangent;
+    float3 bitangent;
+
     float2 tex;
 
     float albedoLod;

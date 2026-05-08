@@ -210,6 +210,7 @@ void set_draw_packet_buffers(Ctx *desc, const int *bufIdx,
                              int vertCount, const cudarf::Vec4f *bufCol,
                              const cudarf::Vec3f *bufNor = nullptr,
                              const cudarf::Vec2f *bufTex = nullptr,
+                             const Vec4f *bufTan = nullptr,
                              unsigned int drawPacketId = CUDARF_SCRATCH_DRAW_PACKET,
                              const cudaStream_t &cuStream = 0);
 

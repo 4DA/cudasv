@@ -86,6 +86,7 @@ void cudarf::pipe::set_draw_packet_buffers(cudarf::pipe::Ctx *desc,
                                            const Vec4f *bufCol,
                                            const Vec3f *bufNor,
                                            const Vec2f *bufTex,
+                                           const Vec4f *bufTan,
                                            unsigned int drawPacketId,
                                            const cudaStream_t &cuStream)
 {
@@ -156,6 +157,10 @@ void cudarf::pipe::set_draw_packet_buffers(cudarf::pipe::Ctx *desc,
 
         if (bufTex) {
             bufVertex[i].tex = bufTex[i];
+        }
+
+        if (bufTan) {
+            bufVertex[i].tan = bufTan[i];
         }
     }
 
@@ -260,6 +265,10 @@ void cudarf::pipe::set_draw_packet_buffers(cudarf::pipe::Ctx *desc,
 
         if (mesh.texcoords.count) {
             bufVertex[i].tex = to_vec2f(get_attribute2(&mesh.texcoords, i));
+        }
+
+        if (mesh.tangents.count) {
+            bufVertex[i].tan = to_vec4f(get_attribute4(&mesh.tangents, i));
         }
     }
 
@@ -548,14 +557,14 @@ void cudarf::pipe::destroy(cudarf::pipe::Ctx *desc) {
 }
 
 void cudarf::pipe::draw_triangles(cudarf::pipe::Ctx* rasterization_desc,
-                               const std::vector<glm::vec3> &triangles,
-                               const std::vector<glm::vec4> &colors,
-                               const glm::mat4 &M,
-                               const cudarf::CommonUniforms &common,
-                               bool face_culling,
-                               bool blending,
-                               unsigned int frameCounter,
-                               const cudaStream_t &cuStream)
+                                  const std::vector<glm::vec3> &triangles,
+                                  const std::vector<glm::vec4> &colors,
+                                  const glm::mat4 &M,
+                                  const cudarf::CommonUniforms &common,
+                                  bool face_culling,
+                                  bool blending,
+                                  unsigned int frameCounter,
+                                  const cudaStream_t &cuStream)
 {
     auto uniforms = cudarf::make_uniforms(common.P, common.V, M);
     std::vector<int> idx;
@@ -572,6 +581,7 @@ void cudarf::pipe::draw_triangles(cudarf::pipe::Ctx* rasterization_desc,
                                           reinterpret_cast<const cudarf::Vec3f *>(triangles.data()),
                                           triangles.size(),
                                           reinterpret_cast<const cudarf::Color *>(colors.data()),
+                                          nullptr,
                                           nullptr,
                                           nullptr,
                                           CUDARF_SCRATCH_DRAW_PACKET,

@@ -104,6 +104,7 @@ loader::add_naive_mesh(cudarf::pipe::Ctx *desc,
                                           colorData,
                                           normalData,
                                           texcoordData,
+                                          nullptr,
                                           drawPacketId,
                                           cuStream);
 

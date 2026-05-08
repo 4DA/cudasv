@@ -515,19 +515,20 @@ create_material(const tinygltf::Model &model,
                           OMRTexChannels,
                           emissiveTexChannels);
 
-    auto newMat = std::make_shared<cudarf::Material>();
-    newMat->type = isUnlit ? cudarf::SHADER_TYPE_UNLIT : cudarf::SHADER_TYPE_PBR;
-    newMat->baseColor = baseColorFactor;
-    newMat->emissive = emissiveFactor;
-    newMat->metallic = metallicFactor;
-    newMat->roughness = roughnessFactor;
-    newMat->isTranslucent = !isOpaque;
-    newMat->isDoubleSided = isDoubleSided;
-    newMat->albedoTex = albedoTexture;
-    newMat->emissiveTex = emissiveTexture;
-    newMat->occlusionTex = occlusionTexture;
-    newMat->metRoughTex = metRoughTexture;
-    newMat->clearcoatFactor = clearcoatFactor;
+    auto newMat                = std::make_shared<cudarf::Material>();
+    newMat->type               = isUnlit ? cudarf::SHADER_TYPE_UNLIT : cudarf::SHADER_TYPE_PBR;
+    newMat->baseColor          = baseColorFactor;
+    newMat->emissive           = emissiveFactor;
+    newMat->metallic           = metallicFactor;
+    newMat->roughness          = roughnessFactor;
+    newMat->isTranslucent      = !isOpaque;
+    newMat->isDoubleSided      = isDoubleSided;
+    newMat->albedoTex          = albedoTexture;
+    newMat->emissiveTex        = emissiveTexture;
+    newMat->occlusionTex       = occlusionTexture;
+    newMat->metRoughTex        = metRoughTexture;
+    newMat->normalTex          = normalTexture;
+    newMat->clearcoatFactor    = clearcoatFactor;
     newMat->clearcoatRoughness = clearcoatRoughnessFactor;
 
     scene.add_material(materialName, newMat);

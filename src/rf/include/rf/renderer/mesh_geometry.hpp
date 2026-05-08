@@ -12,24 +12,24 @@ namespace rf
 struct MeshInfo
 {
     // number of components in the normal attribute. "0" indicates the attribute is not available
-    std::uint8_t normal_component_count;
+    std::uint8_t normal_component_count = 0;
 
     // number of components in the first texture coordinate attribute. "0" indicates the attribute is not available
-    std::uint8_t texcoord1_component_count;
+    std::uint8_t texcoord1_component_count = 0;
 
     // number of components in the second texture coordinate attribute. "0" indicates the attribute is not available
-    std::uint8_t texcoord2_component_count;
+    std::uint8_t texcoord2_component_count = 0;
 
     // number of components in the tangent attribute. "0" indicates the attribute is not available
-    std::uint8_t tangent_component_count;
+    std::uint8_t tangent_component_count = 0;
 
     // number of components in the vertex color attribute. "0" indicates the attribute is not available
-    std::uint8_t vertex_color_component_count;
+    std::uint8_t vertex_color_component_count = 0;
 
     //  computed from all properties properties
-    mutable std::size_t geometry_key_cached;
+    mutable std::size_t geometry_key_cached = 0;
 
-    MeshInfo(): geometry_key_cached(0) {}
+    MeshInfo() = default;
 
     MeshInfo(std::uint8_t normal_component_count,
              std::uint8_t texcoord1_component_count,

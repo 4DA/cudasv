@@ -29,12 +29,12 @@ using rf::TRSTransform;
 namespace
 {
 
-const std::string ATTRIB_POSITION = "POSITION";
-const std::string ATTRIB_NORMAL = "NORMAL";
-const std::string ATTRIB_COLOR_0 = "COLOR_0";
+const std::string ATTRIB_POSITION   = "POSITION";
+const std::string ATTRIB_NORMAL     = "NORMAL";
+const std::string ATTRIB_COLOR_0    = "COLOR_0";
 const std::string ATTRIB_TEXCOORD_0 = "TEXCOORD_0";
 const std::string ATTRIB_TEXCOORD_1 = "TEXCOORD_1";
-const std::string ATTRIB_TANGENT = "TANGENT";
+const std::string ATTRIB_TANGENT    = "TANGENT";
 
 std::optional<float> to_float(const tinygltf::Value &value)
 {
@@ -240,10 +240,26 @@ bool create_mesh_component(cudarf::pipe::Ctx *desc,
         }
 
         std::shared_ptr<cudarf::Material> material =
-            loader::gltf::create_material(model, scene, gltfPrim, namePrefix, cuStream);
+            loader::gltf::create_material(model,
+                                          scene,
+                                          gltfPrim,
+                                          namePrefix,
+                                          cuStream);
         if (material == nullptr) {
             SPDLOG_ERROR("Failed to create material for primitive in mesh '{}'", mesh.name);
             return false;
+        }
+
+        if (material->type == cudarf::SHADER_TYPE_PBR) {
+            if (info.normal_component_count != 3 || info.tangent_component_count != 4) {
+                SPDLOG_ERROR(
+                    "PBR primitive in mesh '{}' requires normals and tangents "
+                    "(got normal components = {}, tangent components = {})",
+                    mesh.name,
+                    info.normal_component_count,
+                    info.tangent_component_count);
+                return false;
+            }
         }
 
         rf::GltfMesh gltfMesh;

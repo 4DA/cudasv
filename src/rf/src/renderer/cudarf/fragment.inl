@@ -382,7 +382,8 @@ cudarf::Vec3f compute_shading_bary(const cudarf::rast::PipeParams *pipe,
 
 template<cudarf::ShaderType TShaderType, bool TTexturingEnabled>
 __device__ __inline__
-void compute_fragment(const cudarf::rast::Triangle &tri,
+void compute_fragment(const cudarf::Material &material,
+                      const cudarf::rast::Triangle &tri,
                       const cudarf::Vec3f &baryPersp,
                       cudarf::rast::Fragment &frag)
 {
@@ -392,8 +393,29 @@ void compute_fragment(const cudarf::rast::Triangle &tri,
     } else if constexpr(TShaderType == cudarf::SHADER_TYPE_PBR) {
         frag.pos_global = interp(baryPersp, tri.v_world);
         frag.normal = normalize(interp(baryPersp, tri.normal));
+
+        if (material.normalTex.textureObject) {
+            cudarf::Vec3f T = normalize(interp(baryPersp, tri.tangent));
+            frag.tangent = normalize(T - frag.normal * dot(frag.normal, T));   // Gram-Schmidt
+
+            float sgns[3] = {
+                (tri.bitan_sgn & 1 ? 1.0f : -1.0f),
+                (tri.bitan_sgn & 2 ? 1.0f : -1.0f),
+                (tri.bitan_sgn & 4 ? 1.0f : -1.0f)
+            };
+
+            float sign = (interp(baryPersp, sgns) >= 0.0f) ? 1.0f : -1.0f;
+
+            frag.bitangent = normalize(cross(frag.normal, frag.tangent)) * sign;
+        }
+
         if (tri.isBackFacing) {
             frag.normal = -frag.normal;
+
+            if (material.normalTex.textureObject) {
+                frag.tangent = -frag.tangent;
+                frag.bitangent = -frag.bitangent;
+            }
         }
     }
 
@@ -419,8 +441,9 @@ cudarf::Color shade_fragment(const cudarf::rast::PipeParams *pipe,
     float albedoLod;
     cudarf::Vec3f baryPersp =
         compute_shading_bary<TTexturingEnabled>(pipe, tri, x, y, albedoLod);
+    const cudarf::Material &material = pipe->materials[tri.materialId];
 
-    compute_fragment<TShaderType, TTexturingEnabled>(tri, baryPersp, frag);
+    compute_fragment<TShaderType, TTexturingEnabled>(material, tri, baryPersp, frag);
 
     frag.albedoLod = albedoLod;
 

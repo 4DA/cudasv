@@ -26,6 +26,7 @@ struct Material {
     bool isTranslucent;
     bool isDoubleSided;
     Texture albedoTex;
+    Texture normalTex;
     Texture emissiveTex;
     Texture occlusionTex;
     Texture metRoughTex;
