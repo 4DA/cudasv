@@ -24,6 +24,7 @@
 #ifndef CUDARF_FRAGMENT_INL
 #define CUDARF_FRAGMENT_INL
 
+#include "vecglm.inl"
 struct MaterialData
 {
     float perceptualRoughness;      // roughness value, as authored by the model creator (input to shader)
@@ -238,7 +239,19 @@ __device__ float4 compute_color_pbr(const cudarf::rast::PipeParams *pipe, const 
 
     MaterialData materialData = get_metallic_roughness_data(mat, f0_ior);
 
-    const float3 &n = frag.normal;
+    float3 n = frag.normal;
+
+    if (TTexturingEnabled && mat.normalTex.textureObject) {
+        glm::vec3 uv(frag.tex.x, frag.tex.y, 0.0f);
+        uv = uv * mat.normalTex.uvTransform;
+
+        float4 normTex4 = tex2D<float4>(mat.normalTex.textureObject, uv.x, uv.y);
+        glm::vec3 sampledNormal = 2.0f * to_glm(to_vec3f(normTex4)) - glm::vec3(1.0f, 1.0f, 1.0f);
+        glm::mat3 TBN(to_glm(frag.tangent), to_glm(frag.bitangent), to_glm(frag.normal));
+        glm::vec3 cN = glm::normalize(TBN * sampledNormal);
+
+        n = make_vec3f(cN.x, cN.y, cN.z);
+    }
 
     // Perceptual roughness is converted to material roughness by squaring the
     // perceptual value, as is standard practice.
