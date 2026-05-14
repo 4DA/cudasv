@@ -157,6 +157,10 @@ struct Fragment {
     float2 tex;
 
     float albedoLod;
+    float normalLod;
+    float emissiveLod;
+    float occlusionLod;
+    float metRoughLod;
 
 #ifdef WITH_TAA
     float2 pos_ss_hist;

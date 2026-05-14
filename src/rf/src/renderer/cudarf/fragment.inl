@@ -25,6 +25,16 @@
 #define CUDARF_FRAGMENT_INL
 
 #include "vecglm.inl"
+
+struct LodData
+{
+    float albedo;
+    float normal;
+    float emissive;
+    float occlusion;
+    float metRough;
+};
+
 struct MaterialData
 {
     float perceptualRoughness;      // roughness value, as authored by the model creator (input to shader)
@@ -245,7 +255,7 @@ __device__ float4 compute_color_pbr(const cudarf::rast::PipeParams *pipe, const 
         glm::vec3 uv(frag.tex.x, frag.tex.y, 0.0f);
         uv = uv * mat.normalTex.uvTransform;
 
-        float4 normTex4 = tex2D<float4>(mat.normalTex.textureObject, uv.x, uv.y);
+        float4 normTex4 = tex2DLod<float4>(mat.normalTex.textureObject, uv.x, uv.y, frag.normalLod);
         glm::vec3 sampledNormal = 2.0f * to_glm(to_vec3f(normTex4)) - glm::vec3(1.0f, 1.0f, 1.0f);
         glm::mat3 TBN(to_glm(frag.tangent), to_glm(frag.bitangent), to_glm(frag.normal));
         glm::vec3 cN = glm::normalize(TBN * sampledNormal);
@@ -276,7 +286,7 @@ __device__ float4 compute_color_pbr(const cudarf::rast::PipeParams *pipe, const 
         glm::vec3 uv(frag.tex.x, frag.tex.y, 0.0f);
         uv = uv * mat.emissiveTex.uvTransform;
         emissive *= cudarf::shading::srgb_to_linear(
-            to_vec3f(tex2D<float4>(mat.emissiveTex.textureObject, uv.x, uv.y)));
+            to_vec3f(tex2DLod<float4>(mat.emissiveTex.textureObject, uv.x, uv.y, frag.emissiveLod)));
     }
 
     float3 v = normalize(pipe->camera - frag.pos_global);
@@ -352,11 +362,11 @@ cudarf::Vec3f compute_shading_bary(const cudarf::rast::PipeParams *pipe,
                                    const cudarf::rast::Triangle &tri,
                                    int x,
                                    int y,
-                                   float &albedoLod)
+                                   LodData &lodData)
 {
     cudarf::Vec2f fragWindow = make_vec2f(x + 0.5f, y + 0.5f);
     cudarf::Vec3f baryAffine = compute_bary_affine2(tri, fragWindow);
-    albedoLod = 0.0f;
+    lodData.albedo = 0.0f;
 
 #ifdef CUDARF_FORCE_AFFINE_BARYCENTRICS
     return baryAffine;
@@ -385,7 +395,7 @@ cudarf::Vec3f compute_shading_bary(const cudarf::rast::PipeParams *pipe,
             float rho = max(length(dTdx), length(dTdy));
             float lod = log2f(max(rho, 1e-8f));
             float maxLod = float(material.albedoTex.mipLevels - 1);
-            albedoLod = clamp(lod, 0.0f, maxLod);
+            lodData.albedo = clamp(lod, 0.0f, maxLod);
         }
 
         return make_vec3f(bary.lambda.x, bary.lambda.y, bary.lambda.z);
@@ -451,14 +461,18 @@ cudarf::Color shade_fragment(const cudarf::rast::PipeParams *pipe,
                              int y,
                              cudarf::rast::Fragment &frag)
 {
-    float albedoLod;
+    LodData lodData{};
     cudarf::Vec3f baryPersp =
-        compute_shading_bary<TTexturingEnabled>(pipe, tri, x, y, albedoLod);
+        compute_shading_bary<TTexturingEnabled>(pipe, tri, x, y, lodData);
     const cudarf::Material &material = pipe->materials[tri.materialId];
 
     compute_fragment<TShaderType, TTexturingEnabled>(material, tri, baryPersp, frag);
 
-    frag.albedoLod = albedoLod;
+    frag.albedoLod = lodData.albedo;
+    frag.normalLod = lodData.normal;
+    frag.emissiveLod = lodData.emissive;
+    frag.occlusionLod = lodData.occlusion;
+    frag.metRoughLod = lodData.metRough;
 
     if constexpr (TShaderType == cudarf::SHADER_TYPE_UNLIT) {
         return compute_color_flat<TTexturingEnabled>(pipe, frag);

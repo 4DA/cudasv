@@ -26,6 +26,10 @@ const std::string UV_TRANSFORM_ROTATION = "rotation";
 const std::string UV_TRANSFORM_TEXCOORD = "texCoord";
 
 const unsigned int ALBEDO_MIP_COUNT = 6;
+const unsigned int NORMAL_MIP_COUNT = 6;
+const unsigned int EMISSIVE_MIP_COUNT = 6;
+const unsigned int OCCLUSION_MIP_COUNT = 6;
+const unsigned int METROUGH_MIP_COUNT = 6;
 
 std::optional<glm::vec2> get_texture_transform_vec2(const tinygltf::Value::Object &object,
                                                     const std::string &key)
@@ -429,7 +433,7 @@ create_material(const tinygltf::Model &model,
                                            pbr.metallicRoughnessTexture.index,
                                            pbr.metallicRoughnessTexture.extensions,
                                            "met-rough",
-                                           1,
+                                           METROUGH_MIP_COUNT,
                                            cuStream);
             if (!loaded) {
                 return nullptr;
@@ -449,7 +453,7 @@ create_material(const tinygltf::Model &model,
                                            gltfMaterial->normalTexture.index,
                                            gltfMaterial->normalTexture.extensions,
                                            "normal-tex",
-                                           1,
+                                           NORMAL_MIP_COUNT,
                                            cuStream);
             if (!loaded) {
                 return nullptr;
@@ -468,7 +472,7 @@ create_material(const tinygltf::Model &model,
                 return nullptr;
             }
 
-            auto loaded = load_pbr_texture(model, *texId, {}, "occlusion", 1, cuStream);
+            auto loaded = load_pbr_texture(model, *texId, {}, "occlusion", OCCLUSION_MIP_COUNT, cuStream);
             if (!loaded) {
                 return nullptr;
             }
@@ -488,7 +492,7 @@ create_material(const tinygltf::Model &model,
                                            *texId,
                                            gltfMaterial->emissiveTexture.extensions,
                                            "emissive",
-                                           1,
+                                           EMISSIVE_MIP_COUNT,
                                            cuStream);
             if (!loaded) {
                 return nullptr;
