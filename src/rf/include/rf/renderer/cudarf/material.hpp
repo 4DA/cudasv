@@ -28,7 +28,6 @@ struct Material {
     Texture albedoTex;
     Texture normalTex;
     Texture emissiveTex;
-    Texture occlusionTex;
     Texture metRoughTex;
 };
 

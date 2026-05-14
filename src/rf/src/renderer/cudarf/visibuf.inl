@@ -94,7 +94,6 @@ void visibuf_material_pass(const cudarf::rast::PipeParams *pipe,
         material.albedoTex.textureObject ||
         material.normalTex.textureObject ||
         material.emissiveTex.textureObject ||
-        material.occlusionTex.textureObject ||
         material.metRoughTex.textureObject;
 
     cudarf::Color shadedColor;

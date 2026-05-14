@@ -31,7 +31,6 @@ struct LodData
     float albedo;
     float normal;
     float emissive;
-    float occlusion;
     float metRough;
 };
 
@@ -426,7 +425,6 @@ cudarf::Vec3f compute_shading_bary(const cudarf::rast::PipeParams *pipe,
         lodData.albedo = compute_texture_lod(bary, tri, material.albedoTex);
         lodData.normal = compute_texture_lod(bary, tri, material.normalTex);
         lodData.emissive = compute_texture_lod(bary, tri, material.emissiveTex);
-        lodData.occlusion = compute_texture_lod(bary, tri, material.occlusionTex);
         lodData.metRough = compute_texture_lod(bary, tri, material.metRoughTex);
 
         return make_vec3f(bary.lambda.x, bary.lambda.y, bary.lambda.z);
@@ -502,7 +500,6 @@ cudarf::Color shade_fragment(const cudarf::rast::PipeParams *pipe,
     frag.albedoLod = lodData.albedo;
     frag.normalLod = lodData.normal;
     frag.emissiveLod = lodData.emissive;
-    frag.occlusionLod = lodData.occlusion;
     frag.metRoughLod = lodData.metRough;
 
     if constexpr (TShaderType == cudarf::SHADER_TYPE_UNLIT) {

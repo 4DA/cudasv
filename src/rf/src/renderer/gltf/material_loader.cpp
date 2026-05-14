@@ -28,7 +28,6 @@ const std::string UV_TRANSFORM_TEXCOORD = "texCoord";
 const unsigned int ALBEDO_MIP_COUNT = 6;
 const unsigned int NORMAL_MIP_COUNT = 6;
 const unsigned int EMISSIVE_MIP_COUNT = 6;
-const unsigned int OCCLUSION_MIP_COUNT = 6;
 const unsigned int METROUGH_MIP_COUNT = 6;
 
 std::optional<glm::vec2> get_texture_transform_vec2(const tinygltf::Value::Object &object,
@@ -359,7 +358,6 @@ create_material(const tinygltf::Model &model,
     cudarf::Texture normalTexture;
     cudarf::Texture emissiveTexture;
     cudarf::Texture metRoughTexture;
-    cudarf::Texture occlusionTexture;
 
     if (gltfMaterial != nullptr) {
         if (!gltfMaterial->values.size()) {
@@ -446,8 +444,6 @@ create_material(const tinygltf::Model &model,
             }
         }
 
-        auto occlusionIt = gltfMaterial->additionalValues.find("occlusionTexture");
-
         if (gltfMaterial->normalTexture.index != -1) {
             auto loaded = load_pbr_texture(model,
                                            gltfMaterial->normalTexture.index,
@@ -464,21 +460,6 @@ create_material(const tinygltf::Model &model,
             if (loaded->hasUVTransform) {
                 uvt.transforms[rf::UVTransform::TEXTURE_KEY_NORMAL] = loaded->uvTransform;
             }
-        }
-
-        if (occlusionIt != gltfMaterial->additionalValues.end()) {
-            auto texId = get_parameter_texture_index(occlusionIt->second, "occlusionTexture");
-            if (!texId) {
-                return nullptr;
-            }
-
-            auto loaded = load_pbr_texture(model, *texId, {}, "occlusion", OCCLUSION_MIP_COUNT, cuStream);
-            if (!loaded) {
-                return nullptr;
-            }
-
-            occlusionTexture = *loaded;
-            OMRTexChannels = loaded->channels;
         }
 
         auto emissiveIt = gltfMaterial->additionalValues.find("emissiveTexture");
@@ -529,7 +510,6 @@ create_material(const tinygltf::Model &model,
     newMat->isDoubleSided      = isDoubleSided;
     newMat->albedoTex          = albedoTexture;
     newMat->emissiveTex        = emissiveTexture;
-    newMat->occlusionTex       = occlusionTexture;
     newMat->metRoughTex        = metRoughTexture;
     newMat->normalTex          = normalTexture;
     newMat->clearcoatFactor    = clearcoatFactor;

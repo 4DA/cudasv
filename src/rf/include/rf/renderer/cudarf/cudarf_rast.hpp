@@ -159,7 +159,6 @@ struct Fragment {
     float albedoLod;
     float normalLod;
     float emissiveLod;
-    float occlusionLod;
     float metRoughLod;
 
 #ifdef WITH_TAA
