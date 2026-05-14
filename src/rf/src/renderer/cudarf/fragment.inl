@@ -60,8 +60,11 @@ cudarf::ColorRGB compute_spherical(const glm::mat4 &coefs,
 {
     return albedo * to_vec3f(glm::max(glm::vec3(coefs * glm::vec4(1.0f, N.y, N.z, N.x)), 0.0f));
 }
-
-__device__ MaterialData get_metallic_roughness_data(const cudarf::Material &mat, float f0_ior)
+template <bool TTexturingEnabled>
+__device__ MaterialData get_metallic_roughness_data(
+    const cudarf::Material &mat,
+    const cudarf::rast::Fragment &frag,
+    float f0_ior)
 {
     MaterialData data;
     data.metallic            = mat.metallic;
@@ -72,11 +75,20 @@ __device__ MaterialData get_metallic_roughness_data(const cudarf::Material &mat,
     data.alpha               = mat.baseColor.w;
 
     // r: occlusion, g: roughness, b: metallic
-    // if (material.hasMetallicRoughnessMap) {
-    //     vec4 sample = texture(...)
-    //     data.perceptualRoughness *= sample.g;
-    //     data.metallic *= sample.b;
-    // }
+    if constexpr(TTexturingEnabled) {
+        if (mat.metRoughTex.textureObject) {
+            glm::vec3 uv(frag.tex.x, frag.tex.y, 0.0f);
+            uv = uv * mat.metRoughTex.uvTransform;
+
+            cudarf::Vec4f sample = tex2DLod<float4>(
+                mat.metRoughTex.textureObject,
+                uv.x,
+                uv.y,
+                frag.metRoughLod);
+            data.perceptualRoughness *= sample.y;
+            data.metallic *= sample.z;
+        }
+    }
 
     // Achromatic f0 based on IOR.
     float3 f0 = make_float3(f0_ior, f0_ior, f0_ior);
@@ -247,7 +259,7 @@ __device__ float4 compute_color_pbr(const cudarf::rast::PipeParams *pipe, const 
         mat.baseColor.w *= texVal.w;
     }
 
-    MaterialData materialData = get_metallic_roughness_data(mat, f0_ior);
+    MaterialData materialData = get_metallic_roughness_data<TTexturingEnabled>(mat, frag, f0_ior);
 
     float3 n = frag.normal;
 
@@ -356,6 +368,33 @@ glm::vec4 make_clip_pos_for_deriv(const float2 &screenPos,
     return glm::vec4(ndc * w, 0.0f, w);
 }
 
+__device__ __inline__
+float compute_texture_lod(const cudarf::Barycentric &bary,
+                          const cudarf::rast::Triangle &tri,
+                          const cudarf::Texture &texture)
+{
+    if (!texture.textureObject || texture.mipLevels <= 1) {
+        return 0.0f;
+    }
+
+    float2 duv_dx = interp(bary.ddx, tri.tex);
+    float2 duv_dy = interp(bary.ddy, tri.tex);
+
+    glm::vec3 transformed_duv_dx(duv_dx.x, duv_dx.y, 0.0f);
+    glm::vec3 transformed_duv_dy(duv_dy.x, duv_dy.y, 0.0f);
+    transformed_duv_dx = transformed_duv_dx * texture.uvTransform;
+    transformed_duv_dy = transformed_duv_dy * texture.uvTransform;
+
+    float2 texDim = make_float2(texture.width, texture.height);
+    float2 dTdx = make_float2(transformed_duv_dx.x, transformed_duv_dx.y) * texDim;
+    float2 dTdy = make_float2(transformed_duv_dy.x, transformed_duv_dy.y) * texDim;
+
+    float rho = max(length(dTdx), length(dTdy));
+    float lod = log2f(max(rho, 1e-8f));
+    float maxLod = float(texture.mipLevels - 1);
+    return clamp(lod, 0.0f, maxLod);
+}
+
 template<bool TTexturingEnabled>
 __device__ __inline__
 cudarf::Vec3f compute_shading_bary(const cudarf::rast::PipeParams *pipe,
@@ -366,7 +405,7 @@ cudarf::Vec3f compute_shading_bary(const cudarf::rast::PipeParams *pipe,
 {
     cudarf::Vec2f fragWindow = make_vec2f(x + 0.5f, y + 0.5f);
     cudarf::Vec3f baryAffine = compute_bary_affine2(tri, fragWindow);
-    lodData.albedo = 0.0f;
+    lodData = {};
 
 #ifdef CUDARF_FORCE_AFFINE_BARYCENTRICS
     return baryAffine;
@@ -384,19 +423,11 @@ cudarf::Vec3f compute_shading_bary(const cudarf::rast::PipeParams *pipe,
         cudarf::Barycentric bary = compute_bary_persp_deriv(P0, P1, P2, ndc, windowSize);
 
         const cudarf::Material &material = pipe->materials[tri.materialId];
-        if (material.albedoTex.textureObject && material.albedoTex.mipLevels > 1) {
-            float2 duv_dx = interp(bary.ddx, tri.tex);
-            float2 duv_dy = interp(bary.ddy, tri.tex);
-            float2 texDim = make_float2(material.albedoTex.width,
-                                        material.albedoTex.height);
-
-            float2 dTdx = duv_dx * texDim;
-            float2 dTdy = duv_dy * texDim;
-            float rho = max(length(dTdx), length(dTdy));
-            float lod = log2f(max(rho, 1e-8f));
-            float maxLod = float(material.albedoTex.mipLevels - 1);
-            lodData.albedo = clamp(lod, 0.0f, maxLod);
-        }
+        lodData.albedo = compute_texture_lod(bary, tri, material.albedoTex);
+        lodData.normal = compute_texture_lod(bary, tri, material.normalTex);
+        lodData.emissive = compute_texture_lod(bary, tri, material.emissiveTex);
+        lodData.occlusion = compute_texture_lod(bary, tri, material.occlusionTex);
+        lodData.metRough = compute_texture_lod(bary, tri, material.metRoughTex);
 
         return make_vec3f(bary.lambda.x, bary.lambda.y, bary.lambda.z);
     }
