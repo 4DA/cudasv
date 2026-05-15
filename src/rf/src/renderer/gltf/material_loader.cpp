@@ -1,5 +1,3 @@
-#include "renderer/gltf/material_loader.hpp"
-
 #include <optional>
 #include <sstream>
 #include <string>
@@ -17,6 +15,8 @@
 #include "material.hpp"
 #include "scene.hpp"
 
+#include "renderer/gltf/material_loader.hpp"
+
 namespace
 {
 
@@ -25,10 +25,7 @@ const std::string UV_TRANSFORM_SCALE = "scale";
 const std::string UV_TRANSFORM_ROTATION = "rotation";
 const std::string UV_TRANSFORM_TEXCOORD = "texCoord";
 
-const unsigned int ALBEDO_MIP_COUNT = 6;
-const unsigned int NORMAL_MIP_COUNT = 6;
-const unsigned int EMISSIVE_MIP_COUNT = 6;
-const unsigned int METROUGH_MIP_COUNT = 6;
+const unsigned int MATERIAL_MIP_COUNT = 6;
 
 std::optional<glm::vec2> get_texture_transform_vec2(const tinygltf::Value::Object &object,
                                                     const std::string &key)
@@ -233,6 +230,9 @@ std::optional<cudarf::Texture> load_gltf_image(const tinygltf::Model &model,
         return std::nullopt;
     }
 
+    // The mipmapped CUDA texture path currently expects RGBA8. TinyGLTF's
+    // default stb loader expands decoded images to 4 channels as long as
+    // SetPreserveImageChannels(true) is not enabled.
     auto texOpt = cudarf::create_cuda_texture(image, cudaAddressModeWrap, mipCount, cuStream);
 
     if (!texOpt) {
@@ -397,7 +397,7 @@ create_material(const tinygltf::Model &model,
                                            pbr.baseColorTexture.index,
                                            pbr.baseColorTexture.extensions,
                                            "albedo",
-                                           ALBEDO_MIP_COUNT,
+                                           MATERIAL_MIP_COUNT,
                                            cuStream);
             if (!loaded) {
                 return nullptr;
@@ -431,7 +431,7 @@ create_material(const tinygltf::Model &model,
                                            pbr.metallicRoughnessTexture.index,
                                            pbr.metallicRoughnessTexture.extensions,
                                            "met-rough",
-                                           METROUGH_MIP_COUNT,
+                                           MATERIAL_MIP_COUNT,
                                            cuStream);
             if (!loaded) {
                 return nullptr;
@@ -449,7 +449,7 @@ create_material(const tinygltf::Model &model,
                                            gltfMaterial->normalTexture.index,
                                            gltfMaterial->normalTexture.extensions,
                                            "normal-tex",
-                                           NORMAL_MIP_COUNT,
+                                           MATERIAL_MIP_COUNT,
                                            cuStream);
             if (!loaded) {
                 return nullptr;
@@ -473,7 +473,7 @@ create_material(const tinygltf::Model &model,
                                            *texId,
                                            gltfMaterial->emissiveTexture.extensions,
                                            "emissive",
-                                           EMISSIVE_MIP_COUNT,
+                                           MATERIAL_MIP_COUNT,
                                            cuStream);
             if (!loaded) {
                 return nullptr;
