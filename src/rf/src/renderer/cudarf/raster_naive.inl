@@ -18,11 +18,17 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
 {
     assert(fb);
 
+    const cudarf::rast::PipeStaticContext *stat = pipe->stat;
+    const cudarf::rast::PipeScratchContext &scratch = pipe->scratch;
+#ifdef WITH_TAA
+    const cudarf::rast::PipeFrameContext *frame = pipe->frame;
+#endif
+
     int x = (blockIdx.x * blockDim.x) + threadIdx.x;
     int y = (blockIdx.y * blockDim.y) + threadIdx.y;
-    int outIdx = x + (y * pipe->windowWidth);
+    int outIdx = x + (y * stat->windowWidth);
 
-    if (x >= pipe->windowWidth || y >= pipe->windowHeight) {return;}
+    if (x >= stat->windowWidth || y >= stat->windowHeight) {return;}
 
     cudarf::rast::Fragment fragOut;
     bool isCovered = false;
@@ -32,13 +38,13 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
     int tileY = y / CUDARF_TILE_SZ;
 
     // TODO: compute on CPU
-    int2 tilesInBin = make_int2(pipe->binCtx.binW / CUDARF_TILE_SZ, pipe->binCtx.binH / CUDARF_TILE_SZ);
+    int2 tilesInBin = make_int2(scratch.binCtx.binW / CUDARF_TILE_SZ, scratch.binCtx.binH / CUDARF_TILE_SZ);
 
-	int tileId = tileX + tileY * pipe->binCtx.binsX * tilesInBin.x;
+	int tileId = tileX + tileY * scratch.binCtx.binsX * tilesInBin.x;
 
-    const cudarf::rast::SimpleQueue::Segment &tileSeg = pipe->tileQHeaders[tileId];
+    const cudarf::rast::SimpleQueue::Segment &tileSeg = scratch.tileQHeaders[tileId];
 
-    int32_t triCount = min(tileSeg.queueSize, pipe->tileQLimit);
+    int32_t triCount = min(tileSeg.queueSize, scratch.tileQLimit);
 
     if (triCount == 0) {return;}
 
@@ -50,7 +56,7 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
 
     for (int i = 0; i < triCount; i++) {
 
-        const cudarf::rast::Triangle &tri = pipe->tris[tileSeg.queue[i]];
+        const cudarf::rast::Triangle &tri = scratch.tris[tileSeg.queue[i]];
 
         // skip triangle if its closest vertex is beyond depth value
         if (tri.zw_min > fragDepth) {continue;}
@@ -111,15 +117,15 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
 
             if (geomFb != nullptr && opaqueTriTop != -1) {
                 geomFb[outIdx] = {
-                    pipe->tris[opaqueTriTop].id,
-                    pipe->tris[opaqueTriTop].drawPacketId
+                    scratch.tris[opaqueTriTop].id,
+                    scratch.tris[opaqueTriTop].drawPacketId
                 };
             }
         } else {
             if (opaqueTriTop != -1) {
                 fragColor = shade_fragment<TShaderType, TTexturingEnabled, true>(
                     pipe,
-                    pipe->tris[opaqueTriTop],
+                    scratch.tris[opaqueTriTop],
                     x,
                     y,
                     fragOut);
@@ -128,8 +134,8 @@ void fine_raster_naive(const cudarf::rast::PipeParams *pipe,
 
 #ifdef WITH_TAA
                 float2 velocity = make_float2(x + 0.5f, y + 0.5f) - fragOut.pos_ss_hist;
-                if (length(velocity) > pipe->taa.velocityThreshold) {
-                    pipe->taa.velocityTex[outIdx] = velocity;
+                if (length(velocity) > frame->taa.velocityThreshold) {
+                    frame->taa.velocityTex[outIdx] = velocity;
                 }
 #endif
             }

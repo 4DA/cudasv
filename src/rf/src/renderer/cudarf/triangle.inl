@@ -102,30 +102,36 @@ void vertex_transform(const cudarf::rast::PipeParams *pipe,
     unsigned int i = blockDim.x * blockIdx.x + threadIdx.x;
     if (i >= vertex_count) {return;}
 
+    const cudarf::rast::PipeSubmissionContext *sub = pipe->submission;
+    const cudarf::rast::PipeScratchContext &scratch = pipe->scratch;
+#ifdef WITH_TAA
+    const cudarf::rast::PipeFrameContext *frame = pipe->frame;
+#endif
+
     // determine what draw packet and vertex index this thread should pick
-    int v = find_interval(i,  pipe->vtxOffsets, pipe->drawPacketCount);
-    int vIdx = i - pipe->vtxOffsets[v];
-    int drawPacketId = pipe->drawPacketOrder[v];
-    assert(v < pipe->drawPacketCount);
+    int v = find_interval(i,  sub->vtxOffsets, sub->drawPacketCount);
+    int vIdx = i - sub->vtxOffsets[v];
+    int drawPacketId = sub->drawPacketOrder[v];
+    assert(v < sub->drawPacketCount);
     assert(drawPacketId >= 0);
 
-    const cudarf::Uniforms &uniforms = pipe->uniforms[v];
+    const cudarf::Uniforms &uniforms = sub->uniforms[v];
 
     if (i >= vertex_count) { return; }
 
-    cudarf::rast::VertexIn *vertexBuffer = pipe->drawPackets[drawPacketId].dev_bufVertex;
+    cudarf::rast::VertexIn *vertexBuffer = sub->drawPackets[drawPacketId].dev_bufVertex;
     glm::mat4 PVM;
 
 #ifdef WITH_TAA
     if (TWithTAA) {
-        const cudarf::Uniforms &uniformsHist = pipe->taa.uniformsHist[v];
-        PVM = pipe->common.PV * uniforms.M;
-        glm::mat4 PVM_hist = pipe->taa.commonHist.PV * uniformsHist.M;
+        const cudarf::Uniforms &uniformsHist = frame->taa.uniformsHist[v];
+        PVM = frame->common.PV * uniforms.M;
+        glm::mat4 PVM_hist = frame->taa.commonHist.PV * uniformsHist.M;
 
         // compute screen space position of vertex in history frame
         float4 pos_3dhp_hist = PVM_hist * make_vec4f(vertexBuffer[vIdx].pos, 1.0f);
-        pipe->vertexOut[i].pos_ss_hist = clip_to_window(to_vec2f(pos_3dhp_hist / pos_3dhp_hist.w),
-                                                        pipe->windowWidth, pipe->windowHeight);
+        scratch.vertexOut[i].pos_ss_hist = clip_to_window(to_vec2f(pos_3dhp_hist / pos_3dhp_hist.w),
+                                                           pipe->stat->windowWidth, pipe->stat->windowHeight);
     } else {
         PVM = uniforms.PVM;
     }
@@ -133,7 +139,7 @@ void vertex_transform(const cudarf::rast::PipeParams *pipe,
     PVM = uniforms.PVM;
 #endif
 
-    pipe->vertexOut[i].pos_3dhp = PVM * make_vec4f(vertexBuffer[vIdx].pos, 1.0f);
+    scratch.vertexOut[i].pos_3dhp = PVM * make_vec4f(vertexBuffer[vIdx].pos, 1.0f);
 
     if constexpr (TShaderType == cudarf::SHADER_TYPE_PBR) {
         cudarf::Vec4f N = uniforms.N * make_vec4f(vertexBuffer[vIdx].nor, 0.0f);
@@ -141,17 +147,17 @@ void vertex_transform(const cudarf::rast::PipeParams *pipe,
         float bitan_sgn = vertexBuffer[vIdx].tan.w;
         cudarf::Vec4f T = uniforms.N * make_vec4f(to_vec3f(vertexBuffer[vIdx].tan), 0.0f);
 
-        pipe->vertexOut[i].pos_world = to_vec3f(uniforms.M * make_vec4f(vertexBuffer[vIdx].pos, 1.0f));
-        pipe->vertexOut[i].nor = normalize(to_vec3f(N));
-        pipe->vertexOut[i].tan = normalize(to_vec3f(T));
-        pipe->vertexOut[i].bitan_sgn = bitan_sgn;
+        scratch.vertexOut[i].pos_world = to_vec3f(uniforms.M * make_vec4f(vertexBuffer[vIdx].pos, 1.0f));
+        scratch.vertexOut[i].nor = normalize(to_vec3f(N));
+        scratch.vertexOut[i].tan = normalize(to_vec3f(T));
+        scratch.vertexOut[i].bitan_sgn = bitan_sgn;
     }
     else if constexpr (TShaderType == cudarf::SHADER_TYPE_UNLIT) {
-        pipe->vertexOut[i].col = vertexBuffer[vIdx].col;
+        scratch.vertexOut[i].col = vertexBuffer[vIdx].col;
     }
 
     if (TWithTex) {
-        pipe->vertexOut[i].tex = to_float2(vertexBuffer[vIdx].tex);
+        scratch.vertexOut[i].tex = to_float2(vertexBuffer[vIdx].tex);
     }
 
 }
@@ -160,7 +166,7 @@ void vertex_transform(const cudarf::rast::PipeParams *pipe,
 // todo: justify why (CUDARF_SUBPIXEL_LOG2 - 1), eg because we want 0,0 to be
 // rasterizer coords center
 __device__ __inline__ void tri_to_fixed(
-    const cudarf::rast::PipeParams *pipe,
+    const cudarf::rast::PipeStaticContext *pipe,
     float4 v0, float4 v1, float4 v2,
     int2 &p0, int2 &p1, int2 &p2, float3 &w_rcp, int2 &lo, int2 &hi)
 {
@@ -182,7 +188,7 @@ __device__ __inline__ void tri_to_fixed(
 
 template<cudarf::ShaderType TShaderType, bool TWithTex>
 __device__ __inline__
-void setup_triangle(const cudarf::rast::PipeParams *pipe,
+void setup_triangle(const cudarf::rast::PipeStaticContext *pipe,
                     cudarf::rast::Triangle *out,
                     float3 v_world0,
                     float3 v_world1,
@@ -286,16 +292,20 @@ void triangle_assembly(const cudarf::rast::PipeParams *pipe,
     unsigned int i = blockDim.x * blockIdx.x + threadIdx.x;
     if (i >= triangle_count) {return;}
 
-    int v = find_interval(3 * i,  pipe->idxOffsets, pipe->drawPacketCount);
-    int drawPacketId = pipe->drawPacketOrder[v];
+    const cudarf::rast::PipeStaticContext *stat = pipe->stat;
+    const cudarf::rast::PipeSubmissionContext *sub = pipe->submission;
+    const cudarf::rast::PipeScratchContext &scratch = pipe->scratch;
+
+    int v = find_interval(3 * i,  sub->idxOffsets, sub->drawPacketCount);
+    int drawPacketId = sub->drawPacketOrder[v];
     assert(drawPacketId >= 0);
     assert(drawPacketId < CUDARF_MAX_DRAW_PACKETS);
 
-    unsigned int idx = 3 * i - pipe->idxOffsets[v];
-    unsigned int vtxOft = pipe->vtxOffsets[v];
+    unsigned int idx = 3 * i - sub->idxOffsets[v];
+    unsigned int vtxOft = sub->vtxOffsets[v];
 
-    cudarf::rast::VertexOut *vtx = &pipe->vertexOut[vtxOft];
-    cudarf::PrimitiveIndex *index = pipe->drawPackets[drawPacketId].dev_bufIdx;
+    cudarf::rast::VertexOut *vtx = &scratch.vertexOut[vtxOft];
+    cudarf::PrimitiveIndex *index = sub->drawPackets[drawPacketId].dev_bufIdx;
 
     {
         int3 vidx;
@@ -306,9 +316,9 @@ void triangle_assembly(const cudarf::rast::PipeParams *pipe,
             vidx = make_int3(index[idx], index[idx + 1], index[idx + 2]);
         }
 
-        assert(vidx.x < pipe->drawPackets[drawPacketId].vertCount);
-        assert(vidx.y < pipe->drawPackets[drawPacketId].vertCount);
-        assert(vidx.z < pipe->drawPackets[drawPacketId].vertCount);
+        assert(vidx.x < sub->drawPackets[drawPacketId].vertCount);
+        assert(vidx.y < sub->drawPackets[drawPacketId].vertCount);
+        assert(vidx.z < sub->drawPackets[drawPacketId].vertCount);
 
         float4 v0 = vtx[vidx.x].pos_3dhp;
         float4 v1 = vtx[vidx.y].pos_3dhp;
@@ -345,7 +355,7 @@ void triangle_assembly(const cudarf::rast::PipeParams *pipe,
             // unused for now
             int2 p0, p1, p2, lo, hi;
 
-            tri_to_fixed(pipe,
+            tri_to_fixed(stat,
                          v0, v1, v2,
                          p0, p1, p2, w_rcp, lo, hi);
 
@@ -353,7 +363,7 @@ void triangle_assembly(const cudarf::rast::PipeParams *pipe,
             cudarf::Vec2f P1 = to_vec2f(v1 * w_rcp.y);
             cudarf::Vec2f P2 = to_vec2f(v2 * w_rcp.z);
 
-            float2 screen = make_float2((float)pipe->windowWidth, (float)pipe->windowHeight);
+            float2 screen = make_float2((float)stat->windowWidth, (float)stat->windowHeight);
 
             cudarf::Vec2f sP0 = 0.5f * screen * (make_float2(P0.x, P0.y) + 1.0f);
             cudarf::Vec2f sP1 = 0.5f * screen * (make_float2(P1.x, P1.y) + 1.0f);
@@ -364,9 +374,9 @@ void triangle_assembly(const cudarf::rast::PipeParams *pipe,
 
             if (edge_function(p0, p1, p2) >> (CUDARF_SUBPIXEL_LOG2 - 1) == 0) {return;}
 
-            const bool isDoubleSided = pipe->drawPacketDoubleSided[drawPacketId];
+            const bool isDoubleSided = sub->drawPacketDoubleSided[drawPacketId];
             const bool withPacketFaceCulling =
-                pipe->withFaceCulling && !isDoubleSided;
+                sub->withFaceCulling && !isDoubleSided;
 
             if (withPacketFaceCulling && isBackFacing) {
                 return;
@@ -380,11 +390,11 @@ void triangle_assembly(const cudarf::rast::PipeParams *pipe,
             // if (loxy >= CUDARF_VPCOORD_MIN && hixy <= CUDARF_VPCOORD_MAX && hixy - loxy <= aabb_limit)
             {
                 // TODO: implement triangle clipping
-                pipe->triSubtris[i] = 1;
+                scratch.triSubtris[i] = 1;
 
                 setup_triangle<TShaderType, TWithTex>(
-                    pipe,
-                    &pipe->tris[i],
+                    stat,
+                    &scratch.tris[i],
                     vtx[vidx.x].pos_world,
                     vtx[vidx.y].pos_world,
                     vtx[vidx.z].pos_world,
@@ -412,10 +422,10 @@ void triangle_assembly(const cudarf::rast::PipeParams *pipe,
                     sP0, sP1, sP2,
                     w_rcp,
                     1.0 / area_f,
-                    pipe->drawPacketMaterials[drawPacketId],
+                    sub->drawPacketMaterials[drawPacketId],
                     isDoubleSided && isBackFacing);
-                pipe->tris[i].id = i;
-                pipe->tris[i].drawPacketId = drawPacketId;
+                scratch.tris[i].id = i;
+                scratch.tris[i].drawPacketId = drawPacketId;
                 return;
             }
         }

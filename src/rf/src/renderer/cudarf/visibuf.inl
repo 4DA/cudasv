@@ -4,6 +4,9 @@ void visibuf_build_xy_lists(const cudarf::rast::PipeParams *pipe,
                             cudarf::pipe::Atomics *g_atomics,
                             cudarf::visibuf::XYCommand *xyCommands)
 {
+    const cudarf::rast::PipeStaticContext *stat = pipe->stat;
+    const cudarf::rast::PipeSubmissionContext *sub = pipe->submission;
+
     __shared__ int blockFragCount; // block local visible count
     __shared__ int globalOffset;
 
@@ -12,9 +15,9 @@ void visibuf_build_xy_lists(const cudarf::rast::PipeParams *pipe,
     uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
     uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
 
-    if (x >= pipe->windowWidth || y >= pipe->windowHeight) {visible = 0;}
+    if (x >= stat->windowWidth || y >= stat->windowHeight) {visible = 0;}
 
-    int inIdx = x + (y * pipe->windowWidth);
+    int inIdx = x + (y * stat->windowWidth);
 
     bool isT0 = (threadIdx.x == 0 && threadIdx.y == 0);
 
@@ -35,7 +38,7 @@ void visibuf_build_xy_lists(const cudarf::rast::PipeParams *pipe,
         if (info.drawPacketId >= CUDARF_MAX_DRAW_PACKETS) {visible = 0;}
 
         if (visible) {
-            matId = pipe->drawPacketMaterials[info.drawPacketId];
+            matId = sub->drawPacketMaterials[info.drawPacketId];
         }
 
         if(matId == 0xFFFFFFFFu) {visible = 0;}
@@ -68,24 +71,31 @@ void visibuf_material_pass(const cudarf::rast::PipeParams *pipe,
                            const cudarf::visibuf::XYCommand *xyCommands,
                            cudarf::Framebuffer fb)
 {
+    const cudarf::rast::PipeStaticContext *stat = pipe->stat;
+    const cudarf::rast::PipeSubmissionContext *sub = pipe->submission;
+    const cudarf::rast::PipeScratchContext &scratch = pipe->scratch;
+#ifdef WITH_TAA
+    const cudarf::rast::PipeFrameContext *frame = pipe->frame;
+#endif
+
     unsigned int tx = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int ty = blockIdx.y * blockDim.y + threadIdx.y;
-    unsigned int i = tx + (ty * pipe->windowWidth);
+    unsigned int i = tx + (ty * stat->windowWidth);
 
-    if (tx >= pipe->windowWidth || ty >= pipe->windowHeight) {return;}
+    if (tx >= stat->windowWidth || ty >= stat->windowHeight) {return;}
     if (i >= g_atomics->visibuf.totalVisibleFrags) {return;}
 
     auto [x, y, matId] = xyCommands[i];
 
-    int inIdx = x + (y * pipe->windowWidth);
+    int inIdx = x + (y * stat->windowWidth);
     cudarf::visibuf::GeomOutput info = geomFb[inIdx];
 
     int triId = info.triId;
     assert(triId != 0xFFFFFFFFu);
 
-    const cudarf::rast::Triangle &tri = pipe->tris[triId];
+    const cudarf::rast::Triangle &tri = scratch.tris[triId];
 
-    const cudarf::Material &material = pipe->materials[matId];
+    const cudarf::Material &material = sub->materials[matId];
 
     cudarf::rast::Fragment frag;
 
@@ -133,11 +143,11 @@ void visibuf_material_pass(const cudarf::rast::PipeParams *pipe,
     // fb::store(fb, x, y, debugColor);
 
 #ifdef WITH_TAA
-    int outIdx = x + (y * pipe->windowWidth);
+    int outIdx = x + (y * stat->windowWidth);
 
     float2 velocity = make_float2(x + 0.5f, y + 0.5f) - frag.pos_ss_hist;
-    if (length(velocity) > pipe->taa.velocityThreshold) {
-        pipe->taa.velocityTex[outIdx] = velocity;
+    if (length(velocity) > frame->taa.velocityThreshold) {
+        frame->taa.velocityTex[outIdx] = velocity;
     }
 #endif
 

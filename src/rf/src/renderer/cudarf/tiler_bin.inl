@@ -137,7 +137,9 @@ __global__ void __launch_bounds__(CUDARF_BIN_WARPS * 32, 1)
     // number of segments allocated within block
     __shared__ volatile uint32_t s_allocBase;
 
-    const cudarf::rast::BinTilerCtx &ctx = pipe->binCtx;
+    const cudarf::rast::PipeSubmissionContext *sub = pipe->submission;
+    const cudarf::rast::PipeScratchContext &scratch = pipe->scratch;
+    const cudarf::rast::BinTilerCtx &ctx = scratch.binCtx;
 
     int32_t*                    binFirstSeg     = (int32_t*)ctx.binFirstSeg;
     int32_t*                    binTotal        = (int32_t*)ctx.binTotal;
@@ -145,7 +147,7 @@ __global__ void __launch_bounds__(CUDARF_BIN_WARPS * 32, 1)
     int32_t*                    binSegNext      = (int32_t*)ctx.binSegNext;
     int32_t*                    binSegCount	    = (int32_t*)ctx.binSegCount;
 
-    const cudarf::rast::Triangle* triangles = pipe->tris;
+    const cudarf::rast::Triangle* triangles = scratch.tris;
 
     int32_t thrInBlock = threadIdx.x + threadIdx.y * 32;
 	int32_t batchPos = 0;
@@ -176,14 +178,14 @@ __global__ void __launch_bounds__(CUDARF_BIN_WARPS * 32, 1)
 		batchPos = s_batchPos;
 
 		// all batches done?
-        if (batchPos >= pipe->numTriangles) {
+        if (batchPos >= sub->numTriangles) {
 			break;
         }
 
         // per-thread state
         int bufIndex = 0;
         int	bufCount = 0;
-        int batchEnd = ::min(batchPos + ctx.binBatchSize, pipe->numTriangles);
+        int batchEnd = ::min(batchPos + ctx.binBatchSize, sub->numTriangles);
 
         do {
 
@@ -192,7 +194,7 @@ __global__ void __launch_bounds__(CUDARF_BIN_WARPS * 32, 1)
                 int triIdx = batchPos + thrInBlock;
                 int num = 0;
                 if (triIdx < batchEnd) {
-                    num = pipe->triSubtris[triIdx];
+                    num = scratch.triSubtris[triIdx];
                 }
 
                 // cumulative sum of triangle count within each warp,
@@ -318,8 +320,8 @@ __global__ void __launch_bounds__(CUDARF_BIN_WARPS * 32, 1)
                 // hiy = hi.y >> binLog;
                 // -----------------
 
-                bin_idx_from_coord(pipe, tri.flo, lox, loy);
-                bin_idx_from_coord(pipe, tri.fhi, hix, hiy);
+                bin_idx_from_coord(&scratch, tri.flo, lox, loy);
+                bin_idx_from_coord(&scratch, tri.fhi, hix, hiy);
 
                 // .. determine bin coverage by triangle
                 // most common case: triangle covers at most 2x2 bins, that is
@@ -373,11 +375,11 @@ __global__ void __launch_bounds__(CUDARF_BIN_WARPS * 32, 1)
                         int binX = binIdx % ctx.binsX;
                         int binY = binIdx / ctx.binsY;
 
-                        float2 center = bin_center_from_idx(pipe, binX, binY);
+                        float2 center = bin_center_from_idx(&scratch, binX, binY);
 
                         // TODO compute only once
-                        float2 half = make_float2(pipe->binCtx.binW / 2.0,
-                                                  pipe->binCtx.binH / 2.0);
+                        float2 half = make_float2(ctx.binW / 2.0,
+                                                  ctx.binH / 2.0);
 
                         // Outside AABB => skip.
                         if (tri.flo.x >= center.x + half.x || tri.flo.y >= center.y + half.y ||

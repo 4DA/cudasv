@@ -319,12 +319,13 @@ struct PipeScratchContext {
 ///
 /// All pointers point to device memory unless specified otherwise.
 ///
-struct PipeParams:
-    PipeStaticContext,
-    PipeFrameContext,
-    PipeSubmissionContext,
-    PipeScratchContext
-{};
+
+struct PipeParams {
+    const PipeStaticContext *stat;
+    const PipeFrameContext *frame;
+    const PipeSubmissionContext *submission;
+    PipeScratchContext scratch;
+};
 
 } // namespace rast (second block)
 

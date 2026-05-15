@@ -174,10 +174,12 @@ void compute_point_lights(const cudarf::rast::PipeParams *pipe,
                           cudarf::ColorRGB &comp_diffuse,
                           cudarf::ColorRGB &comp_specular)
 {
-    float3 v = normalize(pipe->camera - frag.pos_global);
+    const cudarf::rast::PipeFrameContext *frame = pipe->frame;
 
-    for (int i = 0; i < pipe->lightCount; i++) {
-        const cudarf::CUDARFLight &light = pipe->lights[i];
+    float3 v = normalize(frame->camera - frag.pos_global);
+
+    for (int i = 0; i < frame->lightCount; i++) {
+        const cudarf::CUDARFLight &light = frame->lights[i];
 
         float3 fragToLight = light.position - frag.pos_global;
 
@@ -214,16 +216,18 @@ cudarf::ColorRGB get_ibl_radiance_ggx(const cudarf::rast::PipeParams *pipe,
                                       float perceptualRoughness,
                                       glm::vec3 specularColor)
 {
-    int mipCount = pipe->specular.mipCount;
+    const cudarf::rast::PipeFrameContext *frame = pipe->frame;
+
+    int mipCount = frame->specular.mipCount;
     assert(mipCount);
 
     float lod = clamp(perceptualRoughness * float(mipCount), 0.0, float(mipCount));
     glm::vec3 reflection = glm::normalize(glm::reflect(-v, n));
 
     glm::vec2 brdfSamplePoint = glm::clamp(glm::vec2(NdotV, perceptualRoughness), glm::vec2(0.0, 0.0), glm::vec2(1.0, 1.0));
-    glm::vec2 brdf = glm::vec2(to_glm(tex2D<float4>(pipe->brdfLUT, brdfSamplePoint.x, brdfSamplePoint.y)));
+    glm::vec2 brdf = glm::vec2(to_glm(tex2D<float4>(frame->brdfLUT, brdfSamplePoint.x, brdfSamplePoint.y)));
 
-    glm::vec4 specularSample = to_glm(sampleCube(pipe->specular, reflection.x, reflection.y, reflection.z, lod));
+    glm::vec4 specularSample = to_glm(sampleCube(frame->specular, reflection.x, reflection.y, reflection.z, lod));
     glm::vec3 specularLight = glm::vec3(specularSample);
 
 // #ifndef USE_HDR
@@ -237,13 +241,16 @@ cudarf::ColorRGB get_ibl_radiance_ggx(const cudarf::rast::PipeParams *pipe,
 template<bool TTexturingEnabled, bool TClearcoatEnabled>
 __device__ float4 compute_color_pbr(const cudarf::rast::PipeParams *pipe, const cudarf::rast::Fragment &frag)
 {
+    const cudarf::rast::PipeFrameContext *frame = pipe->frame;
+    const cudarf::rast::PipeSubmissionContext *sub = pipe->submission;
+
     // The default index of refraction of 1.5 yields a dielectric normal incidence reflectance of 0.04.
     // const float ior = 1.5;
     const float f0_ior = 0.04;
     const auto ClearcoatF0 = make_float3(0.04f, 0.04f, 0.04f);
     const auto ClearcoatF90 = make_float3(1.0f, 1.0f, 1.0f);
 
-    cudarf::Material mat = pipe->materials[frag.materialId];
+    cudarf::Material mat = sub->materials[frag.materialId];
 
     if (TTexturingEnabled && mat.albedoTex.textureObject) {
         glm::vec3 uv(frag.tex.x, frag.tex.y, 0.0f);
@@ -287,7 +294,7 @@ __device__ float4 compute_color_pbr(const cudarf::rast::PipeParams *pipe, const 
     materialData.n = n;
 
     cudarf::ColorRGB comp_diffuse =
-        compute_spherical(pipe->sphericalHarmonics,
+        compute_spherical(frame->sphericalHarmonics,
                           to_vec3f(cudarf::shading::vehicle_frame_to_cubemap_frame(to_glm(n))),
                           materialData.albedoColor);
 
@@ -300,7 +307,7 @@ __device__ float4 compute_color_pbr(const cudarf::rast::PipeParams *pipe, const 
             to_vec3f(tex2DLod<float4>(mat.emissiveTex.textureObject, uv.x, uv.y, frag.emissiveLod)));
     }
 
-    float3 v = normalize(pipe->camera - frag.pos_global);
+    float3 v = normalize(frame->camera - frag.pos_global);
     float NdotV = clamp(dot(n, v), 0.0f, 1.0f);
 
     cudarf::ColorRGB comp_specular = get_ibl_radiance_ggx(pipe,
@@ -342,7 +349,7 @@ template<bool TTexturingEnabled>
 __device__
 cudarf::Color compute_color_flat(const cudarf::rast::PipeParams *pipe, const cudarf::rast::Fragment &frag)
 {
-    const cudarf::Material &material = pipe->materials[frag.materialId];
+    const cudarf::Material &material = pipe->submission->materials[frag.materialId];
     cudarf::Color texCol = make_color(1.0f, 1.0f, 1.0f, 1.0f);
 
     if (TTexturingEnabled && material.albedoTex.textureObject) {
@@ -412,7 +419,9 @@ cudarf::Vec3f compute_shading_bary(const cudarf::rast::PipeParams *pipe,
     if constexpr (!TTexturingEnabled) {
         return compute_bary_persp(baryAffine, tri.w_rcp);
     } else {
-        glm::vec2 windowSize((float)pipe->windowWidth, (float)pipe->windowHeight);
+        const cudarf::rast::PipeStaticContext *stat = pipe->stat;
+        const cudarf::rast::PipeSubmissionContext *sub = pipe->submission;
+        glm::vec2 windowSize((float)stat->windowWidth, (float)stat->windowHeight);
 
         glm::vec4 P0 = make_clip_pos_for_deriv(tri.sP0, tri.w_rcp.x, windowSize);
         glm::vec4 P1 = make_clip_pos_for_deriv(tri.sP1, tri.w_rcp.y, windowSize);
@@ -421,7 +430,7 @@ cudarf::Vec3f compute_shading_bary(const cudarf::rast::PipeParams *pipe,
 
         cudarf::Barycentric bary = compute_bary_persp_deriv(P0, P1, P2, ndc, windowSize);
 
-        const cudarf::Material &material = pipe->materials[tri.materialId];
+        const cudarf::Material &material = sub->materials[tri.materialId];
         lodData.albedo = compute_texture_lod(bary, tri, material.albedoTex);
         lodData.normal = compute_texture_lod(bary, tri, material.normalTex);
         lodData.emissive = compute_texture_lod(bary, tri, material.emissiveTex);
@@ -493,7 +502,7 @@ cudarf::Color shade_fragment(const cudarf::rast::PipeParams *pipe,
     LodData lodData{};
     cudarf::Vec3f baryPersp =
         compute_shading_bary<TTexturingEnabled>(pipe, tri, x, y, lodData);
-    const cudarf::Material &material = pipe->materials[tri.materialId];
+    const cudarf::Material &material = pipe->submission->materials[tri.materialId];
 
     compute_fragment<TShaderType, TTexturingEnabled>(material, tri, baryPersp, frag);
 

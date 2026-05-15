@@ -111,7 +111,12 @@ struct Ctx
     int clockRate;           // SM clock frequency in kilohertz
     bool TAAEnabled;
 
+    cudarf::rast::PipeStaticContext *dev_pipeStatic = nullptr;
+    cudarf::rast::PipeFrameContext *dev_pipeFrame = nullptr;
+    cudarf::rast::PipeSubmissionContext *dev_pipeSubmission = nullptr;
+
     cudarf::rast::PipeParams *dev_pipeParams;
+
     Atomics *dev_pipeAtomics;
 
     cudarf::DrawPacket drawPackets[CUDARF_MAX_DRAW_PACKETS];

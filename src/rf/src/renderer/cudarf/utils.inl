@@ -40,19 +40,19 @@ cudarf::Vec4f operator*(glm::mat4 mat, cudarf::Vec4f vec) {
     return to_vec4f(mat * to_glm(vec));
 }
 
-static __device__ void bin_idx_from_coord(const cudarf::rast::PipeParams *pipe, float2 fragScrn, int32_t &binX, int32_t &binY)
+static __device__ void bin_idx_from_coord(const cudarf::rast::PipeScratchContext *pipe, float2 fragScrn, int32_t &binX, int32_t &binY)
 {
     binX = clamp(int32_t(fragScrn.x / pipe->binCtx.binW), 0, CUDARF_BIN_COUNT - 1);
     binY = clamp(int32_t(fragScrn.y / pipe->binCtx.binH), 0, CUDARF_BIN_COUNT - 1);
 }
 
-static __device__ float2 bin_center_from_idx(const cudarf::rast::PipeParams *pipe, const int32_t binX, const int32_t binY)
+static __device__ float2 bin_center_from_idx(const cudarf::rast::PipeScratchContext *pipe, const int32_t binX, const int32_t binY)
 {
     return make_float2((binX + 0.5) * pipe->binCtx.binW,
                        (binY + 0.5) * pipe->binCtx.binH);
 }
 
-static __device__ int2 tile_idx_from_coord(const cudarf::rast::PipeParams *pipe, float2 fragScrn)
+static __device__ int2 tile_idx_from_coord(const cudarf::rast::PipeScratchContext *pipe, float2 fragScrn)
 {
     return make_int2(fragScrn.x / CUDARF_TILE_SZ, fragScrn.y / CUDARF_TILE_SZ);
 }
@@ -254,7 +254,7 @@ __device__ __inline__ int32_t edge_function(int2 a, int2 b, int2 c)
 
 // sPX \in [0; screen width] x [0; screen height]
 __device__ __inline__
-void to_screen_space(const cudarf::rast::PipeParams *pipe, const cudarf::rast::Triangle &tri,
+void to_screen_space(const cudarf::rast::PipeStaticContext *pipe, const cudarf::rast::Triangle &tri,
                      cudarf::Vec2f &sP0, cudarf::Vec2f &sP1, cudarf::Vec2f &sP2)
 {
     // TODO store in pipe params
@@ -417,7 +417,7 @@ static __device__ float2 clip_to_window(const cudarf::Vec2f &in, uint w, uint h)
 //     hi = make_int2(max_x, max_y);
 // }
 
-void __device__ compute_aabb_screen(const cudarf::rast::PipeParams *pipe, const cudarf::rast::Triangle &tri, float2 &lo, float2 &hi)
+void __device__ compute_aabb_screen(const cudarf::rast::PipeStaticContext *pipe, const cudarf::rast::Triangle &tri, float2 &lo, float2 &hi)
 {
     // Compute triangle bounding box
     float min_x = min3(tri.sP0.x, tri.sP1.x, tri.sP2.x);

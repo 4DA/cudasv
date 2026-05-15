@@ -46,7 +46,9 @@ template<bool TWithBlending>
 __global__ __launch_bounds__(CUDARF_COARSE_WARPS * 32, 1)
 void tilerCoarse(const cudarf::rast::PipeParams *pipe, cudarf::pipe::Atomics *atomics)
 {
-    const cudarf::rast::BinTilerCtx &binCtx = pipe->binCtx;
+    const cudarf::rast::PipeSubmissionContext *sub = pipe->submission;
+    const cudarf::rast::PipeScratchContext &scratch = pipe->scratch;
+    const cudarf::rast::BinTilerCtx &binCtx = scratch.binCtx;
 
     // Common
     // --
@@ -90,7 +92,7 @@ void tilerCoarse(const cudarf::rast::PipeParams *pipe, cudarf::pipe::Atomics *at
     // Constants
     // --
 
-    if (atomics->subtris_count > pipe->maxSubtris || atomics->numBinSegs > pipe->binCtx.maxBinSegs)
+    if (atomics->subtris_count > sub->maxSubtris || atomics->numBinSegs > scratch.binCtx.maxBinSegs)
         return;
 
     int tileLog     = CUDARF_TILE_LOG2 + CUDARF_SUBPIXEL_LOG2;
@@ -114,7 +116,7 @@ void tilerCoarse(const cudarf::rast::PipeParams *pipe, cudarf::pipe::Atomics *at
     // --
     // long long int clockIn;
 
-    for (int binIdx = thrInBlock; binIdx < pipe->binCtx.numBins; binIdx += CUDARF_COARSE_WARPS * 32)
+    for (int binIdx = thrInBlock; binIdx < scratch.binCtx.numBins; binIdx += CUDARF_COARSE_WARPS * 32)
     {
         int count = 0;
         for (int i = 0; i < CUDARF_BIN_STREAMS_SIZE; i++)
@@ -139,7 +141,7 @@ void tilerCoarse(const cudarf::rast::PipeParams *pipe, cudarf::pipe::Atomics *at
         __syncthreads();
 
         int workCounter = s_workCounter;
-        if (workCounter >= pipe->binCtx.numBins)
+        if (workCounter >= scratch.binCtx.numBins)
         {
             break;
         }
@@ -172,10 +174,10 @@ void tilerCoarse(const cudarf::rast::PipeParams *pipe, cudarf::pipe::Atomics *at
 
         // Initialize per-bin state.
 
-        int2 tilesInBin = make_int2(pipe->binCtx.binW / CUDARF_TILE_SZ, pipe->binCtx.binH / CUDARF_TILE_SZ);
+        int2 tilesInBin = make_int2(scratch.binCtx.binW / CUDARF_TILE_SZ, scratch.binCtx.binH / CUDARF_TILE_SZ);
 
-        int binY = binIdx / pipe->binCtx.binsX;
-        int binX = binIdx - binY * pipe->binCtx.binsX;
+        int binY = binIdx / scratch.binCtx.binsX;
+        int binX = binIdx - binY * scratch.binCtx.binsX;
 
         // TODO do we need rasterizer center in (0,0)?
         int originX = binX * binCtx.binW;
@@ -292,7 +294,7 @@ void tilerCoarse(const cudarf::rast::PipeParams *pipe, cudarf::pipe::Atomics *at
             if (triQueueReadPos + thrInBlock < triQueueWritePos)
                 triIdx = s_triQueue[(triQueueReadPos + thrInBlock) & (CUDARF_COARSE_QUEUE_SIZE - 1)];
 
-            int2 tilesInBin = make_int2(pipe->binCtx.binW / CUDARF_TILE_SZ, pipe->binCtx.binH / CUDARF_TILE_SZ);
+            int2 tilesInBin = make_int2(scratch.binCtx.binW / CUDARF_TILE_SZ, scratch.binCtx.binH / CUDARF_TILE_SZ);
 
             cudarf::rast::Triangle tri;
 
@@ -302,10 +304,10 @@ void tilerCoarse(const cudarf::rast::PipeParams *pipe, cudarf::pipe::Atomics *at
 
             if (triIdx != -1)
             {
-                tri = pipe->tris[triIdx];
+                tri = scratch.tris[triIdx];
 
-                int2 triLo = tile_idx_from_coord(pipe, tri.flo);
-                int2 triHi = tile_idx_from_coord(pipe, tri.fhi);
+                int2 triLo = tile_idx_from_coord(&scratch, tri.flo);
+                int2 triHi = tile_idx_from_coord(&scratch, tri.fhi);
 
                 triLo = clamp(triLo, tileLo, tileHi) - tileLo;
                 triHi = clamp(triHi, tileLo, tileHi) - tileLo;
@@ -317,7 +319,7 @@ void tilerCoarse(const cudarf::rast::PipeParams *pipe, cudarf::pipe::Atomics *at
                 for (int32_t x = triLo.x; x <= triHi.x; x++) {
                     for (int32_t y = triLo.y; y <= triHi.y; y++) {
                         int binTile = x + y * tilesInBin.x;
-                        int tileId = x + tileLo.x + (y + tileLo.y) * pipe->binCtx.binsX * tilesInBin.x;
+                        int tileId = x + tileLo.x + (y + tileLo.y) * scratch.binCtx.binsX * tilesInBin.x;
                         int res = is_inside(make_int2(x, y), triLo, triHi);
 
                         if (res) {
@@ -325,7 +327,7 @@ void tilerCoarse(const cudarf::rast::PipeParams *pipe, cudarf::pipe::Atomics *at
                                 atomicOr((uint32_t *) &s_warpEmitMask[threadIdx.y][binTile], maskBit);
                             }
                             else {
-                                cudarf::rast::SimpleQueue::push(pipe->tileQHeaders[tileId], pipe->tileQLimit, triIdx);
+                                cudarf::rast::SimpleQueue::push(scratch.tileQHeaders[tileId], scratch.tileQLimit, triIdx);
                             }
 
                             // DEBUG: for checking that all triangles were consumed
@@ -348,7 +350,7 @@ void tilerCoarse(const cudarf::rast::PipeParams *pipe, cudarf::pipe::Atomics *at
             {
                 int y = tileInBin / tilesInBin.x;
                 int x = tileInBin - tilesInBin.x * y;
-                int tileId = x + tileLo.x + (y + tileLo.y) * pipe->binCtx.binsX * tilesInBin.x;
+                int tileId = x + tileLo.x + (y + tileLo.y) * scratch.binCtx.binsX * tilesInBin.x;
 
                 for (int warp = 0; warp < CUDARF_COARSE_WARPS; warp++) {
                     if (s_warpEmitMask[warp][tileInBin]) {
@@ -357,7 +359,7 @@ void tilerCoarse(const cudarf::rast::PipeParams *pipe, cudarf::pipe::Atomics *at
                                 int tib = i + warp * 32;
                                 if (triQueueReadPos + tib < triQueueWritePos) {
                                     int triIdx = s_triQueue[(triQueueReadPos + tib) & (CUDARF_COARSE_QUEUE_SIZE - 1)];
-                                    cudarf::rast::SimpleQueue::push_unprotected(pipe->tileQHeaders[tileId], pipe->tileQLimit, triIdx);
+                                    cudarf::rast::SimpleQueue::push_unprotected(scratch.tileQHeaders[tileId], scratch.tileQLimit, triIdx);
                                 }
                             }
                         }

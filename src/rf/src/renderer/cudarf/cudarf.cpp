@@ -412,10 +412,28 @@ void cudarf::pipe::init(cudarf::pipe::Ctx *desc, int window_width, int window_he
     desc->TAAEnabled = TAAEnabled;
 
     CUDA_CHK(cudaMalloc((void **)&desc->dev_pipeParams, sizeof(cudarf::rast::PipeParams)));
+
+    CUDA_CHK(cudaMalloc((void **)&desc->dev_pipeStatic, sizeof(cudarf::rast::PipeStaticContext)));
+
+    CUDA_CHK(cudaMalloc((void **)&desc->dev_pipeFrame, sizeof(cudarf::rast::PipeFrameContext)));
+
+    CUDA_CHK(cudaMalloc((void **)&desc->dev_pipeSubmission, sizeof(cudarf::rast::PipeSubmissionContext)));
+
     CUDA_CHK(cudarf_cuda_malloc(&desc->dev_pipeAtomics, sizeof(cudarf::pipe::Atomics)));
 
     unsigned long rasterizerW = round_up_to_mult_pwr(desc->width, CUDARF_BIN_LOG2 + CUDARF_TILE_LOG2);
     unsigned long rasterizerH = round_up_to_mult_pwr(desc->height, CUDARF_BIN_LOG2 + CUDARF_TILE_LOG2);
+
+    cudarf::rast::PipeStaticContext pipeStatic{};
+    pipeStatic.windowWidth = desc->width;
+    pipeStatic.windowHeight = desc->height;
+    pipeStatic.rasterizerSize = make_int2(rasterizerW, rasterizerH);
+    pipeStatic.clockRate = desc->clockRate;
+    CUDA_CHK(cudaMemcpyAsync(desc->dev_pipeStatic,
+                             &pipeStatic,
+                             sizeof(cudarf::rast::PipeStaticContext),
+                             cudaMemcpyHostToDevice,
+                             cuStream));
 
     SPDLOG_INFO("{}", fmt::sprintf("\nInitializing rasterization descriptor [TAA: %d] ...", TAAEnabled));
     SPDLOG_INFO("{}", fmt::sprintf("----------------------------------------"));
@@ -540,6 +558,17 @@ void cudarf::pipe::init(cudarf::pipe::Ctx *desc, int window_width, int window_he
 
 void cudarf::pipe::destroy(cudarf::pipe::Ctx *desc) {
     // user is responsible for cleaning draw packets
+
+    CUDA_CHK(cudaFree(desc->dev_pipeParams));
+    desc->dev_pipeParams = nullptr;
+    CUDA_CHK(cudaFree(desc->dev_pipeStatic));
+    desc->dev_pipeStatic = nullptr;
+    CUDA_CHK(cudaFree(desc->dev_pipeFrame));
+    desc->dev_pipeFrame = nullptr;
+    CUDA_CHK(cudaFree(desc->dev_pipeSubmission));
+    desc->dev_pipeSubmission = nullptr;
+    CUDA_CHK(cudarf_cuda_free(desc->dev_pipeAtomics));
+    desc->dev_pipeAtomics = nullptr;
 
     CUDA_CHK(cudarf_cuda_free(desc->dev_depthbuffer));
     desc->dev_depthbuffer = NULL;

@@ -113,26 +113,27 @@ static void init_tilequeues(SimpleQueue::Segment *tileQHeaders, int32_t *tileQDa
 __global__
 void visualize_bins(const cudarf::rast::PipeParams *params, cudarf::Framebuffer framebuffer)
 {
+    const cudarf::rast::PipeStaticContext *stat = params->stat;
+    const cudarf::rast::PipeScratchContext &scratch = params->scratch;
+
     int x = (blockIdx.x * blockDim.x) + threadIdx.x;
     int y = (blockIdx.y * blockDim.y) + threadIdx.y;
-    if (!(x < params->windowWidth && y < params->windowHeight)) {return;}
+    if (!(x < stat->windowWidth && y < stat->windowHeight)) {return;}
 
-    int index = x + (y * params->windowWidth);
-
-    int binX = x / params->binCtx.binW;
-    int binY = y / params->binCtx.binH;
-    int binIdx = binX + params->binCtx.binsX * binY;
+    int binX = x / scratch.binCtx.binW;
+    int binY = y / scratch.binCtx.binH;
+    int binIdx = binX + scratch.binCtx.binsX * binY;
 
     bool binOccupied = false;
 
     for (int SM = 0; SM < CUDARF_BIN_STREAMS_SIZE; SM++) {
-        if (params->binCtx.binTotal[(binIdx << CUDARF_BIN_STREAMS_LOG2) + SM] > 0) {
+        if (scratch.binCtx.binTotal[(binIdx << CUDARF_BIN_STREAMS_LOG2) + SM] > 0) {
             binOccupied = true;
             break;
         }
     }
 
-    bool isEdge = (x % params->binCtx.binW == 0 || y % params->binCtx.binH == 0);
+    bool isEdge = (x % scratch.binCtx.binW == 0 || y % scratch.binCtx.binH == 0);
 
     cudarf::Color color;
     fb::load(framebuffer, x, y, color);
@@ -152,19 +153,19 @@ void visualize_bins(const cudarf::rast::PipeParams *params, cudarf::Framebuffer 
 __global__
 void visualize_tiles(const cudarf::rast::PipeParams *params, cudarf::Framebuffer framebuffer)
 {
-    const BinTilerCtx &ctx = params->binCtx;
+    const cudarf::rast::PipeStaticContext *stat = params->stat;
+    const cudarf::rast::PipeScratchContext &scratch = params->scratch;
+    const BinTilerCtx &ctx = scratch.binCtx;
 
     int x = (blockIdx.x * blockDim.x) + threadIdx.x;
     int y = (blockIdx.y * blockDim.y) + threadIdx.y;
-    if (!(x < params->windowWidth && y < params->windowHeight)) {return;}
-
-    int index = x + (y * params->windowWidth);
+    if (!(x < stat->windowWidth && y < stat->windowHeight)) {return;}
 
     int tileX = x / CUDARF_TILE_SZ;
     int tileY = y / CUDARF_TILE_SZ;
 
-    int binW = params->binCtx.binW;
-    int binH = params->binCtx.binH;
+    int binW = scratch.binCtx.binW;
+    int binH = scratch.binCtx.binH;
 
     int2 tilesInBin = make_int2(binW / CUDARF_TILE_SZ, binH / CUDARF_TILE_SZ);
 
@@ -176,7 +177,7 @@ void visualize_tiles(const cudarf::rast::PipeParams *params, cudarf::Framebuffer
     if (x % CUDARF_TILE_SZ == 0 || y % CUDARF_TILE_SZ == 0) {
         color.y = 0.2f;
     }
-    if (params->tileQHeaders[tileId].queueSize > 0) {
+    if (scratch.tileQHeaders[tileId].queueSize > 0) {
         color.y += 0.2f;
     }
     fb::store(framebuffer, x, y, color);
@@ -301,11 +302,13 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     assert(drawPacketIds.size() < CUDARF_DRAW_PACKET_BATCH_LIMIT);
     assert(uniforms.size() == drawPacketIds.size());
 
-    cudarf::rast::PipeParams pipe;
+    PipeFrameContext pipeFrame;
+    PipeSubmissionContext pipeSubmission;
+    PipeScratchContext pipeScratch;
 
     assert(materials.size() < CUDARF_MAX_MATERIALS);
 
-    std::fill_n(pipe.drawPacketMaterials, CUDARF_MAX_DRAW_PACKETS, 0xFFFFFFFFu);
+    std::fill_n(pipeSubmission.drawPacketMaterials, CUDARF_MAX_DRAW_PACKETS, 0xFFFFFFFFu);
 
     std::map<unsigned int, unsigned int> activeGlobalIds; // global mat id ->
                                                           // dense mat id mapping
@@ -320,13 +323,13 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
             if (activeGlobalIds.find(matId) == activeGlobalIds.end()) {
                 activeGlobalIds[matId] = maxDenseId;
-                pipe.materials[maxDenseId] = *materials.at(matId);
-                pipe.drawPacketMaterials[dpId] = maxDenseId;
-                pipe.drawPacketDoubleSided[dpId] = materials.at(matId)->isDoubleSided;
+                pipeSubmission.materials[maxDenseId] = *materials.at(matId);
+                pipeSubmission.drawPacketMaterials[dpId] = maxDenseId;
+                pipeSubmission.drawPacketDoubleSided[dpId] = materials.at(matId)->isDoubleSided;
                 maxDenseId++;
             } else {
-                pipe.drawPacketMaterials[dpId] = activeGlobalIds[matId];
-                pipe.drawPacketDoubleSided[dpId] = materials.at(matId)->isDoubleSided;
+                pipeSubmission.drawPacketMaterials[dpId] = activeGlobalIds[matId];
+                pipeSubmission.drawPacketDoubleSided[dpId] = materials.at(matId)->isDoubleSided;
             }
 
             ord++;
@@ -337,10 +340,10 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     int rasterizerH = round_up_to_mult_pwr(desc->height, CUDARF_BIN_LOG2 + CUDARF_TILE_LOG2);
 
 
-    unsigned int *drawPacketOrder = pipe.drawPacketOrder;
+    unsigned int *drawPacketOrder = pipeSubmission.drawPacketOrder;
 
-    pipe.vtxOffsets[0] = 0;
-    pipe.idxOffsets[0] = 0;
+    pipeSubmission.vtxOffsets[0] = 0;
+    pipeSubmission.idxOffsets[0] = 0;
 
     unsigned int total_indices = 0;
     unsigned int totalVertices = 0;
@@ -366,8 +369,8 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
         if (ord == 0) {ord++; continue; }
 
-        pipe.vtxOffsets[ord] = vtxPrev;
-        pipe.idxOffsets[ord] = idxPrev;
+        pipeSubmission.vtxOffsets[ord] = vtxPrev;
+        pipeSubmission.idxOffsets[ord] = idxPrev;
 
         vtxPrev += desc->drawPackets[id].vertCount;
         idxPrev += desc->drawPackets[id].index_count;
@@ -450,59 +453,51 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
     // initialize constant memory
     // --
-    pipe.withFaceCulling = params.face_culling;
-    pipe.withBlending = params.with_blending;
-
-    pipe.windowWidth = desc->width;
-    pipe.windowHeight = desc->height;
-
-    pipe.rasterizerSize = make_int2(round_up_to_mult_pwr(desc->width, CUDARF_BIN_LOG2 + CUDARF_TILE_LOG2),
-                                     round_up_to_mult_pwr(desc->height, CUDARF_BIN_LOG2 + CUDARF_TILE_LOG2));
+    pipeSubmission.withFaceCulling = params.face_culling;
+    pipeSubmission.withBlending = params.with_blending;
 
     for (auto id: drawPacketIds) {
-        pipe.drawPackets[id] = desc->drawPackets[id];
+        pipeSubmission.drawPackets[id] = desc->drawPackets[id];
     }
 
-    pipe.uniforms = desc->dev_uniforms;
-    pipe.vertexOut = bufferSet.dev_bufVertexOut;
-    pipe.drawPacketCount = drawPacketIds.size();
+    pipeSubmission.uniforms = desc->dev_uniforms;
+    pipeScratch.vertexOut = bufferSet.dev_bufVertexOut;
+    pipeSubmission.drawPacketCount = drawPacketIds.size();
 
 #ifdef WITH_TAA
     if (desc->TAAEnabled && !params.with_blending) {
-        pipe.common = prepare_for_TAA(
+        pipeFrame.common = prepare_for_TAA(
             *desc,
             launchConfig.frameCounter,
             4,
             params.common);
     }
     else {
-        pipe.common = params.common;
+        pipeFrame.common = params.common;
     }
 
-    pipe.taa.commonHist = params.commonHist;
-    pipe.taa.uniformsHist = desc->dev_uniformsHist;
+    pipeFrame.taa.commonHist = params.commonHist;
+    pipeFrame.taa.uniformsHist = desc->dev_uniformsHist;
 #else
-    pipe.common = params.common;
+    pipeFrame.common = params.common;
 #endif
 
-    pipe.tris = bufferSet.dev_triangles;
-    pipe.numTriangles = total_triangles;
-    pipe.maxSubtris = total_triangles; // TODO: revise when we implement clipping
+    pipeScratch.tris = bufferSet.dev_triangles;
+    pipeSubmission.numTriangles = total_triangles;
+    pipeSubmission.maxSubtris = total_triangles; // TODO: revise when we implement clipping
 
-    pipe.triSubtris = static_cast<uint8_t *>(bufferSet.dev_tri_subtris);
-    pipe.dbgbuf = bufferSet.dev_dbgbuf;
-    pipe.clockRate = desc->clockRate;
+    pipeScratch.triSubtris = static_cast<uint8_t *>(bufferSet.dev_tri_subtris);
+    pipeScratch.dbgbuf = bufferSet.dev_dbgbuf;
 
     // Select batch size for bin tiler and estimate buffer sizes
     // --
     // TODO draw scheme of all buffers in bin tiler
     {
-        pipe.binCtx.binsX = CUDARF_BIN_COUNT;
-        pipe.binCtx.binsY = CUDARF_BIN_COUNT;
-        pipe.binCtx.binW = pipe.rasterizerSize.x / pipe.binCtx.binsX;
-        pipe.binCtx.binH = pipe.rasterizerSize.y / pipe.binCtx.binsY;
-
-        pipe.binCtx.numBins = pipe.binCtx.binsX * pipe.binCtx.binsY;
+        pipeScratch.binCtx.binsX = CUDARF_BIN_COUNT;
+        pipeScratch.binCtx.binsY = CUDARF_BIN_COUNT;
+        pipeScratch.binCtx.binW = rasterizerW / pipeScratch.binCtx.binsX;
+        pipeScratch.binCtx.binH = rasterizerH / pipeScratch.binCtx.binsY;
+        pipeScratch.binCtx.numBins = pipeScratch.binCtx.binsX * pipeScratch.binCtx.binsY;
 
         // how many triangles are to be processed on one SM in one cycle (512) 
         int roundSize  = CUDARF_BIN_WARPS * 32;
@@ -512,44 +507,55 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         int maxRounds  = 32;
 
         // number of triangles to be processed in tiler_bin kernel invocation
-        pipe.binCtx.binBatchSize =
+        pipeScratch.binCtx.binBatchSize =
             iclamp(total_triangles / (roundSize * minBatches), 1, maxRounds) * roundSize;
 
-        pipe.binCtx.maxBinSegs = bufferSet.maxBinSegs;
-        pipe.binCtx.binFirstSeg = desc->dev_binFirstSeg;
-        pipe.binCtx.binTotal = desc->dev_binTotal;
-        pipe.binCtx.binSegData = bufferSet.dev_binSegData;
-        pipe.binCtx.binSegNext = bufferSet.dev_binSegNext;
-        pipe.binCtx.binSegCount = bufferSet.dev_binSegCount;
+        pipeScratch.binCtx.maxBinSegs = bufferSet.maxBinSegs;
+        pipeScratch.binCtx.binFirstSeg = desc->dev_binFirstSeg;
+        pipeScratch.binCtx.binTotal = desc->dev_binTotal;
+        pipeScratch.binCtx.binSegData = bufferSet.dev_binSegData;
+        pipeScratch.binCtx.binSegNext = bufferSet.dev_binSegNext;
+        pipeScratch.binCtx.binSegCount = bufferSet.dev_binSegCount;
         // pipe.dbgtiles = bufferSet.dev_dbgtiles;
     }
 
     // coarse tiler
     {
-        pipe.tileQHeaders = desc->dev_tileQHeaders;
-        pipe.tileQData = desc->dev_tileQData;
-        pipe.tileQLimit = desc->tileQLimit;
+        pipeScratch.tileQHeaders = desc->dev_tileQHeaders;
+        pipeScratch.tileQData = desc->dev_tileQData;
+        pipeScratch.tileQLimit = desc->tileQLimit;
     }
 
     // set PBR context
     {
-        pipe.camera = params.pbr.camera;
-        pipe.exposure = params.pbr.exposure;
-        pipe.lightCount = params.pbr.lights.size();
+        pipeFrame.camera = params.pbr.camera;
+        pipeFrame.exposure = params.pbr.exposure;
+        pipeFrame.lightCount = params.pbr.lights.size();
 
-        for (int i = 0; i < pipe.lightCount; i++) {
-            pipe.lights[i] = params.pbr.lights[i];
+        for (int i = 0; i < pipeFrame.lightCount; i++) {
+            pipeFrame.lights[i] = params.pbr.lights[i];
         }
 
-        pipe.sphericalHarmonics = params.pbr.sphericalHarmonics;
-        pipe.brdfLUT = params.pbr.brdfLUT;
-        pipe.specular = params.pbr.specular;
+        pipeFrame.sphericalHarmonics = params.pbr.sphericalHarmonics;
+        pipeFrame.brdfLUT = params.pbr.brdfLUT;
+        pipeFrame.specular = params.pbr.specular;
     }
 
 #ifdef WITH_TAA
-    pipe.taa.velocityTex = desc->dev_velocityTex;
-    pipe.taa.velocityThreshold = desc->TAA.velocityThreshold;
+    pipeFrame.taa.velocityTex = desc->dev_velocityTex;
+    pipeFrame.taa.velocityThreshold = desc->TAA.velocityThreshold;
 #endif
+
+
+    cudarf::rast::PipeParams pipe {
+        .stat = desc->dev_pipeStatic,
+        .frame = desc->dev_pipeFrame,
+        .submission = desc->dev_pipeSubmission,
+        .scratch = pipeScratch
+    };
+
+    CUDA_CHK(cudaMemcpyAsync(desc->dev_pipeFrame, &pipeFrame, sizeof(cudarf::rast::PipeFrameContext), cudaMemcpyHostToDevice, cuStream));
+    CUDA_CHK(cudaMemcpyAsync(desc->dev_pipeSubmission, &pipeSubmission, sizeof(cudarf::rast::PipeSubmissionContext), cudaMemcpyHostToDevice, cuStream));
 
     CUDA_CHK(cudaMemcpyAsync(desc->dev_pipeParams, &pipe, sizeof(cudarf::rast::PipeParams), cudaMemcpyHostToDevice, cuStream));
 
