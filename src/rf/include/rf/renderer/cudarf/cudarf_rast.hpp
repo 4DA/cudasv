@@ -235,38 +235,18 @@ struct PipeInternalBufferSet
     int32_t *dev_dbgbuf = NULL;
 };
 
-/// Rasterization pipeline GPU-side parameter block. Assembled on the host and
-/// uploaded to device constant memory before each draw call. Lives in
-/// cudarf::rast because it is consumed exclusively by GPU kernels (vertex
-/// transform, triangle setup, bin/coarse tilers, fine rasterizer) — host code
-/// never reads individual fields back from the device.
-///
-/// All pointers point to device memory unless specified otherwise.
-///
-struct PipeParams {
-    // -----------------------------------------------------------------------
-    // Global render state
-    // -----------------------------------------------------------------------
+/// Persistent render-target and tiling state. These fields change only when
+/// the rasterizer context or render-target dimensions are recreated.
+struct PipeStaticContext {
     int32_t windowWidth;
     int32_t windowHeight;
     int2    rasterizerSize;   // multiple of 128 for current impl
 
-    bool withFaceCulling;
-    bool withBlending;
-    bool withDepthWriting;
-    bool withDepthTest;
+    int     clockRate;
+};
 
-    // -----------------------------------------------------------------------
-    // Triangle counts
-    // -----------------------------------------------------------------------
-    int32_t  numTriangles;
-    uint32_t maxSubtris;
-
-    // -----------------------------------------------------------------------
-    // Vertex transform — inputs
-    // -----------------------------------------------------------------------
-    cudarf::DrawPacket drawPackets[CUDARF_MAX_DRAW_PACKETS];
-    cudarf::Uniforms *uniforms;
+/// Per-frame state shared by all submissions in a frame.
+struct PipeFrameContext {
     cudarf::CommonUniforms common;
 
 #ifdef WITH_TAA
@@ -278,41 +258,6 @@ struct PipeParams {
     } taa;
 #endif
 
-    unsigned int drawPacketOrder[CUDARF_DRAW_PACKET_BATCH_LIMIT];
-    unsigned int vtxOffsets[CUDARF_DRAW_PACKET_BATCH_LIMIT];   // prefix sum of vertex counts
-    unsigned int drawPacketCount;
-
-    // -----------------------------------------------------------------------
-    // Vertex transform — output / triangle setup input
-    // -----------------------------------------------------------------------
-    VertexOut *vertexOut;
-
-    unsigned int idxOffsets[CUDARF_DRAW_PACKET_BATCH_LIMIT];   // prefix sum of index counts
-    unsigned int drawPacketMaterials[CUDARF_MAX_DRAW_PACKETS];
-    bool         drawPacketDoubleSided[CUDARF_MAX_DRAW_PACKETS];
-
-    // -----------------------------------------------------------------------
-    // Triangle setup output / bin tiler input
-    // -----------------------------------------------------------------------
-    Triangle *tris;           // indices_count/3 * sizeof(Triangle)
-    uint8_t  *triSubtris;
-
-    // -----------------------------------------------------------------------
-    // Bin tiler
-    // -----------------------------------------------------------------------
-    BinTilerCtx binCtx;
-
-    // -----------------------------------------------------------------------
-    // Coarse tiler
-    // -----------------------------------------------------------------------
-    SimpleQueue::Segment *tileQHeaders = NULL;
-    int32_t *tileQData = NULL;
-    unsigned int tileQLimit;
-
-    // -----------------------------------------------------------------------
-    // Fragment shading
-    // -----------------------------------------------------------------------
-    cudarf::Material    materials[CUDARF_MAX_MATERIALS];
     float               exposure;
     cudarf::CUDARFLight lights[CUDARF_MAX_LIGHTS];
     int32_t             lightCount;
@@ -320,15 +265,66 @@ struct PipeParams {
     glm::mat4           sphericalHarmonics;
     cudaTextureObject_t brdfLUT = 0;
     cudarf::CubeMap     specular;
+};
 
-    // -----------------------------------------------------------------------
-    // Debug / profiling
-    // -----------------------------------------------------------------------
+/// Per-draw/submission state: render flags, active draw packets, materials,
+/// and batch-local geometry counts.
+struct PipeSubmissionContext {
+    bool withFaceCulling;
+    bool withBlending;
+    bool withDepthWriting;
+    bool withDepthTest;
+
+    int32_t  numTriangles;
+    uint32_t maxSubtris;
+
+    cudarf::DrawPacket drawPackets[CUDARF_MAX_DRAW_PACKETS];
+    cudarf::Uniforms *uniforms;
+
+    unsigned int drawPacketOrder[CUDARF_DRAW_PACKET_BATCH_LIMIT];
+    unsigned int vtxOffsets[CUDARF_DRAW_PACKET_BATCH_LIMIT];   // prefix sum of vertex counts
+    unsigned int drawPacketCount;
+
+    unsigned int idxOffsets[CUDARF_DRAW_PACKET_BATCH_LIMIT];   // prefix sum of index counts
+    unsigned int drawPacketMaterials[CUDARF_MAX_DRAW_PACKETS];
+    bool         drawPacketDoubleSided[CUDARF_MAX_DRAW_PACKETS];
+
+    cudarf::Material    materials[CUDARF_MAX_MATERIALS];
+};
+
+/// Submission scratch buffers and queue state. These are persistent
+/// allocations in `pipe::Ctx`, but their active capacities/contents are
+/// submission-local.
+struct PipeScratchContext {
+    VertexOut *vertexOut;
+
+    Triangle *tris;           // indices_count/3 * sizeof(Triangle)
+    uint8_t  *triSubtris;
+
+    BinTilerCtx binCtx;
+
+    SimpleQueue::Segment *tileQHeaders = NULL;
+    int32_t *tileQData = NULL;
+    unsigned int tileQLimit;
+
     int     *dbgbuf;
     int     *dbgbins;
     int32_t *dbgtiles;
-    int      clockRate;
 };
+
+/// Rasterization pipeline GPU-side parameter block. Assembled on the host and
+/// uploaded to device memory before each draw call. The lifetime-specific base
+/// structs keep the current flat field access intact while making the next
+/// refactor step explicit: persist or upload these groups independently.
+///
+/// All pointers point to device memory unless specified otherwise.
+///
+struct PipeParams:
+    PipeStaticContext,
+    PipeFrameContext,
+    PipeSubmissionContext,
+    PipeScratchContext
+{};
 
 } // namespace rast (second block)
 
