@@ -21,6 +21,7 @@ void configure_default_taa(cudarf::pipe::Ctx *rasterizer)
     taa.feedback = 0.70f;
     taa.velocityThreshold = 0.1f;
 }
+
 #endif
 
 } // namespace
@@ -78,6 +79,11 @@ engine::Error Engine::pre_process(const videoio::RuntimeFramePacket4Cam &frame_p
     _impl->world->frame_projector().prevFrameSeq = frames_set.frameseq;
 
     CUDA_CHK(cudaStreamSynchronize(_impl->cudaOutputStreams[0]));
+
+    rf::Scene &scene = _impl->world->scene();
+    assert(scene.get_root());
+    scene.get_root()->update_transforms(nullptr);
+
     return OK;
 }
 
@@ -112,7 +118,48 @@ engine::Error Engine::process(const videoio::RuntimeFramePacket4Cam &frame_packe
     configure_default_taa(cuda_rasterizer);
 #endif
 
-    cudarf::pipe::begin_frame(cuda_rasterizer, _impl->frameCounter, cudaStream);
+    if (!_impl->view_3d) {
+        return engine::Error::ERROR;
+    }
+
+    _impl->view_3d->update_camera();
+
+    const rf::VirtualCamera &virtualCamera = *_impl->view_3d->virtual_camera();
+    const rf::Scene &scene = _impl->world->scene();
+    const rf::IBL &ibl = scene.get_ibl();
+
+    std::vector<cudarf::CUDARFLight> lightList;
+
+    for (auto compIt: scene.get_lights()) {
+        rf::PointLightComponent &comp = *compIt.second;
+        auto trans = comp.toWorld.translation;
+
+        cudarf::CUDARFLight light {
+            .intensity = comp.intensity,
+            .position = make_float3(trans.x, trans.y, trans.z),
+            .range = 10000.0
+        };
+
+        lightList.push_back(light);
+    }
+
+    assert(ibl.specular);
+
+    auto camera_translation = make_float3(virtualCamera.transform.translation.x,
+                                          virtualCamera.transform.translation.y,
+                                          virtualCamera.transform.translation.z);
+
+    cudarf::PBRParams pbrCommon{camera_translation, virtualCamera.exposure,
+        lightList, ibl.get_sh_matrix(), ibl.brdfLUT, ibl.specular};
+
+    assert(pbrCommon.specular);
+
+    cudarf::pipe::begin_frame(cuda_rasterizer,
+                              virtualCamera,
+                              pbrCommon,
+                              _impl->view_3d->postprocess_pipe()->historyUniforms(),
+                              _impl->frameCounter,
+                              cudaStream);
 
     bool surroundViewRendered = false;
 

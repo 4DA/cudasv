@@ -21,10 +21,9 @@ class ViewPostProcessPipeline
 public:
     void begin_frame(const ScenePassBuilder::WorkSet &work, unsigned int frameCounter);
 
-    const ScenePassBuilder::WorkSet &history() const
-    {
-        return _history;
-    }
+    const ScenePassBuilder::WorkSet &history() const {return _history;}
+
+    const cudarf::CommonUniforms &historyUniforms() const {return _historyUniforms;}
 
     void run(cudarf::pipe::Ctx *rasterCtx,
              rf::VirtualCamera &virtualCamera,

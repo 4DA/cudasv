@@ -8,6 +8,9 @@
 #include <rf/renderer/cudarf/cudarf.hpp>
 #include <rf/renderer/cudarf/cudarf_camera.hpp>
 #include <rf/renderer/virtual_camera.hpp>
+
+#include "helpers_cudavec.inl"
+#include "TAA_common.hpp"
 #include "helpers.hpp"
 
 #include "vecglm.inl"
@@ -645,7 +648,7 @@ void cudarf::pipe::draw_triangles(cudarf::pipe::Ctx* rasterization_desc,
 #ifdef WITH_TAA
                        common,
 #endif
-                       RenderParams::PBR()
+                       cudarf::PBRParams()
                    },
                    uniforms,
 #ifdef WITH_TAA
@@ -660,13 +663,64 @@ void cudarf::pipe::draw_triangles(cudarf::pipe::Ctx* rasterization_desc,
 
 }
 
-void cudarf::pipe::begin_frame(cudarf::pipe::Ctx *desc, unsigned int frameCounter, cudaStream_t cuStream)
+void cudarf::pipe::begin_frame(cudarf::pipe::Ctx *desc,
+                               const rf::VirtualCamera &camera,
+                               const cudarf::PBRParams &pbr,
+                               const CommonUniforms &commonHist,
+                               unsigned int frameCounter,
+                               cudaStream_t cuStream)
 {
+    PipeFrameContext pipeFrame;
+
+    CommonUniforms common = cudarf::make_common(&camera);
+
+#ifdef WITH_TAA
+    if (desc->TAAEnabled) {
+        pipeFrame.common = prepare_for_TAA(
+            *desc,
+            frameCounter,
+            4,
+            common);
+    }
+    else {
+        pipeFrame.common = common;
+    }
+
+    pipeFrame.taa.commonHist = (frameCounter > 0) ? commonHist : common;
+    pipeFrame.taa.uniformsHist = desc->dev_uniformsHist;
+    pipeFrame.taa.velocityTex = desc->dev_velocityTex;
+    pipeFrame.taa.velocityThreshold = desc->TAA.velocityThreshold;
+#else
+    pipeFrame.common = common;
+#endif
+
+    // set PBR context
+    {
+        pipeFrame.camera = make_float3(camera.transform.translation.x,
+                                       camera.transform.translation.y,
+                                       camera.transform.translation.z);
+
+        pipeFrame.exposure = pbr.exposure;
+        pipeFrame.lightCount = pbr.lights.size();
+
+        for (int i = 0; i < pipeFrame.lightCount; i++) {
+            pipeFrame.lights[i] = pbr.lights[i];
+        }
+
+        pipeFrame.sphericalHarmonics = pbr.sphericalHarmonics;
+        pipeFrame.brdfLUT = pbr.brdfLUT;
+        pipeFrame.specular = pbr.specular;
+    }
+
+    CUDA_CHK(cudaMemcpyAsync(desc->dev_pipeFrame, &pipeFrame, sizeof(cudarf::rast::PipeFrameContext), cudaMemcpyHostToDevice, cuStream));
+
     cudarf::pipe::clear_depth(desc, cuStream);
+
     CUDA_CHK(cudaMemsetAsync(desc->dev_geom_output,
                              0xFF,
                              sizeof(cudarf::visibuf::GeomOutput) * desc->width * desc->height,
                              cuStream));
+
     CUDA_CHK(cudaMemsetAsync(desc->dev_xyCommands,
                              0xFF,
                              sizeof(cudarf::visibuf::XYCommand) * desc->width * desc->height,

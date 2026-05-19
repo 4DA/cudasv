@@ -46,6 +46,8 @@ public:
                  cudarf::profiling::Events &composeTime,
                  unsigned int frameCounter);
 
+    void update_camera();
+
     int handle_event(const engine::Output *output, engine::InputEvent *event);
 
     int handle_viewpoint(int viewpoint);
@@ -62,6 +64,12 @@ public:
     void set_draw_list_renderer(std::unique_ptr<cudarf::DrawListRenderer> drawListRenderer) {
         _drawListRenderer = std::move(drawListRenderer);
     }
+
+    ViewPostProcessPipeline *postprocess_pipe() const {
+        return _postProcessPipeline.get();
+    }
+
+    rf::VirtualCamera *virtual_camera() const {return _virtualCamera.get();}
 
 private:
     World                                         *_world;

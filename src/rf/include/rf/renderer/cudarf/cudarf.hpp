@@ -14,7 +14,8 @@
 #include <rf/renderer/cudarf/cudarf_rast.hpp>
 #include <rf/renderer/cudarf/cudarf_profile.hpp>
 #include <rf/renderer/mesh_geometry.hpp>
-
+#include <rf/renderer/virtual_camera.hpp>
+#include <rf/camera_control/viewpoint_animation.hpp>
 
 namespace cudarf
 {
@@ -58,6 +59,17 @@ struct CudaStreams {
     // cudaStream_t downloadStream;
 };
 
+struct PBRParams
+{
+    float3 camera;
+    float exposure;
+    std::vector<CUDARFLight> lights;
+    glm::mat4 sphericalHarmonics;
+    cudaTextureObject_t brdfLUT;
+    CubeMap specular;
+};
+
+
 struct RenderParams {
     bool face_culling;
     bool with_blending;
@@ -67,14 +79,7 @@ struct RenderParams {
     CommonUniforms commonHist;
 #endif
 
-    struct PBR {
-        float3 camera;
-        float exposure;
-        std::vector<CUDARFLight> lights;
-        glm::mat4 sphericalHarmonics;
-        cudaTextureObject_t brdfLUT;
-        CubeMap specular;
-    } pbr;
+    PBRParams pbr;
 };
 
 struct ProjectionParams {
@@ -258,7 +263,12 @@ void run_pipe(Ctx *desc,
                     const LaunchConfig &launchConfig,
                     const cudaStream_t &cuStream);
 
-void begin_frame(Ctx *desc, unsigned int frameCounter, cudaStream_t cuStream);
+void begin_frame(cudarf::pipe::Ctx *desc,
+                 const rf::VirtualCamera &camera,
+                 const cudarf::PBRParams &pbr,
+                 const CommonUniforms &commonHist,
+                 unsigned int frameCounter,
+                 cudaStream_t cuStream);
 
 cudarf::Framebuffer get_output_fb(Ctx *desc, unsigned int frameCounter);
 cudarf::FBTexture   get_output_tex(Ctx *desc, unsigned int frameCounter);

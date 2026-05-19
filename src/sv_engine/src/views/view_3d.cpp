@@ -185,25 +185,11 @@ int View3D::init(const Config *config,
     return 0;
 }
 
-void View3D::compose(videoio::FrameSet<camera::CAMERAS_TOTAL> frames_set,
-                     uchar4 *outputBuffer,
-                     cudarf::Framebuffer meshGPUOutput,
-                     unsigned int width,
-                     unsigned int height,
-                     float steering_angle,
-                     cudarf::CudaStreams cudaStreams,
-                     cudarf::profiling::Events &composeTime,
-                     unsigned int frameCounter)
+void View3D::update_camera()
 {
-    (void)frames_set;
-    assert(_width == width);
-    assert(_height == height);
-    assert(_rasterCtx);
-    assert(_drawListRenderer);
-    assert(_surroundViewComposer);
-    assert(_scenePassBuilder);
-    assert(_postProcessPipeline);
-    (void)steering_angle;
+    assert(_virtualCamera);
+    assert(_navigationState);
+    assert(_viewConfig);
 
     if (_viewpointAnimator) {
         _viewpointAnimator->update(*_virtualCamera,
@@ -225,6 +211,27 @@ void View3D::compose(videoio::FrameSet<camera::CAMERAS_TOTAL> frames_set,
     }
 
     _virtualCamera->exposure = _viewConfig->exposure;
+}
+
+void View3D::compose(videoio::FrameSet<camera::CAMERAS_TOTAL> frames_set,
+                     uchar4 *outputBuffer,
+                     cudarf::Framebuffer meshGPUOutput,
+                     unsigned int width,
+                     unsigned int height,
+                     float steering_angle,
+                     cudarf::CudaStreams cudaStreams,
+                     cudarf::profiling::Events &composeTime,
+                     unsigned int frameCounter)
+{
+    (void)frames_set;
+    assert(_width == width);
+    assert(_height == height);
+    assert(_rasterCtx);
+    assert(_drawListRenderer);
+    assert(_surroundViewComposer);
+    assert(_scenePassBuilder);
+    assert(_postProcessPipeline);
+    (void)steering_angle;
 
     _surroundViewComposer->compose(*_config,
                                    *_world,

@@ -141,10 +141,5 @@ int VehicleModelController::update(const engine::VehicleState *vehicleState)
     }
 
     wheels->set_wheel_orientation(rotation_angles, steering_angles);
-
-    assert(scene);
-    assert(scene->get_root());
-    scene->get_root()->update_transforms(nullptr);
-
     return 0;
 }

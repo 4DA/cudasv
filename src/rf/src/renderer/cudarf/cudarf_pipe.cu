@@ -35,6 +35,7 @@
 #include "framebuffer.inl"
 #include "frag_interpolation.inl"
 #include "fragment.inl"
+#include "TAA_common.hpp"
 #include "TAA.inl"
 #include "raster_naive.inl"
 #include "test.inl"
@@ -302,7 +303,6 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     assert(drawPacketIds.size() < CUDARF_DRAW_PACKET_BATCH_LIMIT);
     assert(uniforms.size() == drawPacketIds.size());
 
-    PipeFrameContext pipeFrame;
     PipeSubmissionContext pipeSubmission;
     PipeScratchContext pipeScratch;
 
@@ -464,24 +464,6 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     pipeScratch.vertexOut = bufferSet.dev_bufVertexOut;
     pipeSubmission.drawPacketCount = drawPacketIds.size();
 
-#ifdef WITH_TAA
-    if (desc->TAAEnabled && !params.with_blending) {
-        pipeFrame.common = prepare_for_TAA(
-            *desc,
-            launchConfig.frameCounter,
-            4,
-            params.common);
-    }
-    else {
-        pipeFrame.common = params.common;
-    }
-
-    pipeFrame.taa.commonHist = params.commonHist;
-    pipeFrame.taa.uniformsHist = desc->dev_uniformsHist;
-#else
-    pipeFrame.common = params.common;
-#endif
-
     pipeScratch.tris = bufferSet.dev_triangles;
     pipeSubmission.numTriangles = total_triangles;
     pipeSubmission.maxSubtris = total_triangles; // TODO: revise when we implement clipping
@@ -526,27 +508,6 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         pipeScratch.tileQLimit = desc->tileQLimit;
     }
 
-    // set PBR context
-    {
-        pipeFrame.camera = params.pbr.camera;
-        pipeFrame.exposure = params.pbr.exposure;
-        pipeFrame.lightCount = params.pbr.lights.size();
-
-        for (int i = 0; i < pipeFrame.lightCount; i++) {
-            pipeFrame.lights[i] = params.pbr.lights[i];
-        }
-
-        pipeFrame.sphericalHarmonics = params.pbr.sphericalHarmonics;
-        pipeFrame.brdfLUT = params.pbr.brdfLUT;
-        pipeFrame.specular = params.pbr.specular;
-    }
-
-#ifdef WITH_TAA
-    pipeFrame.taa.velocityTex = desc->dev_velocityTex;
-    pipeFrame.taa.velocityThreshold = desc->TAA.velocityThreshold;
-#endif
-
-
     cudarf::rast::PipeParams pipe {
         .stat = desc->dev_pipeStatic,
         .frame = desc->dev_pipeFrame,
@@ -554,9 +515,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         .scratch = pipeScratch
     };
 
-    CUDA_CHK(cudaMemcpyAsync(desc->dev_pipeFrame, &pipeFrame, sizeof(cudarf::rast::PipeFrameContext), cudaMemcpyHostToDevice, cuStream));
     CUDA_CHK(cudaMemcpyAsync(desc->dev_pipeSubmission, &pipeSubmission, sizeof(cudarf::rast::PipeSubmissionContext), cudaMemcpyHostToDevice, cuStream));
-
     CUDA_CHK(cudaMemcpyAsync(desc->dev_pipeParams, &pipe, sizeof(cudarf::rast::PipeParams), cudaMemcpyHostToDevice, cuStream));
 
     // initialize atomics

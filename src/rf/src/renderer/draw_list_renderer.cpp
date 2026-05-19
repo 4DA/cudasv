@@ -73,7 +73,7 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
     const rf::IBL &ibl = scene.get_ibl();
 
     assert(ibl);
-    cudarf::RenderParams::PBR pbrCommon{camera_translation, camera.exposure,
+    cudarf::PBRParams pbrCommon{camera_translation, camera.exposure,
         lightList, ibl.get_sh_matrix(), ibl.brdfLUT, ibl.specular};
 
     assert(pbrCommon.specular);
@@ -188,7 +188,7 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
     const rf::IBL &ibl = scene.get_ibl();
 
     assert(ibl.specular);
-    cudarf::RenderParams::PBR pbrCommon{camera_translation, camera.exposure,
+    cudarf::PBRParams pbrCommon{camera_translation, camera.exposure,
         lightList, ibl.get_sh_matrix(), ibl.brdfLUT, ibl.specular};
 
     assert(pbrCommon.specular);
