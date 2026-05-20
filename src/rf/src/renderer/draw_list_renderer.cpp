@@ -88,12 +88,7 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
                                      // cull backfaces, no blending
                                      cudarf::RenderParams {
                                          true,
-                                         false,
-                                         work.common,
-#ifdef WITH_TAA
-                                         workHist.common,
-#endif
-                                         pbrCommon
+                                         false
                                      },
                                      work.pbr.uniforms,
 #ifdef WITH_TAA
@@ -120,12 +115,7 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
                              // cull backfaces, no blending
                              cudarf::RenderParams {
                                  true,
-                                 false,
-                                 work.common,
-#ifdef WITH_TAA
-                                 workHist.common,
-#endif
-                                 pbrCommon
+                                 false
                              },
                              work.flat.uniforms,
 #ifdef WITH_TAA
@@ -202,12 +192,7 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
                              // blending enabled
                              cudarf::RenderParams {
                                  true,
-                                 true,
-                                 work.common,
-#ifdef WITH_TAA
-                                 workHist.common,
-#endif
-                                 pbrCommon
+                                 true
                              },
                              work.pbr.uniforms,
 #ifdef WITH_TAA
@@ -235,13 +220,9 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
         cudarf::pipe::run_pipe(rasterization_desc,
                                      // don't render backfacing glass to save some time
                                      // blending enabled
-                                     cudarf::RenderParams { true,
+                                     cudarf::RenderParams {
                                          true,
-                                         work.common,
-#ifdef WITH_TAA
-                                         workHist.common,
-#endif
-                                         pbrCommon
+                                         true
                                      },
                                      work.flat.uniforms,
 #ifdef WITH_TAA

@@ -644,11 +644,6 @@ void cudarf::pipe::draw_triangles(cudarf::pipe::Ctx* rasterization_desc,
                    cudarf::RenderParams {
                        face_culling,
                        blending,
-                       common,
-#ifdef WITH_TAA
-                       common,
-#endif
-                       cudarf::PBRParams()
                    },
                    uniforms,
 #ifdef WITH_TAA

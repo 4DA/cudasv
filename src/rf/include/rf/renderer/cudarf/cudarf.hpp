@@ -73,13 +73,6 @@ struct PBRParams
 struct RenderParams {
     bool face_culling;
     bool with_blending;
-
-    CommonUniforms common;
-#ifdef WITH_TAA
-    CommonUniforms commonHist;
-#endif
-
-    PBRParams pbr;
 };
 
 struct ProjectionParams {
