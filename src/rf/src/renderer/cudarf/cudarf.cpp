@@ -29,6 +29,15 @@
 using namespace cudarf;
 using namespace cudarf::rast;
 
+namespace cudarf
+{
+namespace pipe
+{
+struct Ctx;
+void init_tile_queue_static(cudarf::pipe::Ctx *desc, const cudaStream_t &cuStream);
+}
+}
+
 
 static float halton(int prime, int index = 1 /* index is 1-based */)
 {
@@ -496,6 +505,7 @@ void cudarf::pipe::init(cudarf::pipe::Ctx *desc, int window_width, int window_he
 
     SPDLOG_INFO("{}", fmt::sprintf("Coarse tiler: %lu KB", tileCount * (tileQLimit * sizeof(int32_t) + sizeof(SimpleQueue::Segment)) /  1024));
 
+    init_tile_queue_static(desc, cuStream);
 
     // Output framebuffer & depth
     // ---------------------------------

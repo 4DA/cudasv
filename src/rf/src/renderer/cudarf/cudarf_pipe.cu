@@ -70,7 +70,9 @@ uint8_t subtris[1000000];
 cudarf::rast::Triangle triags[1000000];
 #endif
 
-__device__ int32_t cudarf::rast::SimpleQueue::push(cudarf::rast::SimpleQueue::Segment &seg, unsigned int limit, int32_t val)
+__device__ int32_t cudarf::rast::SimpleQueue::push(cudarf::rast::SimpleQueue::Segment &seg,
+                                                   unsigned int limit,
+                                                   int32_t val)
 {
     unsigned int writeIdx = atomicAdd(&(seg.queueSize), 1);
     if (writeIdx < limit){
@@ -81,7 +83,9 @@ __device__ int32_t cudarf::rast::SimpleQueue::push(cudarf::rast::SimpleQueue::Se
     }
 }
 
-__device__ int32_t cudarf::rast::SimpleQueue::push_unprotected(cudarf::rast::SimpleQueue::Segment &seg, unsigned int limit, int32_t val)
+__device__ int32_t cudarf::rast::SimpleQueue::push_unprotected(cudarf::rast::SimpleQueue::Segment &seg,
+                                                               unsigned int limit,
+                                                               int32_t val)
 {
     unsigned int writeIdx = seg.queueSize++;
     if (writeIdx < limit){
@@ -98,18 +102,34 @@ __device__ void cudarf::rast::SimpleQueue::clear(cudarf::rast::SimpleQueue::Segm
 }
 
 __global__
-static void init_tilequeues(SimpleQueue::Segment *tileQHeaders, int32_t *tileQData, unsigned int limit, int w, int h) {
+static void init_tile_queue_pointers(SimpleQueue::Segment *tileQHeaders,
+                                     int32_t *tileQData,
+                                     unsigned int limit,
+                                     int w,
+                                     int h)
+{
+    int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+    int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+    int index = x + (y * w);
+
+    if (x < w && y < h) {
+        tileQHeaders[index].queue = &tileQData[index * limit];
+    }
+}
+
+__global__
+static void init_tile_queue_sizes(SimpleQueue::Segment *tileQHeaders,
+                                  int w,
+                                  int h)
+{
     int x = (blockIdx.x * blockDim.x) + threadIdx.x;
     int y = (blockIdx.y * blockDim.y) + threadIdx.y;
     int index = x + (y * w);
 
     if (x < w && y < h) {
         tileQHeaders[index].queueSize = 0;
-        tileQHeaders[index].queue = &tileQData[index * limit];
     }
 }
-
-
 
 __global__
 void visualize_bins(const cudarf::rast::PipeParams *params, cudarf::Framebuffer framebuffer)
@@ -285,6 +305,28 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
 }
 
+namespace cudarf::pipe
+{
+void init_tile_queue_static(cudarf::pipe::Ctx *desc,
+                            const cudaStream_t &cuStream)
+{
+    int rasterizerW = round_up_to_mult_pwr(desc->width, CUDARF_BIN_LOG2 + CUDARF_TILE_LOG2);
+    int rasterizerH = round_up_to_mult_pwr(desc->height, CUDARF_BIN_LOG2 + CUDARF_TILE_LOG2);
+
+    {
+        dim3 blockSize2d(8, 8);
+        dim3 blockCount2d((rasterizerW / CUDARF_TILE_SZ  - 1) / blockSize2d.x + 1,
+                          (rasterizerH / CUDARF_TILE_SZ - 1) / blockSize2d.y + 1);
+
+        init_tile_queue_pointers<<<blockCount2d, blockSize2d, 0, cuStream>>>(
+            desc->dev_tileQHeaders, desc->dev_tileQData, desc->tileQLimit,
+            rasterizerW / CUDARF_TILE_SZ, rasterizerH / CUDARF_TILE_SZ);
+        CUDA_CHK_ERROR("init_tile_queue_pointers");
+    }
+}
+}
+
+
 // rasterization pipeline
 void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
                             const cudarf::RenderParams &params,
@@ -428,26 +470,13 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         dim3 blockCount2d((rasterizerW / CUDARF_TILE_SZ  - 1) / blockSize2d.x + 1,
                           (rasterizerH / CUDARF_TILE_SZ - 1) / blockSize2d.y + 1);
 
-        init_tilequeues<<<blockCount2d, blockSize2d, 0, cuStream>>>(
-            desc->dev_tileQHeaders, desc->dev_tileQData, desc->tileQLimit,
-            rasterizerW / CUDARF_TILE_SZ, rasterizerH / CUDARF_TILE_SZ);
-        CUDA_CHK_ERROR("init_tilequeues");
-    }
+        init_tile_queue_sizes<<<blockCount2d, blockSize2d, 0, cuStream>>>(
+            desc->dev_tileQHeaders,
+            rasterizerW / CUDARF_TILE_SZ,
+            rasterizerH / CUDARF_TILE_SZ);
 
-    // not needed for now, as we clean rasterbuf in rasterizer
-    // init fine raster buffers
-    // --
-    /*
-    {
-        dim3 blockSize2d(8, 8);
-        dim3 blockCount2d((rasterizerW  - 1) / blockSize2d.x + 1,
-                          (rasterizerH - 1) / blockSize2d.y + 1);
-
-        CUDA_TIME_BEGIN(init_raster);
-        init_rasterbuf<<<blockCount2d, blockSize2d, 0, cuStream>>>(desc->dev_rasterOut, rasterizerW, rasterizerH);
-        CUDA_TIME_END(init_raster);
+        CUDA_CHK_ERROR("init_tile_queue_sizes");
     }
-    */
 
     // reinit_buf(&bufferSet.dev_dbgbuf, total_triangles * sizeof(int32_t));
 
