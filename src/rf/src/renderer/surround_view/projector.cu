@@ -127,10 +127,11 @@ InputFrames Projector::load_rgb(
 
         // upload frame CPU data to GPU RGB staing buffer
         // --
-        CUDA_CHK(cudaMemcpy(cuda_frames_staging[i],
-                            rgb[i],
-                            pitch * h,
-                            cudaMemcpyHostToDevice));
+        CUDA_CHK(cudaMemcpyAsync(cuda_frames_staging[i],
+                                 rgb[i],
+                                 pitch * h,
+                                 cudaMemcpyHostToDevice,
+                                 cuStream));
 
         // convert rgb -> rgba on GPU
         // --
