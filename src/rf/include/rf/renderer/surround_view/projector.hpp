@@ -54,7 +54,8 @@ struct Projector {
         unsigned int frame_set,
         int w,
         int h,
-        int byte_stride);
+        int pitch,
+        cudaStream_t cuStream);
 };
 
 struct RigParams {

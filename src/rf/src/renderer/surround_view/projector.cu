@@ -103,7 +103,8 @@ InputFrames Projector::load_rgb(
     unsigned int fs, // frame set
     int w,
     int h,
-    int pitch)
+    int pitch,
+    cudaStream_t cuStream)
 {
     for (int i = 0; i < 4; i++) {
         if (cuda_arrays[fs][i] == 0) {
@@ -125,15 +126,20 @@ InputFrames Projector::load_rgb(
         assert(cuda_frames_staging[i]);
 
         // upload frame CPU data to GPU RGB staing buffer
+        // --
         CUDA_CHK(cudaMemcpy(cuda_frames_staging[i],
                             rgb[i],
                             pitch * h,
                             cudaMemcpyHostToDevice));
 
         // convert rgb -> rgba on GPU
+        // --
         dim3 blockSize(16, 16);
         dim3 gridSize((w-1) / 16 + 1, (h-1) / 16 + 1);
-        rgb_to_rgba_surface<<<gridSize, blockSize>>>(cuda_frames_staging[i], w, h, pitch, cuda_surfaces[fs][i]);
+
+        rgb_to_rgba_surface<<<gridSize, blockSize, 0, cuStream>>>(
+            cuda_frames_staging[i], w, h, pitch, cuda_surfaces[fs][i]);
+
         CUDA_CHK_ERROR("rgb_to_rgba_surface");
     }
 

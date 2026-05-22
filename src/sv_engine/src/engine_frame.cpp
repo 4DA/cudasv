@@ -73,12 +73,11 @@ engine::Error Engine::pre_process(const videoio::RuntimeFramePacket4Cam &frame_p
                 0,
                 frames_set.width,
                 frames_set.height,
-                frames_set.stride);
+                frames_set.stride,
+                _impl->cudaOutputStreams[0]);
     }
 
     _impl->world->frame_projector().prevFrameSeq = frames_set.frameseq;
-
-    CUDA_CHK(cudaStreamSynchronize(_impl->cudaOutputStreams[0]));
 
     rf::Scene &scene = _impl->world->scene();
     assert(scene.get_root());
