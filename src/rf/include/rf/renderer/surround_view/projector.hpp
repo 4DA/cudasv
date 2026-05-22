@@ -35,6 +35,9 @@ using InputFrames =
 using InputFrameArrays =
     std::array<cudaArray_t, SURROUND_VIEW_MAX_CAMERAS>;
 
+using InputFrameSurfaces =
+    std::array<cudaSurfaceObject_t, SURROUND_VIEW_MAX_CAMERAS>;
+
 struct Projector {
     int tex_width = 0;
     int tex_height = 0;
@@ -43,6 +46,8 @@ struct Projector {
 
     std::array<InputFrames, SURROUND_VIEW_TEXTURE_SETS> cuda_textures;
     std::array<InputFrameArrays, SURROUND_VIEW_TEXTURE_SETS> cuda_arrays = {0};
+    std::array<InputFrameSurfaces, SURROUND_VIEW_TEXTURE_SETS> cuda_surfaces = {0};
+    std::array<uint8_t *, SURROUND_VIEW_MAX_CAMERAS> cuda_frames_staging = {0};
 
     InputFrames load_rgb(
         std::array<uint8_t *, SURROUND_VIEW_MAX_CAMERAS> rgb,

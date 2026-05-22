@@ -81,71 +81,67 @@ __global__ void copy_loaded_texture(
     }
 }
 
+__global__ void rgb_to_rgba_surface(
+    const uint8_t *rgb,
+    int width,
+    int height,
+    int pitchBytes,
+    cudaSurfaceObject_t out)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    if (x >= width || y >= height) return;
+
+    const uint8_t *p = rgb + y * pitchBytes + x * 3;
+    uchar4 rgba = make_uchar4(p[0], p[1], p[2], 255);
+
+    surf2Dwrite(rgba, out, x * sizeof(uchar4), y);
+}
+
 InputFrames Projector::load_rgb(
     std::array<uint8_t *, SURROUND_VIEW_MAX_CAMERAS> rgb,
-    unsigned int frame_set,
+    unsigned int fs, // frame set
     int w,
     int h,
-    int byte_stride)
+    int pitch)
 {
-    unsigned int srcPitchBytes = byte_stride;
-    uint8_t alpha = 255;
-
     for (int i = 0; i < 4; i++) {
-        // pad data to RGBA
-        std::vector<uchar4> rgba((size_t)w*h);
+        if (cuda_arrays[fs][i] == 0) {
+            // create RGB GPU staging buffer
+            CUDA_CHK(cudaMalloc(&cuda_frames_staging[i], pitch * h));
 
-        for (int y=0; y<h; ++y) {
-            const uint8_t* s = rgb[i] + y*srcPitchBytes;
-            uchar4* d = rgba.data() + (size_t)y*w;
-            for (int x=0; x<w; ++x) {
-                const uint8_t r = s[3*x+0];
-                const uint8_t g = s[3*x+1];
-                const uint8_t b = s[3*x+2];
-                d[x] = make_uchar4(r,g,b,alpha);
-            }
-        }
-
-        if (cuda_arrays[frame_set][i] == 0)
-        {
+            // create array-surface-texture triplet for camera frames
             auto desc = cudaCreateChannelDesc<uchar4>();
-            CUDA_CHK(cudaMallocArray(&cuda_arrays[frame_set][i], &desc, w, h));
-            fflush(stdout);
-            assert(cuda_arrays[frame_set][i] != 0);
+            CUDA_CHK(cudaMallocArray(&cuda_arrays[fs][i], &desc, w, h, cudaArraySurfaceLoadStore));
+
+            cudarf::create_array_texture(cuda_textures[fs][i],
+                                         cuda_arrays[fs][i],
+                                         cudaAddressModeClamp,
+                                         false);
+
+            cudarf::create_array_surface(cuda_surfaces[fs][i], cuda_arrays[fs][i]);
         }
 
-        CUDA_CHK(cudaMemcpy2DToArray(
-                     cuda_arrays[frame_set][i], 0, 0,
-                     rgba.data(),     /* src ptr */
-                     (size_t)w * 4,   /* src pitch (bytes). use your real stride if different */
-                     (size_t)w * 4,   /* width in bytes */
-                     h,               /* rows */
-                     cudaMemcpyHostToDevice));
+        assert(cuda_frames_staging[i]);
 
-        // Build texture object
-        cudaResourceDesc res{};
-        res.resType = cudaResourceTypeArray;
-        res.res.array.array = cuda_arrays[0][i];
+        // upload frame CPU data to GPU RGB staing buffer
+        CUDA_CHK(cudaMemcpy(cuda_frames_staging[i],
+                            rgb[i],
+                            pitch * h,
+                            cudaMemcpyHostToDevice));
 
-        cudaTextureDesc tex{};
-        tex.addressMode[0]   = cudaAddressModeClamp;
-        tex.addressMode[1]   = cudaAddressModeClamp;
-        tex.filterMode       = cudaFilterModeLinear;         // bilinear
-        tex.readMode         = cudaReadModeNormalizedFloat;  // u8 -> [0..1]
-        tex.normalizedCoords = 1;                            // use [0,1] UVs
-
-        CUDA_CHK(cudaCreateTextureObject(&cuda_textures[frame_set][i],
-                                         &res,
-                                         &tex,
-                                         nullptr));
+        // convert rgb -> rgba on GPU
+        dim3 blockSize(16, 16);
+        dim3 gridSize((w-1) / 16 + 1, (h-1) / 16 + 1);
+        rgb_to_rgba_surface<<<gridSize, blockSize>>>(cuda_frames_staging[i], w, h, pitch, cuda_surfaces[fs][i]);
+        CUDA_CHK_ERROR("rgb_to_rgba_surface");
     }
 
     tex_width = w;
     tex_height = h;
 
-    return cuda_textures[0];
+    return cuda_textures[fs];
 }
-
 
 
 #if 0
