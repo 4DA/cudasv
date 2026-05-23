@@ -85,8 +85,10 @@ void generate_texture_mips(cudaMipmappedArray *dev_mipmapArray,
                         (height - 1) / blockSize.y + 1);
 
         mip_downsample2x<<<blockCount, blockSize, 0, cuStream>>>(srcTex, dstSurf, width, height);
-
         CUDA_CHK_ERROR("mip_downsample2x");
+
+        // wait until downsample kernel is complete before destroying surface & texture
+        cudaStreamSynchronize(cuStream);
 
         cudaDestroySurfaceObject(dstSurf);
         cudaDestroyTextureObject(srcTex);
@@ -194,8 +196,6 @@ std::optional<cudarf::Texture> cudarf::create_cuda_texture(rf::Image image,
                                           image.h,                           // height
                                           cudaMemcpyHostToDevice,            // destination
                                           cuStream));
-
-        CUDA_CHK(cudaStreamSynchronize(cuStream));
 
         generate_texture_mips(dev_mipmapArray, image.w, image.h, image.channels, compSz, mipLevels, cuStream);
 

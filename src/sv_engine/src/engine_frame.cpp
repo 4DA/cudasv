@@ -195,6 +195,7 @@ engine::Error Engine::process(const videoio::RuntimeFramePacket4Cam &frame_packe
         _impl->frameTimeDB->show();
     }
 
+    // Wait until all cuda work is complete before presenting on display
     CUDA_CHK(cudaStreamSynchronize(cudaStream));
     cuda_output->present(cuda_output->d_output);
 
