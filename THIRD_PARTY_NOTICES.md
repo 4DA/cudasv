@@ -44,6 +44,18 @@ terms in the file header.
 - Local file: `assets/citrus_orchard_ibl`
 - Modifications: none
 
+### Polestar 1 Vehicle Model
+
+- Source: "[FREE] Polestar 1"
+- Source URL: <https://skfb.ly/oGUBP>
+- Author: Martin Trafas
+- License: Creative Commons Attribution 4.0 International
+  (<http://creativecommons.org/licenses/by/4.0/>)
+- Local file: `assets/glb/polestar_1_ver02.glb`
+- Modifications: the local GLB is a derivative work maintained for this
+  project and may include geometry, material, texture, scale, orientation, or
+  packaging changes from the original source asset.
+
 ## Practical Interpretation
 
 For repository users:
