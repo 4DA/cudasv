@@ -149,7 +149,7 @@ Run the sample app from the public sample pack directory:
 ```bash
 cd assets/sample_pack_4cam
 source ../../scripts/set_workspace.sh
-sv_app --frames frames/right.png frames/left.png frames/front.png frames/rear.png \
+sv_app --frames right.png left.png front.png rear.png \
        --rig canonical-rig.json \
        --width 1920 \
        --height 1080
@@ -158,7 +158,7 @@ sv_app --frames frames/right.png frames/left.png frames/front.png frames/rear.pn
 To dump a specific rendered frame to PNG:
 
 ```bash
-sv_app --frames frames/right.png frames/left.png frames/front.png frames/rear.png \
+sv_app --frames right.png left.png front.png rear.png \
        --rig canonical-rig.json \
        --width 1920 \
        --height 1080 \
