@@ -31,7 +31,7 @@ ConfigFiles svConfiguration = {
     .vehicle_config_path = "config/vehicle.json"
 };
 
-int load_config(Config *config, std::string path)
+int load_config(Config *config)
 {
     if (loadJsonConfig<vehicle::VehicleDimensions>(
             config->vehicle_config,

@@ -142,7 +142,7 @@ int main(int argc, char* argv[])
     }
 
     if (cmdline.source_kind != videoio::SourceKind::NuScenes) {
-        load_config(&app.engine->config, "configs.json");
+        load_config(&app.engine->config);
     }
 
     if (!cmdline.test_scenario_file.empty()) {

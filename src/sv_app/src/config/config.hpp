@@ -11,7 +11,7 @@
 #include <engine/engine.hpp>
 #include <nlohmann/json.hpp>
 
-int load_config(engine::Config *config, std::string path);
+int load_config(engine::Config *config);
 
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ColorParameter,
