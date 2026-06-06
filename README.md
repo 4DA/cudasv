@@ -40,10 +40,11 @@ explicit warp-synchronization where the original code relied on older warp
 execution behavior.
 
 One notable divergence is the current `drawPacket` submission model. The old
-`cudaraster` code did not use that concept, while this renderer currently
-relaunches the raster pipeline from the top for each draw-packet submission.
-That is one of the reasons per-submission setup cost matters in the current
-implementation.
+`cudaraster` code did not use that concept. This renderer keeps uploaded mesh
+geometry in draw packets and submits draw-packet id lists into the CUDA raster
+pipe. Each raster submission still starts at the vertex, triangle setup, bin
+tiler, coarse tiler, and fine raster stages, so per-submission setup and reset
+costs still matter.
 
 ## Shading / PBR
 
@@ -55,12 +56,15 @@ The current main shading model is a glTF-style metallic-roughness PBR path:
 - image-based lighting
   - spherical-harmonics diffuse
   - prefiltered specular cubemap + BRDF LUT
-- base color and emissive texturing
-- metallic / roughness material inputs
+- base-color, normal, emissive, and metallic-roughness texturing
+- explicit mipmapped texture sampling with derivative-based LOD selection for
+  the active material texture path
+- CUDA-side mip generation for loaded material textures
 
-Material support exists for more inputs than are fully exercised by the current
-fragment path, but the renderer is not yet a fully feature-complete glTF PBR
-implementation.
+The material path is intended to be practical glTF-style PBR rather than a
+fully feature-complete glTF renderer. Some glTF inputs are deliberately not
+implemented or are handled differently from a reference renderer, but the core
+metallic-roughness texture path and mip-aware material sampling are active.
 
 ## Current Deliberate Limitations
 
@@ -78,14 +82,13 @@ scene and camera setup are controlled:
   - opaque shading assumes the fragment shader does not modify depth
   - the opaque path shades only the top fragment after an early-Z style pass
   - translucent work shades per fragment in the same pass
-  - PBR world-position interpolation still uses linear barycentrics in the
-    fragment setup instead of perspective-correct interpolation
 - the PBR path is still incomplete
-  - normal maps are not part of the active shading path yet
-  - metallic-roughness texturing is not fully wired through the fragment logic
-  - derivative-based shading support is not available
+  - it is not a complete glTF material implementation
   - some material inputs exist in the data model before they are fully honored
     in shading
+  - glTF occlusion texture sampling is not currently part of the material path;
+    future ambient occlusion should be renderer-owned rather than only
+    material-texture-driven
 - several robustness/performance TODOs are still explicit in the raster code
   - guard-band / sample-edge cases
   - more complete clipping
@@ -184,15 +187,15 @@ cd assets/sample_pack_4cam
 - improve the current naive fine raster path:
   - reduce per-pixel sequential triangle scanning
   - move toward a more scalable tile-local fine raster stage
-  - improve interpolation correctness in the PBR path
   - revisit translucent handling and depth/blend organization
 - extend the PBR implementation:
-  - normal maps
-  - full metallic-roughness texture support
-  - derivative-aware shading features where needed
+  - continue tightening material-feature coverage beyond the active
+    metallic-roughness, normal, emissive, and mip-aware texture paths
+  - validate and benchmark remaining material variants before adding new shader
+    specializations
   - tighter alignment between material data and active fragment evaluation
 - replace remaining sample-asset compatibility shims with neutral project-owned assets
-- extend dataset support beyond the current sample flow
+- extend the nuScenes source and inspector path toward renderer integration
 - continue refining the CUDA raster path for modern GPUs and warp-level execution
 
 ## License
