@@ -20,6 +20,19 @@ vehicle and interactive viewpoint controls.
 - `scripts/`: developer workflow helpers such as build environment setup
 - `docs/schema/rig.schema.json`: canonical rig schema
 
+## Camera Rig
+
+The current public runtime path uses a 4-camera surround-view rig with explicit
+`right`, `left`, `front`, and `rear` roles. The sample rig is stored as a
+canonical JSON file and uses fisheye cameras with `fisheye_polynomial4`
+distortion, matching the four-coefficient Kannala-Brandt fisheye model used by
+the projection path.
+
+Rig extrinsics are expressed in vehicle coordinates with
+`pose_vehicle.rotation` as a 3x3 matrix and `pose_vehicle.translation` as a
+3-vector. See `docs/schema/rig.schema.json` for the schema and
+`docs/camera_rig_debug.md` for validation/debug views.
+
 ## Rasterization Notes
 
 The rasterizer is heavily based on the ideas and code structure of
@@ -108,6 +121,88 @@ renderer". CUDA is used as the main execution substrate for:
 
 That is the core identity of the project.
 
+## System Requirements
+
+The project is currently built and run as a Linux desktop CUDA/OpenGL ES
+application.
+
+Build tools:
+
+- CMake 3.16 or newer
+- Make, via the current `scripts/set_workspace.sh` workflow
+- a C++20-capable host compiler compatible with the installed CUDA Toolkit
+- CUDA Toolkit with `nvcc`
+- an NVIDIA driver new enough for the installed CUDA Toolkit
+
+GPU/runtime:
+
+- NVIDIA GPU with CUDA support
+- CUDA runtime and driver libraries
+- the default CMake CUDA architecture is `89`; set
+  `CMAKE_CUDA_ARCHITECTURES` explicitly if building for another GPU generation
+
+System libraries discovered by CMake:
+
+- EGL
+- OpenGL ES 3
+- GLFW 3
+- GLM
+- FFmpeg libraries:
+  - `libavformat`
+  - `libavcodec`
+  - `libavutil`
+  - `libswscale`
+
+Vendored third-party code includes `spdlog`, `nlohmann/json`, and `tinygltf`.
+
+## Bootstrap And Dependencies
+
+Clone the repository with submodules enabled:
+
+```bash
+git clone --recurse-submodules <repo-url> cudaSV
+cd cudaSV
+```
+
+If the repository was already cloned without submodules, initialize them before
+building:
+
+```bash
+git submodule update --init --recursive
+```
+
+The current submodules are:
+
+- `thirdparty/json`
+- `thirdparty/spdlog`
+- `thirdparty/tinygltf`
+
+On a typical Ubuntu system, install the host build tools and system development
+libraries with:
+
+```bash
+sudo apt update
+sudo apt install \
+  build-essential \
+  cmake \
+  git \
+  make \
+  pkg-config \
+  ffmpeg \
+  libavcodec-dev \
+  libavformat-dev \
+  libavutil-dev \
+  libswscale-dev \
+  libegl1-mesa-dev \
+  libgles2-mesa-dev \
+  libglfw3-dev \
+  libglm-dev
+```
+
+Install the NVIDIA driver and CUDA Toolkit separately if they are not already
+available on the machine. The build expects `nvcc` to be on `PATH` or available
+under a standard CUDA installation path such as `/usr/local/cuda/bin`.
+
 ## Build
 
 ```bash
@@ -177,6 +272,12 @@ There is also a sample launcher script in the sample pack:
 cd assets/sample_pack_4cam
 ./run.sh
 ```
+
+## Controls
+
+- Hold the left mouse button and move the mouse to pan the active view.
+- Right-click a viewpoint control in the 3D view to activate that viewpoint.
+- Use the mouse wheel to zoom when the active viewpoint supports it.
 
 ## Future Directions
 
