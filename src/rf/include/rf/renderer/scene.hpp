@@ -22,6 +22,8 @@ enum render_pass_type {
     RENDER_PASS_OPAQUE = 0,  // opaque geometry
     RENDER_PASS_TRANSLUCENT, // translucent geometry, must be rendered with
                              // alpha blending and after all opaque is done
+    RENDER_PASS_UI,          // translucent UI/control geometry, rendered into
+                             // a separate overlay framebuffer
     RENDER_PASS_COUNT
 };
 }

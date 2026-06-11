@@ -29,6 +29,7 @@ public:
              rf::VirtualCamera &virtualCamera,
              const ViewConfig3D &viewConfig,
              cudarf::Framebuffer meshGPUOutput,
+             cudarf::Framebuffer uiOutput,
              uchar4 *outputBuffer,
              cudarf::CudaStreams cudaStreams,
              cudarf::profiling::Events &composeTime,

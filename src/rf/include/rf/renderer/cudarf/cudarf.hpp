@@ -142,6 +142,7 @@ struct Ctx
 #ifdef WITH_TAA
     cudarf::Framebuffer rasterSurface;
     cudarf::FBTexture rasterTexture = 0;
+    cudarf::Framebuffer uiFramebuffer;
 
     cudarf::Framebuffer dev_framebuffer[2];
     cudarf::FBTexture dev_framebufferTex[2] = {0};
@@ -158,6 +159,7 @@ struct Ctx
 #else
     cudarf::Framebuffer dev_framebuffer;
     cudarf::FBTexture dev_framebufferTex;
+    cudarf::Framebuffer uiFramebuffer;
 #endif
 };
 
@@ -267,6 +269,7 @@ cudarf::Framebuffer get_output_fb(Ctx *desc, unsigned int frameCounter);
 cudarf::FBTexture   get_output_tex(Ctx *desc, unsigned int frameCounter);
 
 cudarf::Framebuffer get_internal_fb(Ctx *desc, unsigned int frameCounter);
+cudarf::Framebuffer get_ui_fb(Ctx *desc);
 
 #ifdef WITH_TAA
 cudarf::Framebuffer get_history_fb(Ctx *desc, unsigned int frameCounter);
@@ -297,12 +300,15 @@ void resample(cudarf::FBTexture src, int outputWidth, int outputHeight, uchar4 *
 
 void compose(Framebuffer lower,
              Framebuffer upper,
+             Framebuffer overlay,
              float exposure,
              unsigned int width, unsigned int height,
              float fadeMinY, float fadeMaxY,
              uchar4 *out, cudaStream_t cuStream);
 
-void compose(Framebuffer lower, Framebuffer upper,
+void compose(Framebuffer lower,
+             Framebuffer upper,
+             Framebuffer overlay,
              unsigned int width, unsigned int height,
              float fadeMinY, float fadeMaxY,
              uchar4 *out, cudaStream_t cuStream);

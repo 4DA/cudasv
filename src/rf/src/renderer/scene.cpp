@@ -147,7 +147,7 @@ Scene::build_draw_list(const std::string &name,
 
     if (except.find(name) != except.end()) {return;}
 
-    bool isTranslucent = (pass == RENDER_PASS_TRANSLUCENT);
+    bool isTranslucent = (pass == RENDER_PASS_TRANSLUCENT || pass == RENDER_PASS_UI);
 
     auto comp_it = components.find(name);
     assert(comp_it != components.end());

@@ -23,6 +23,7 @@ void engine::view::ViewPostProcessPipeline::run(
     rf::VirtualCamera &virtualCamera,
     const engine::view::ViewConfig3D &viewConfig,
     cudarf::Framebuffer meshGPUOutput,
+    cudarf::Framebuffer uiOutput,
     uchar4 *outputBuffer,
     cudarf::CudaStreams cudaStreams,
     cudarf::profiling::Events &composeTime,
@@ -83,6 +84,7 @@ void engine::view::ViewPostProcessPipeline::run(
 
     cudarf::compose(meshGPUOutput,
                     sceneOutput,
+                    uiOutput,
                     virtualCamera.exposure,
                     rasterCtx->width,
                     rasterCtx->height,

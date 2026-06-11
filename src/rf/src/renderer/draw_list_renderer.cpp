@@ -36,16 +36,16 @@ int cudarf::DrawListRenderer::register_material(std::shared_ptr<cudarf::Material
 
 cudarf::DrawListRenderer::Stats
 cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
-                              rf::Scene &scene,
-                              rf::VirtualCamera& camera,
-                              const DrawListRenderer::WorkDescription<rf::RENDER_PASS_OPAQUE> &work,
+                                 rf::Scene &scene,
+                                 rf::VirtualCamera& camera,
+                                 const DrawListRenderer::WorkDescription<rf::RENDER_PASS_OPAQUE> &work,
 #ifdef WITH_TAA
-                              const DrawListRenderer::WorkDescription<rf::RENDER_PASS_OPAQUE> &workHist,
+                                 const DrawListRenderer::WorkDescription<rf::RENDER_PASS_OPAQUE> &workHist,
 #endif
-                              bool withOpaqueVisibuf,
-                              cudarf::Framebuffer output,
-                              unsigned int frameCounter,
-                              cudaStream_t cuStream)
+                                 bool withOpaqueVisibuf,
+                                 cudarf::Framebuffer output,
+                                 unsigned int frameCounter,
+                                 cudaStream_t cuStream)
 {
     assert(rasterization_desc);
 
@@ -142,16 +142,16 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
 
 cudarf::DrawListRenderer::Stats
 cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
-                            rf::Scene &scene,
-                            rf::VirtualCamera& camera,
-                            const DrawListRenderer::WorkDescription<rf::RENDER_PASS_TRANSLUCENT> &work,
+                                 rf::Scene &scene,
+                                 rf::VirtualCamera& camera,
+                                 const DrawListRenderer::WorkDescription<rf::RENDER_PASS_TRANSLUCENT> &work,
 #ifdef WITH_TAA
-                            const DrawListRenderer::WorkDescription<rf::RENDER_PASS_TRANSLUCENT> &workHist,
+                                 const DrawListRenderer::WorkDescription<rf::RENDER_PASS_TRANSLUCENT> &workHist,
 #endif
-                            cudarf::Framebuffer output,
-                            cudarf::ShaderType shaderType,
-                            unsigned int frameCounter,
-                            cudaStream_t cuStream)
+                                 cudarf::Framebuffer output,
+                                 cudarf::ShaderType shaderType,
+                                 unsigned int frameCounter,
+                                 cudaStream_t cuStream)
 {
     assert(rasterization_desc);
 
@@ -220,6 +220,110 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
         cudarf::pipe::run_pipe(rasterization_desc,
                                      // don't render backfacing glass to save some time
                                      // blending enabled
+                                     cudarf::RenderParams {
+                                         true,
+                                         true
+                                     },
+                                     work.flat.uniforms,
+#ifdef WITH_TAA
+                                     workHist.flat.uniforms,
+#endif
+                                     work.flat.drawPacketIds,
+                                     work.flat.matIds,
+                                     objMaterials,
+                                     cudarf::pipe::LaunchConfig(true,
+                                                                false,
+                                                                frameCounter,
+                                                                output,
+                                                                translucentTimeFlat),
+                                     cuStream
+            );
+
+        if (translucentTime != nullptr) {translucentTimeFlat->stop_interval(translucentTotal);}
+    }
+
+    return DrawListRenderer::Stats {
+        work.pbr.drawPacketIds.size(),
+        work.flat.drawPacketIds.size(),
+    };
+}
+
+
+cudarf::DrawListRenderer::Stats
+cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
+                                 rf::Scene &scene,
+                                 rf::VirtualCamera& camera,
+                                 const DrawListRenderer::WorkDescription<rf::RENDER_PASS_UI> &work,
+#ifdef WITH_TAA
+                                 const DrawListRenderer::WorkDescription<rf::RENDER_PASS_UI> &workHist,
+#endif
+                                 cudarf::Framebuffer output,
+                                 cudarf::ShaderType shaderType,
+                                 unsigned int frameCounter,
+                                 cudaStream_t cuStream)
+{
+    assert(rasterization_desc);
+
+    auto camera_translation = make_float3(camera.transform.translation.x,
+                                          camera.transform.translation.y,
+                                          camera.transform.translation.z);
+
+    std::vector<cudarf::CUDARFLight> lightList;
+
+    for (auto compIt: scene.get_lights()) {
+        rf::PointLightComponent &comp = *compIt.second;
+        auto trans = comp.toWorld.translation;
+
+        cudarf::CUDARFLight light {
+            .intensity = comp.intensity,
+            .position = make_float3(trans.x, trans.y, trans.z),
+            .range = 10000.0
+        };
+
+        lightList.push_back(light);
+    }
+
+    const rf::IBL &ibl = scene.get_ibl();
+
+    assert(ibl.specular);
+    cudarf::PBRParams pbrCommon{camera_translation, camera.exposure,
+        lightList, ibl.get_sh_matrix(), ibl.brdfLUT, ibl.specular};
+
+    assert(pbrCommon.specular);
+
+    if (shaderType == cudarf::SHADER_TYPE_PBR && work.pbr) {
+        int translucentTotal;
+        if (translucentTime != nullptr) {translucentTotal = translucentTime->start_interval("run_pipe", cuStream);}
+
+        cudarf::pipe::run_pipe(rasterization_desc,
+                             cudarf::RenderParams {
+                                 true,
+                                 true
+                             },
+                             work.pbr.uniforms,
+#ifdef WITH_TAA
+                             workHist.pbr.uniforms,
+#endif
+                             work.pbr.drawPacketIds,
+                             work.pbr.matIds,
+                             objMaterials,
+                             cudarf::pipe::LaunchConfig(true,
+                                                        false,
+                                                        frameCounter,
+                                                        output,
+                                                        translucentTime),
+                             cuStream
+            );
+
+        if (translucentTime != nullptr) {translucentTime->stop_interval(translucentTotal);}
+    }
+
+    if (shaderType == cudarf::SHADER_TYPE_UNLIT && work.flat) {
+        int translucentTotal;
+
+        if (translucentTime != nullptr) {translucentTotal = translucentTimeFlat->start_interval("run_pipe", cuStream);}
+
+        cudarf::pipe::run_pipe(rasterization_desc,
                                      cudarf::RenderParams {
                                          true,
                                          true

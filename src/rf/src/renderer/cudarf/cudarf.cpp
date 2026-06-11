@@ -526,6 +526,7 @@ void cudarf::pipe::init(cudarf::pipe::Ctx *desc, int window_width, int window_he
     create_surface(desc->dev_framebuffer[0], desc->dev_framebufferTex[0], desc->width, desc->height, cuStream);
     create_surface(desc->dev_framebuffer[1], desc->dev_framebufferTex[1], desc->width, desc->height, cuStream);
     create_surface(desc->rasterSurface, desc->rasterTexture, desc->width, desc->height, cuStream);
+    create_surface(desc->uiFramebuffer, desc->width, desc->height, cuStream);
 
     CUDA_CHK(cudaFree(desc->dev_velocityTex));
     CUDA_CHK(cudaMalloc(&desc->dev_velocityTex, sizeof(cudarf::Velocity) * desc->width * desc->height));
@@ -542,6 +543,10 @@ void cudarf::pipe::init(cudarf::pipe::Ctx *desc, int window_width, int window_he
                 desc->width, desc->height,
                 (desc->width * desc->height * sizeof(ColorN)) / 1024));
 
+    SPDLOG_INFO("{}", fmt::sprintf("UI framebuffer %d x %d @ 32: %lu KB",
+                desc->width, desc->height,
+                (desc->width * desc->height * sizeof(ColorN)) / 1024));
+
     SPDLOG_INFO("{}", fmt::sprintf("Velocity texture %d x %d: %lu KB",
                 desc->width, desc->height,
                 (desc->width * desc->height * sizeof(cudarf::Velocity)) / 1024));
@@ -549,8 +554,14 @@ void cudarf::pipe::init(cudarf::pipe::Ctx *desc, int window_width, int window_he
 
     free_surface(desc->dev_framebuffer);
     create_surface(desc->dev_framebuffer, desc->dev_framebufferTex, desc->width, desc->height, cuStream);
+    free_surface(desc->uiFramebuffer);
+    create_surface(desc->uiFramebuffer, desc->width, desc->height, cuStream);
 
     SPDLOG_INFO("{}", fmt::sprintf("Output framebuffer %d x %d @ 32: %lu KB",
+                desc->width, desc->height,
+                (desc->width * desc->height * sizeof(ColorN)) / 1024));
+
+    SPDLOG_INFO("{}", fmt::sprintf("UI framebuffer %d x %d @ 32: %lu KB",
                 desc->width, desc->height,
                 (desc->width * desc->height * sizeof(ColorN)) / 1024));
 #endif
@@ -593,8 +604,11 @@ void cudarf::pipe::destroy(cudarf::pipe::Ctx *desc) {
 #ifdef WITH_TAA
     free_surface(desc->dev_framebuffer[0]);
     free_surface(desc->dev_framebuffer[1]);
+    free_surface(desc->rasterSurface);
+    free_surface(desc->uiFramebuffer);
 #else
     free_surface(desc->dev_framebuffer);
+    free_surface(desc->uiFramebuffer);
 #endif
 }
 
@@ -740,6 +754,10 @@ void cudarf::pipe::begin_frame(cudarf::pipe::Ctx *desc,
                                     make_uchar4(0, 0, 0, 0),
                                     cuStream);
 #endif
+    cudarf::pipe::clear_framebuffer(desc,
+                                    cudarf::pipe::get_ui_fb(desc),
+                                    make_uchar4(0, 0, 0, 0),
+                                    cuStream);
 
 }
 
@@ -781,6 +799,11 @@ cudarf::Framebuffer cudarf::pipe::get_internal_fb(cudarf::pipe::Ctx *desc, unsig
     return desc->rasterSurface;
 }
 
+cudarf::Framebuffer cudarf::pipe::get_ui_fb(cudarf::pipe::Ctx *desc)
+{
+    return desc->uiFramebuffer;
+}
+
 cudarf::Framebuffer cudarf::pipe::get_history_fb(cudarf::pipe::Ctx *desc, unsigned int frameCounter)
 {
     if (frameCounter % 2 == 0) {
@@ -805,6 +828,11 @@ cudarf::FBTexture cudarf::pipe::get_history_tex(cudarf::pipe::Ctx *desc, unsigne
 cudarf::Framebuffer cudarf::pipe::get_internal_fb(cudarf::pipe::Ctx *desc, unsigned int frameCounter)
 {
     return desc->dev_framebuffer;
+}
+
+cudarf::Framebuffer cudarf::pipe::get_ui_fb(cudarf::pipe::Ctx *desc)
+{
+    return desc->uiFramebuffer;
 }
 
 #endif

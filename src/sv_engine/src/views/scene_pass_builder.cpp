@@ -72,7 +72,7 @@ engine::view::ScenePassBuilder::WorkSet engine::view::ScenePassBuilder::build(
                                   virtualCamera,
                                   std::set<std::string>());
 
-        drawListRenderer.add_work(work.translucent,
+        drawListRenderer.add_work(work.ui,
                                   world.scene(),
                                   controlCompoName,
                                   virtualCamera,
@@ -88,6 +88,8 @@ engine::view::ScenePassBuilder::WorkSet engine::view::ScenePassBuilder::build(
 
     work.translucent.flat.sort(virtualCamera);
     work.translucent.pbr.sort(virtualCamera);
+    work.ui.flat.sort(virtualCamera);
+    work.ui.pbr.sort(virtualCamera);
 
     return work;
 }
@@ -101,6 +103,7 @@ void engine::view::ScenePassBuilder::render(
     const WorkSet &history,
     bool withOpaqueVisibuf,
     cudarf::Framebuffer output,
+    cudarf::Framebuffer uiOutput,
     unsigned int frameCounter,
     cudaStream_t cudaStream) const
 {
@@ -136,6 +139,30 @@ void engine::view::ScenePassBuilder::render(
                             history.translucent,
 #endif
                             output,
+                            cudarf::SHADER_TYPE_UNLIT,
+                            frameCounter,
+                            cudaStream);
+
+    drawListRenderer.render(rasterCtx,
+                            scene,
+                            virtualCamera,
+                            work.ui,
+#ifdef WITH_TAA
+                            history.ui,
+#endif
+                            uiOutput,
+                            cudarf::SHADER_TYPE_PBR,
+                            frameCounter,
+                            cudaStream);
+
+    drawListRenderer.render(rasterCtx,
+                            scene,
+                            virtualCamera,
+                            work.ui,
+#ifdef WITH_TAA
+                            history.ui,
+#endif
+                            uiOutput,
                             cudarf::SHADER_TYPE_UNLIT,
                             frameCounter,
                             cudaStream);

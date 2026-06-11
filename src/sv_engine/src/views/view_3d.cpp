@@ -251,6 +251,7 @@ void View3D::compose(videoio::FrameSet<camera::CAMERAS_TOTAL> frames_set,
     _postProcessPipeline->begin_frame(sceneWork, frameCounter);
 
     cudarf::Framebuffer internalFB = cudarf::pipe::get_internal_fb(_rasterCtx, frameCounter);
+    cudarf::Framebuffer uiFB = cudarf::pipe::get_ui_fb(_rasterCtx);
 
     _scenePassBuilder->render(*_drawListRenderer,
                               _rasterCtx,
@@ -260,6 +261,7 @@ void View3D::compose(videoio::FrameSet<camera::CAMERAS_TOTAL> frames_set,
                               _postProcessPipeline->history(),
                               _config->overlays_config.renderer_config.use_visibuf != 0,
                               internalFB,
+                              uiFB,
                               frameCounter,
                               cudaStreams.rendering);
 
@@ -267,6 +269,7 @@ void View3D::compose(videoio::FrameSet<camera::CAMERAS_TOTAL> frames_set,
                               *_virtualCamera,
                               *_viewConfig,
                               meshGPUOutput,
+                              uiFB,
                               outputBuffer,
                               cudaStreams,
                               composeTime,

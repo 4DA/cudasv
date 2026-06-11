@@ -90,6 +90,18 @@ public:
                  unsigned int frameCounter,
                  cudaStream_t cuStream);
 
+    Stats render(cudarf::pipe::Ctx* rasterization_desc,
+                 rf::Scene &scene,
+                 rf::VirtualCamera& camera,
+                 const DrawListRenderer::WorkDescription<rf::RENDER_PASS_UI> &work,
+#ifdef WITH_TAA
+                 const DrawListRenderer::WorkDescription<rf::RENDER_PASS_UI> &workHist,
+#endif
+                 cudarf::Framebuffer output,
+                 cudarf::ShaderType shaderType,
+                 unsigned int frameCounter,
+                 cudaStream_t cuStream);
+
 private:
     /// dictionary that stores internal material Id -> MaterialPtr records
     ///

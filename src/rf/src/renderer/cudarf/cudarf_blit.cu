@@ -73,6 +73,7 @@ static void init_framebuffer_checkers(cudarf::Framebuffer fb, int w, int h)
 __global__
 static void compose(cudarf::Framebuffer lower,
                     cudarf::Framebuffer upper,
+                    cudarf::Framebuffer overlay,
                     float exposure,
                     int w, int h,
                     float fadeMinY, float fadeMaxY,
@@ -82,7 +83,7 @@ static void compose(cudarf::Framebuffer lower,
     int y = (blockIdx.y * blockDim.y) + threadIdx.y;
     if (x >= w || y >= h) { return; }
 
-    cudarf::Color lower_col, upper_col;
+    cudarf::Color lower_col, upper_col, overlay_col;
     fb::load(lower, x, y, lower_col);
 
     if (fadeMinY >= 0.0f && fadeMaxY >= 0.0f) {
@@ -98,8 +99,13 @@ static void compose(cudarf::Framebuffer lower,
     fb::load(upper, x, y, upper_col);
     upper_col = cudarf::shading::tone_map(upper_col, exposure);
 
-    float4 color = make_color(
+    fb::load(overlay, x, y, overlay_col);
+    overlay_col = cudarf::shading::tone_map(overlay_col, exposure);
+
+    float4 base = make_color(
         upper_col.w * to_rgb(upper_col) + (1.0f - upper_col.w) * to_rgb(lower_col), 1.0f);
+    float4 color = make_color(
+        to_rgb(overlay_col) + (1.0f - overlay_col.w) * to_rgb(base), 1.0f);
 
     out[x + (h - 1 - y) * w] = fb::to_rgba_norm(color);
 
@@ -108,6 +114,7 @@ static void compose(cudarf::Framebuffer lower,
 __global__
 static void compose_no_tonemap(cudarf::Framebuffer lower,
                                 cudarf::Framebuffer upper,
+                                cudarf::Framebuffer overlay,
                                 int w, int h,
                                 float fadeMinY, float fadeMaxY,
                                 uchar4 *out)
@@ -116,7 +123,7 @@ static void compose_no_tonemap(cudarf::Framebuffer lower,
     int y = (blockIdx.y * blockDim.y) + threadIdx.y;
     if (x >= w || y >= h) { return; }
 
-    cudarf::Color lower_col, upper_col;
+    cudarf::Color lower_col, upper_col, overlay_col;
     fb::load(lower, x, y, lower_col);
 
     if (fadeMinY >= 0.0f && fadeMaxY >= 0.0f) {
@@ -130,9 +137,12 @@ static void compose_no_tonemap(cudarf::Framebuffer lower,
     }
 
     fb::load(upper, x, y, upper_col);
+    fb::load(overlay, x, y, overlay_col);
 
-    float4 color = make_color(
+    float4 base = make_color(
         upper_col.w * to_rgb(upper_col) + (1.0f - upper_col.w) * to_rgb(lower_col), 1.0f);
+    float4 color = make_color(
+        to_rgb(overlay_col) + (1.0f - overlay_col.w) * to_rgb(base), 1.0f);
 
     out[x + (h - 1 - y) * w] = fb::to_rgba_norm(color);
 
@@ -303,6 +313,7 @@ void cudarf::pipe::copy_depth_to_pbo(cudarf::pipe::Ctx *desc, uchar4 *pbo)
 
 void cudarf::compose(cudarf::Framebuffer lower,
                      cudarf::Framebuffer upper,
+                     cudarf::Framebuffer overlay,
                      float exposure,
                      unsigned int width,
                      unsigned int height,
@@ -311,17 +322,19 @@ void cudarf::compose(cudarf::Framebuffer lower,
 {
     assert(lower);
     assert(upper);
+    assert(overlay);
     assert(dev_out);
     dim3 blockSize2d(8, 8);
     dim3 blockCount2d((width  - 1) / blockSize2d.x + 1,
                       (height - 1) / blockSize2d.y + 1);
     compose<<<blockCount2d, blockSize2d, 0, cuStream>>>(
-        lower, upper, exposure, width, height, fadeMinY, fadeMaxY, dev_out);
+        lower, upper, overlay, exposure, width, height, fadeMinY, fadeMaxY, dev_out);
     CUDA_CHK_ERROR("compose");
 }
 
 void cudarf::compose(cudarf::Framebuffer lower,
                      cudarf::Framebuffer upper,
+                     cudarf::Framebuffer overlay,
                      unsigned int width,
                      unsigned int height,
                      float fadeMinY, float fadeMaxY,
@@ -329,12 +342,13 @@ void cudarf::compose(cudarf::Framebuffer lower,
 {
     assert(lower);
     assert(upper);
+    assert(overlay);
     assert(dev_out);
     dim3 blockSize2d(8, 8);
     dim3 blockCount2d((width  - 1) / blockSize2d.x + 1,
                       (height - 1) / blockSize2d.y + 1);
     compose_no_tonemap<<<blockCount2d, blockSize2d, 0, cuStream>>>(
-        lower, upper, width, height, fadeMinY, fadeMaxY, dev_out);
+        lower, upper, overlay, width, height, fadeMinY, fadeMaxY, dev_out);
     CUDA_CHK_ERROR("compose");
 }
 

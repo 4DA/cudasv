@@ -16,11 +16,13 @@ class ScenePassBuilder
 public:
     using OpaqueWork = cudarf::DrawListRenderer::WorkDescription<rf::RENDER_PASS_OPAQUE>;
     using TranslucentWork = cudarf::DrawListRenderer::WorkDescription<rf::RENDER_PASS_TRANSLUCENT>;
+    using UIWork = cudarf::DrawListRenderer::WorkDescription<rf::RENDER_PASS_UI>;
 
     struct WorkSet
     {
         OpaqueWork opaque;
         TranslucentWork translucent;
+        UIWork ui;
     };
 
     WorkSet build(const Config &config,
@@ -38,6 +40,7 @@ public:
                 const WorkSet &history,
                 bool withOpaqueVisibuf,
                 cudarf::Framebuffer output,
+                cudarf::Framebuffer uiOutput,
                 unsigned int frameCounter,
                 cudaStream_t cudaStream) const;
 };
