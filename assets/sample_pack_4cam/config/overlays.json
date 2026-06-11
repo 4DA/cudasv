@@ -1,6 +1,6 @@
 {
   "vehicle_config": {
-    "model_path": "../glb/polestar_1_ver02.glb",
+    "model_path": "../glb/polestar_1_ver031.glb",
     "ibl_path": "",
     "wheelsConfig": {
       "front_left_steering": "Wheel_01_Steering",
@@ -15,7 +15,7 @@
     "use_velocity_for_wheels_animation": 1
   },
   "controls_config": {
-    "model_path": "../glb/camera_controls_new.glb",
+    "model_path": "../glb/camera-controls_v022.glb",
     "controls": [
       {
         "component": "CameraMarker",
