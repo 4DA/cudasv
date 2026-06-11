@@ -6,7 +6,11 @@
 
 using namespace rf;
 
-const glm::vec4 FRONT_FACE_DEFAULT_NORMAL(1.0, 0.0, 0.0, 0.0);
+namespace
+{
+
+const glm::vec3 FRONT_FACE_DEFAULT_NORMAL(1.0f, 0.0f, 0.0f);
+const glm::vec3 FRONT_FACE_DEFAULT_UP(0.0f, 1.0f, 0.0f);
 
 static BoundingBox get_bounding_box(const std::vector<std::shared_ptr<Primitive>> primitives)
 {
@@ -18,6 +22,15 @@ static BoundingBox get_bounding_box(const std::vector<std::shared_ptr<Primitive>
 
     return result;
 }
+
+// remove the part of a vector that points along a plane normal, leaving only
+// the part that lies inside the plane
+static glm::vec3 project_to_plane(glm::vec3 value, const glm::vec3 &planeNormal)
+{
+    return glm::normalize(value - planeNormal * glm::dot(value, planeNormal));
+}
+
+} // namespace
 
 BoundingBox Primitive::get_bounds(const TRSTransform &to_world) const {
     return bounds.transform(to_world);
@@ -38,11 +51,20 @@ Primitive * PrimitiveComponent::add_primitive(MeshInfo geometry,
 
 glm::quat PrimitiveComponent::get_front_face_rotation(const VirtualCamera camera) const
 {
-    glm::vec3 N = glm::vec3(FRONT_FACE_DEFAULT_NORMAL) * toLocal.rotation;
-    glm::vec3 v2c = glm::normalize((camera.transform.translation - toLocal.translation));
-    float angle = glm::angle(N, v2c);
-    glm::vec3 axis = glm::normalize(glm::cross(N, v2c));
-    return glm::angleAxis(angle, axis);
+    const glm::quat originalRotation = glm::normalize(toWorld.rotation);
+    const glm::quat cameraRotation = glm::normalize(camera.transform.rotation);
+
+    glm::vec3 currentFront = glm::rotate(originalRotation, FRONT_FACE_DEFAULT_NORMAL);
+    glm::vec3 targetFront = -glm::rotate(cameraRotation, VirtualCamera::DEFAULT_CAMERA_FORWARD);
+
+    glm::quat faceCamera = glm::rotation(currentFront, targetFront);
+    glm::quat result = glm::normalize(faceCamera * originalRotation);
+
+    glm::vec3 currentUp = project_to_plane(glm::rotate(result, FRONT_FACE_DEFAULT_UP), targetFront);
+    glm::vec3 targetUp = project_to_plane(glm::rotate(cameraRotation, VirtualCamera::DEFAULT_CAMERA_UP), targetFront);
+    glm::quat restoreUp = glm::rotation(currentUp, targetUp);
+
+    return glm::normalize(restoreUp * result);
 }
 
 BoundingBox PrimitiveComponent::compute_bounding_box()
@@ -68,7 +90,7 @@ BoundingBox PrimitiveComponent::compute_bounding_box(const rf::VirtualCamera *ca
         worldTransform = toWorld;
     }
 
-    bounds = get_bounding_box(_primitiveGroup._primitives).transform(toWorld);
+    bounds = get_bounding_box(_primitiveGroup._primitives).transform(worldTransform);
 
     for (const auto &child: children) {
         bounds = bounds.union_with(child->compute_bounding_box(camera));
