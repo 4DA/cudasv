@@ -15,7 +15,7 @@
     "use_velocity_for_wheels_animation": 1
   },
   "controls_config": {
-    "model_path": "../glb/camera-controls_v022.glb",
+    "model_path": "../glb/camera-controls_v023.glb",
     "controls": [
       {
         "component": "CameraMarker",
