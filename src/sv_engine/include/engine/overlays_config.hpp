@@ -76,6 +76,15 @@ struct ViewpointControlIconSettings
     float look_at[3];
 } ;
 
+struct ViewpointControlAlphaMultiplier
+{
+    // Name of component in virtual controls model file
+    std::string component;
+
+    // Multiplier applied to this prefab component material alpha
+    float value;
+};
+
 struct VirtualControlConfig
 {
     // Enabled (1) or disabled (0)
@@ -89,6 +98,12 @@ struct VirtualControlConfig
 
     // Single control settings
     ViewpointControlIconSettings controls[SV_MAX_VIEWPOINTS];
+
+    // used alpha multiplier number
+    uint32_t alpha_multipliers_count;
+
+    // Alpha multiplier settings by prefab component
+    ViewpointControlAlphaMultiplier alpha_multipliers[SV_MAX_VIEWPOINTS];
 };
 
 // car bottom shadow config

@@ -187,7 +187,17 @@
       }
     ],
     "controls_count": 15,
-    "enabled": 1
+    "enabled": 1,
+    "alpha_multiplier": [
+      {
+        "component": "CameraMarker",
+        "value": 1.0
+      },
+      {
+        "component": "SelectionRing",
+        "value": 0.2
+      }
+    ]
   },
   "renderer_config": {
     "use_ibl": 1,

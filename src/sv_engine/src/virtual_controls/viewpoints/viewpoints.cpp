@@ -23,6 +23,34 @@ static glm::quat make_rotation(const glm::vec3 &pos, const glm::vec3 &to, const 
                                ORIGINAL_UP).rotation;
 }
 
+static float get_prefab_alpha_multiplier(const VirtualControlConfig *config,
+                                         const std::string &componentName)
+{
+    for (uint32_t index = 0; index < config->alpha_multipliers_count; ++index) {
+        const ViewpointControlAlphaMultiplier &alpha = config->alpha_multipliers[index];
+        if (componentName == std::string("control::") + alpha.component) {
+            return alpha.value;
+        }
+    }
+
+    return 1.0f;
+}
+
+static void apply_prefab_alpha_multiplier(const rf::PrimitiveComponent &source,
+                                          float alphaMultiplier)
+{
+    if (alphaMultiplier == 1.0f) {
+        return;
+    }
+
+    std::set<std::shared_ptr<cudarf::Material>> adjustedMaterials;
+    for (const auto &primitive : source.get_primitives()) {
+        if (primitive->cudarfMaterial && adjustedMaterials.insert(primitive->cudarfMaterial).second) {
+            primitive->cudarfMaterial->baseColor.w *= alphaMultiplier;
+        }
+    }
+}
+
 static bool viewpoint_control_inserter(const VirtualControlConfig *config,
                                        std::vector<rf::PrimitiveComponent> &components,
                                        rf::Scene &scene,
@@ -176,12 +204,15 @@ int engine::sv_viewpoint_controls_init(
         "control::",
         unused,
         world.control_model(),
-        [&components, &controlNames]
+        [&components, &controlNames, config]
         (const rf::PrimitiveComponent &compo, rf::Scene &scene) {
             // if template component is related to viewpoint
             // control, then return true, so that loader
             // doesn't add it as is to scene
             if (controlNames.count(compo.name)) {
+                apply_prefab_alpha_multiplier(
+                    compo,
+                    get_prefab_alpha_multiplier(config, compo.name));
                 components.push_back(compo);
                 return true;
             } else {

@@ -281,6 +281,10 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(VehicleModelConfig,
                                    ibl_path,
                                    use_velocity_for_wheels_animation)
 
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ViewpointControlAlphaMultiplier,
+                                   component,
+                                   value)
+
 inline void from_json(const nlohmann::json &j, ViewpointControlIconSettings &settings)
 {
     settings = {};
@@ -327,17 +331,29 @@ inline void from_json(const nlohmann::json &j, VirtualControlConfig &config)
     for (std::size_t i = 0; i < copy_count; ++i) {
         config.controls[i] = controls[i];
     }
+
+    const auto alpha_multipliers =
+        j.value("alpha_multiplier", std::vector<ViewpointControlAlphaMultiplier>{});
+    config.alpha_multipliers_count =
+        std::min<std::size_t>(alpha_multipliers.size(), SV_MAX_VIEWPOINTS);
+    for (std::size_t i = 0; i < config.alpha_multipliers_count; ++i) {
+        config.alpha_multipliers[i] = alpha_multipliers[i];
+    }
 }
 
 inline void to_json(nlohmann::json &j, const VirtualControlConfig &config)
 {
     std::vector<ViewpointControlIconSettings> controls(config.controls,
                                                        config.controls + config.controls_count);
+    std::vector<ViewpointControlAlphaMultiplier> alpha_multipliers(
+        config.alpha_multipliers,
+        config.alpha_multipliers + config.alpha_multipliers_count);
     j = nlohmann::json{
         {"enabled", config.enabled},
         {"model_path", config.model_path},
         {"controls_count", config.controls_count},
         {"controls", controls},
+        {"alpha_multiplier", alpha_multipliers},
     };
 }
 
