@@ -53,14 +53,14 @@
       },
       "navigation_mode": "orbital",
       "rotator": {
-        "X": 6000.0,
-        "Y": 4500.0,
-        "Z": 4500.0
+        "X": 4000.0,
+        "Y": 3000.0,
+        "Z": 3000.0
       },
       "pose_mode": "orbital",
       "spherical": {
         "azimuthal": 55.0,
-        "polar": 70.0
+        "polar": 50.0
       }
     },
     "viewpoint_presets": [
