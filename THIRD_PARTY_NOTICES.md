@@ -44,17 +44,63 @@ terms in the file header.
 - Local file: `assets/citrus_orchard_ibl`
 - Modifications: none
 
-### Polestar 1 Vehicle Model
+### Vehicle Model GLBs
 
 - Source: "[FREE] Polestar 1"
 - Source URL: <https://skfb.ly/oGUBP>
 - Author: Martin Trafas
 - License: Creative Commons Attribution 4.0 International
   (<http://creativecommons.org/licenses/by/4.0/>)
-- Local file: `assets/glb/polestar_1_ver02.glb`
-- Modifications: the local GLB is a derivative work maintained for this
+- Local files: vehicle model GLBs under `assets/glb/`
+- Modifications: the local vehicle GLBs are derivative works maintained for this
   project and may include geometry, material, texture, scale, orientation, or
   packaging changes from the original source asset.
+
+## Project And Sample Assets
+
+The following assets are included with the repository as project-owned or
+maintainer-authorized sample assets, unless another notice in this file states
+otherwise.
+
+### Viewpoint Controls GLBs
+
+- Local files: controls GLBs under `assets/glb/`
+- Provenance: project-owned assets created for cudaSV.
+- License: distributed with the repository under the top-level GPLv3 license.
+
+### Sample Camera Images
+
+- Local files:
+  - `assets/sample_pack_4cam/right.png`
+  - `assets/sample_pack_4cam/left.png`
+  - `assets/sample_pack_4cam/front.png`
+  - `assets/sample_pack_4cam/rear.png`
+- Provenance: The sample images are included with permission for demonstration
+  and testing use in this repository. They contain ordinary road/environment
+  content and no vendor-specific, customer-identifying, or confidential data.
+- License: Redistributed with permission for demonstration and testing use in
+  this repository.
+
+### Vehicle Shadow / Underlay
+
+- Local file: `assets/sample_pack_4cam/vehicle_shadow.png`
+- Provenance: project-owned sample asset created for cudaSV.
+- License: distributed with the repository under the top-level GPLv3 license.
+
+### BRDF LUTs
+
+- Local files:
+  - `assets/citrus_orchard_ibl/brdfLUT.png`
+  - `assets/citrus_orchard_ibl/brdfLUT_16.png`
+- Provenance: project-owned generated assets.
+- Generator: <https://github.com/4DA/brdfgen>
+- License: distributed with the repository under the top-level GPLv3 license.
+
+### Test GLBs
+
+- Local files: test GLBs under `assets/cudarf_test/`
+- Provenance: project-owned test assets created for cudaSV.
+- License: distributed with the repository under the top-level GPLv3 license.
 
 ## Practical Interpretation
 
