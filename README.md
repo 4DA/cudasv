@@ -194,7 +194,14 @@ Active renderer features include:
 
 # Benchmarks
 
-To be done
+Current public sample benchmark, using `assets/sample_pack_4cam` with the current canonical rig and camera/view configuration. Timings are CUDA-event averages from the built-in profiler on frame 40, after a 40-frame warmup/dump run. Build: `Release`, CUDA profiling enabled, TAA disabled. See `docs/benchmarks.md` for the methodology and interpretation.
+
+| GPU | Driver / CUDA | Resolution | Scene path | Surround-view projection | Scene render | Compose | Total frame time |
+| --- | --- | --- | --- | ---: | ---: | ---: | ---: |
+| NVIDIA GeForce RTX 4090 Laptop GPU | 575.57.08 / 12.9.41 | 1920 x 1080 | Visibuf opaque, TAA off | 0.27 ms | 3.27 ms | 0.11 ms | 3.66 ms |
+| NVIDIA GeForce RTX 4090 Laptop GPU | 575.57.08 / 12.9.41 | 1920 x 1080 | Opaque raster, TAA off | 0.27 ms | 3.21 ms | 0.11 ms | 3.59 ms |
+
+`Scene render` includes opaque, translucent, and UI-overlay draw-list rendering. `Total frame time` is the instrumented GPU time for the 3D view path (`view_3d_total`); it excludes source image decode, GLFW presentation, and PNG dump overhead.
 
 # Dataset And Sample Assets
 
@@ -215,6 +222,7 @@ Reference docs and schemas:
 - `docs/schema/rig.schema.json`: canonical camera rig schema.
 - `docs/camera_rig_debug.md`: camera-rig validation and debug notes.
 - `docs/nuscenes-inspector.md`: NuScenes inspector controls and integration notes.
+- `docs/benchmarks.md`: benchmark methodology, commands, and interpretation.
 
 Important sample/config files:
 
