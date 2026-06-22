@@ -11,8 +11,8 @@ done
 asset_dir="$(cd "$(dirname "$script_path")" && pwd)"
 repo_root="$(cd "$asset_dir/../.." && pwd)"
 
-width="${1:-1936}"
-height="${2:-1220}"
+width="${1:-1920}"
+height="${2:-1080}"
 
 cd "$asset_dir"
 

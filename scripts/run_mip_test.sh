@@ -13,8 +13,8 @@ repo_root="$(cd "$script_dir/.." && pwd)"
 asset_dir="$repo_root/assets/sample_pack_4cam"
 test_dir="$repo_root/assets/cudarf_test"
 
-width="${1:-1936}"
-height="${2:-1220}"
+width="${1:-1920}"
+height="${2:-1080}"
 
 cd "$asset_dir"
 
