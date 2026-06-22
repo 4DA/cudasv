@@ -175,7 +175,7 @@ Active renderer features include:
 - Draw-packet based mesh submission into the CUDA raster pipe.
 - Bin tiling, coarse tiling, triangle setup, and fine raster stages.
 - Opaque and translucent raster paths.
-- Visibility-buffer path with material-pass shading for opaque geometry.
+- Visibility-buffer path with material-pass shading for opaque geometry; see `docs/visibility_buffer.md`.
 - Separate UI overlay framebuffer for selection/viewpoint controls.
 - TAA-aware scene output path.
 - glTF-style metallic-roughness PBR shading.
@@ -222,6 +222,7 @@ Reference docs and schemas:
 - `docs/schema/rig.schema.json`: canonical camera rig schema.
 - `docs/camera_rig_debug.md`: camera-rig validation and debug notes.
 - `docs/nuscenes-inspector.md`: NuScenes inspector controls and integration notes.
+- `docs/visibility_buffer.md`: direct opaque path vs visibility-buffer opaque path.
 - `docs/benchmarks.md`: benchmark methodology, commands, and interpretation.
 
 Important sample/config files:
@@ -230,8 +231,6 @@ Important sample/config files:
 - `assets/sample_pack_4cam/config/vehicle.json`.
 - `assets/sample_pack_4cam/config/overlays.json`.
 - `assets/sample_pack_4cam/config/views.json`.
-
-To be done: add dedicated public docs for visibility-buffer details and benchmark methodology.
 
 # License And Third-Party Notices
 
