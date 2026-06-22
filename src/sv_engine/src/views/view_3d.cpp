@@ -233,6 +233,17 @@ void View3D::compose(videoio::FrameSet<camera::CAMERAS_TOTAL> frames_set,
     assert(_postProcessPipeline);
     (void)steering_angle;
 
+    int viewTotalInterval = -1;
+    if constexpr (CUDARF_ENABLE_CUDA_PROFILING) {
+        viewTotalInterval = composeTime.start_interval("view_3d_total", cudaStreams.rendering);
+    }
+
+    int surroundProjectionInterval = -1;
+    if constexpr (CUDARF_ENABLE_CUDA_PROFILING) {
+        surroundProjectionInterval =
+            composeTime.start_interval("surround_view_projection", cudaStreams.rendering);
+    }
+
     _surroundViewComposer->compose(*_config,
                                    *_world,
                                    *_virtualCamera,
@@ -240,6 +251,10 @@ void View3D::compose(videoio::FrameSet<camera::CAMERAS_TOTAL> frames_set,
                                    height,
                                    meshGPUOutput,
                                    cudaStreams);
+
+    if constexpr (CUDARF_ENABLE_CUDA_PROFILING) {
+        composeTime.stop_interval(surroundProjectionInterval);
+    }
 
     auto sceneWork = _scenePassBuilder->build(*_config,
                                               *_world,
@@ -253,6 +268,11 @@ void View3D::compose(videoio::FrameSet<camera::CAMERAS_TOTAL> frames_set,
     cudarf::Framebuffer internalFB = cudarf::pipe::get_internal_fb(_rasterCtx, frameCounter);
     cudarf::Framebuffer uiFB = cudarf::pipe::get_ui_fb(_rasterCtx);
 
+    int sceneRenderInterval = -1;
+    if constexpr (CUDARF_ENABLE_CUDA_PROFILING) {
+        sceneRenderInterval = composeTime.start_interval("scene_render", cudaStreams.rendering);
+    }
+
     _scenePassBuilder->render(*_drawListRenderer,
                               _rasterCtx,
                               _world->scene(),
@@ -265,6 +285,10 @@ void View3D::compose(videoio::FrameSet<camera::CAMERAS_TOTAL> frames_set,
                               frameCounter,
                               cudaStreams.rendering);
 
+    if constexpr (CUDARF_ENABLE_CUDA_PROFILING) {
+        composeTime.stop_interval(sceneRenderInterval);
+    }
+
     _postProcessPipeline->run(_rasterCtx,
                               *_virtualCamera,
                               *_viewConfig,
@@ -274,6 +298,10 @@ void View3D::compose(videoio::FrameSet<camera::CAMERAS_TOTAL> frames_set,
                               cudaStreams,
                               composeTime,
                               frameCounter);
+
+    if constexpr (CUDARF_ENABLE_CUDA_PROFILING) {
+        composeTime.stop_interval(viewTotalInterval);
+    }
 
     _postProcessPipeline->end_frame(sceneWork);
 }
