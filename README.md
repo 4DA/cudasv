@@ -22,12 +22,12 @@ Expected result after running the sample: a desktop window opens with the stitch
 
 # System Requirements
 
-The project currently builds and runs as a Linux desktop CUDA/OpenGL ES application.
+The project builds and runs as a Linux desktop CUDA/OpenGL ES application.
 
 Build tools:
 
 - CMake 3.16 or newer.
-- Make, via the current `scripts/set_workspace.sh` workflow.
+- Make, via the `scripts/set_workspace.sh` workflow.
 - A C++20-capable host compiler compatible with the installed CUDA Toolkit.
 - CUDA Toolkit with `nvcc`.
 - An NVIDIA driver new enough for the installed CUDA Toolkit.
@@ -122,14 +122,28 @@ cd assets/sample_pack_4cam
 ./run.sh
 ```
 
-Build type can be changed in the sourced shell:
+Workspace build options can be changed in the sourced shell before running `b`:
 
 ```bash
 set_build_type Release
+set_cuda_profiling off
+set_cuda_sanitizer off
+set_taa on
+set_force_affine_barycentrics off
 b
 ```
 
-Supported build types: `Debug`, `Release`, `RelWithDebInfo`, `MinSizeRel`.
+Supported workspace options:
+
+| Command | Values | Default | CMake option |
+| --- | --- | --- | --- |
+| `set_build_type` | `Debug`, `Release`, `RelWithDebInfo`, `MinSizeRel` | `Debug` | `CMAKE_BUILD_TYPE` |
+| `set_cuda_profiling` | `on`, `off` | `off` | `WITH_PROFILE_CUDA_TIME` |
+| `set_cuda_sanitizer` | `on`, `off` | `off` | `WITH_CUDA_COMPUTE_SANITIZER` |
+| `set_taa` | `on`, `off` | `on` | `WITH_TAA` |
+| `set_force_affine_barycentrics` | `on`, `off` | `off` | `CUDARF_FORCE_AFFINE_BARYCENTRICS` |
+
+`b` re-runs CMake with the selected workspace option values each time.
 
 Clean build output:
 
@@ -186,15 +200,15 @@ Active renderer features include:
 
 # Current Limitations
 
-- The public runtime bridge currently assumes exactly four cameras: `right`, `left`, `front`, and `rear`.
+- The public runtime bridge assumes exactly four cameras: `right`, `left`, `front`, and `rear`.
 - Public sample input is PNG-based.
-- The rasterizer is not a complete glTF renderer; it implements the material features currently needed by the demo path.
-- General triangle clipping is still incomplete: fully outside triangles are rejected, but partially clipped triangles are not split against frustum planes.
+- The rasterizer is not a complete glTF renderer; it implements the material features needed by the demo path.
+- General triangle clipping is incomplete: fully outside triangles are rejected, but partially clipped triangles are not split against frustum planes.
 - Some guard-band/sample-edge cases and warning cleanup remain to be done.
 
 # Benchmarks
 
-Current public sample benchmark, using `assets/sample_pack_4cam` with the current canonical rig and camera/view configuration. Timings are CUDA-event averages from the built-in profiler on frame 40, after a 40-frame warmup/dump run. Build: `Release`, CUDA profiling enabled, TAA disabled. See `docs/benchmarks.md` for the methodology and interpretation.
+Public sample benchmark, using `assets/sample_pack_4cam` with the canonical rig and camera/view configuration. Timings are CUDA-event averages from the built-in profiler on frame 40, after a 40-frame warmup/dump run. Build: `Release`, CUDA profiling enabled, TAA disabled. See `docs/benchmarks.md` for the methodology and interpretation.
 
 | GPU | Driver / CUDA | Resolution | Scene path | Surround-view projection | Scene render | Compose | Total frame time |
 | --- | --- | --- | --- | ---: | ---: | ---: | ---: |
