@@ -6,7 +6,7 @@ The sample app renders a public four-camera pack with a glTF vehicle model, soft
 
 # Demo
 
-To be done: add a current screenshot, GIF, or video link showing the sample pack output.
+![cudaSV stitched surround-view demo showing the car](screenshot.jpg)
 
 Expected result after running the sample: a desktop window opens with the stitched surround-view image, rendered vehicle, vehicle shadow/underlay, and clickable 3D viewpoint controls. Frame dumps are written to the path passed with `--dump-frame`.
 
@@ -257,7 +257,4 @@ Third-party source dependencies are vendored as submodules under `thirdparty/`:
 - `thirdparty/json`.
 - `thirdparty/spdlog`.
 - `thirdparty/tinygltf`.
-
-# Roadmap
-to be done
 
