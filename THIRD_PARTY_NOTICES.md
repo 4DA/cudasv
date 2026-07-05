@@ -33,6 +33,22 @@ NVIDIA notice in:
 That file retains its upstream NVIDIA notice and BSD-style redistribution
 terms in the file header.
 
+## Khronos glTF-Sample-Viewer / UX3D Shading Code
+
+Parts of the fragment shading path are loosely based on the Khronos
+glTF-Sample-Viewer PBR shading code:
+
+- Source: <https://github.com/KhronosGroup/glTF-Sample-Viewer>
+- Copyright: UX3D (<https://ux3d.io/>)
+- License: Apache License 2.0
+
+Files in this repository that correspond to that upstream lineage include:
+
+- `src/rf/src/renderer/cudarf/fragment.inl`
+
+That file retains the upstream UX3D / Apache 2.0 notice in its file header,
+and that notice should be kept intact.
+
 ## Third-Party Assets
 
 ### Citrus Orchard Road (HDRI)
