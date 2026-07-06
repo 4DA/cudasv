@@ -9,6 +9,7 @@
 #include <rf/renderer/cudarf/cudarf_camera.hpp>
 #include <rf/renderer/virtual_camera.hpp>
 
+#include "cudarf_rast.hpp"
 #include "helpers_cudavec.inl"
 #include "TAA_common.hpp"
 #include "helpers.hpp"
@@ -421,20 +422,16 @@ cudarf::pipe::Ctx::Ctx(int window_width,
                        bool TAAEnabled,
                        int clockRate,
                        const cudaStream_t &cuStream)
+    : dev_pipeStatic(1),
+      dev_pipeFrame(1),
+      dev_pipeSubmission(1),
+      dev_pipeParams(1)
 {
     width = window_width;
     height = window_height;
     this->SMPCount = SMPCount;
     this->clockRate = clockRate;
     this->TAAEnabled = TAAEnabled;
-
-    CUDA_CHK(cudaMalloc((void **)&dev_pipeParams, sizeof(cudarf::rast::PipeParams)));
-
-    CUDA_CHK(cudaMalloc((void **)&dev_pipeStatic, sizeof(cudarf::rast::PipeStaticContext)));
-
-    CUDA_CHK(cudaMalloc((void **)&dev_pipeFrame, sizeof(cudarf::rast::PipeFrameContext)));
-
-    CUDA_CHK(cudaMalloc((void **)&dev_pipeSubmission, sizeof(cudarf::rast::PipeSubmissionContext)));
 
     CUDA_CHK(cudarf_cuda_malloc(&dev_pipeAtomics, sizeof(cudarf::pipe::Atomics)));
 
@@ -446,7 +443,7 @@ cudarf::pipe::Ctx::Ctx(int window_width,
     pipeStatic.windowHeight = height;
     pipeStatic.rasterizerSize = make_int2(rasterizerW, rasterizerH);
     pipeStatic.clockRate = clockRate;
-    CUDA_CHK(cudaMemcpyAsync(dev_pipeStatic,
+    CUDA_CHK(cudaMemcpyAsync(dev_pipeStatic.get(),
                              &pipeStatic,
                              sizeof(cudarf::rast::PipeStaticContext),
                              cudaMemcpyHostToDevice,
@@ -589,15 +586,6 @@ cudarf::pipe::Ctx::~Ctx()
 {
     cudarf::pipe::Ctx *desc = this;
     // user is responsible for cleaning draw packets
-
-    CUDA_CHK(cudaFree(desc->dev_pipeParams));
-    desc->dev_pipeParams = nullptr;
-    CUDA_CHK(cudaFree(desc->dev_pipeStatic));
-    desc->dev_pipeStatic = nullptr;
-    CUDA_CHK(cudaFree(desc->dev_pipeFrame));
-    desc->dev_pipeFrame = nullptr;
-    CUDA_CHK(cudaFree(desc->dev_pipeSubmission));
-    desc->dev_pipeSubmission = nullptr;
     CUDA_CHK(cudarf_cuda_free(desc->dev_pipeAtomics));
     desc->dev_pipeAtomics = nullptr;
 
@@ -738,7 +726,7 @@ void cudarf::pipe::begin_frame(cudarf::pipe::Ctx *desc,
         pipeFrame.specular = pbr.specular;
     }
 
-    CUDA_CHK(cudaMemcpyAsync(desc->dev_pipeFrame, &pipeFrame, sizeof(cudarf::rast::PipeFrameContext), cudaMemcpyHostToDevice, cuStream));
+    CUDA_CHK(cudaMemcpyAsync(desc->dev_pipeFrame.get(), &pipeFrame, sizeof(cudarf::rast::PipeFrameContext), cudaMemcpyHostToDevice, cuStream));
 
     cudarf::pipe::clear_depth(desc, cuStream);
 

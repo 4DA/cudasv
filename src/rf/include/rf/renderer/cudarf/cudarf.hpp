@@ -13,6 +13,7 @@
 
 #include <rf/renderer/cudarf/cudarf_rast.hpp>
 #include <rf/renderer/cudarf/cudarf_profile.hpp>
+#include <rf/renderer/cudarf/memory.hpp>
 #include <rf/renderer/mesh_geometry.hpp>
 #include <rf/renderer/virtual_camera.hpp>
 #include <rf/camera_control/viewpoint_animation.hpp>
@@ -109,11 +110,10 @@ struct Ctx
     int clockRate;           // SM clock frequency in kilohertz
     bool TAAEnabled;
 
-    cudarf::rast::PipeStaticContext *dev_pipeStatic = nullptr;
-    cudarf::rast::PipeFrameContext *dev_pipeFrame = nullptr;
-    cudarf::rast::PipeSubmissionContext *dev_pipeSubmission = nullptr;
-
-    cudarf::rast::PipeParams *dev_pipeParams;
+    DeviceBuffer<cudarf::rast::PipeStaticContext> dev_pipeStatic;
+    DeviceBuffer<cudarf::rast::PipeFrameContext> dev_pipeFrame;
+    DeviceBuffer<cudarf::rast::PipeSubmissionContext> dev_pipeSubmission;
+    DeviceBuffer<cudarf::rast::PipeParams> dev_pipeParams;
 
     Atomics *dev_pipeAtomics;
 

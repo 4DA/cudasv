@@ -20,8 +20,8 @@
 
 #include <cuda_runtime.h>
 
+#include <rf/renderer/cudarf/helpers.hpp>
 #include <rf/renderer/cudarf/cudarf.hpp>
-#include "helpers.hpp"
 
 #include "helpers_cudavec.inl"
 #include "utils.inl"
@@ -538,14 +538,14 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     }
 
     cudarf::rast::PipeParams pipe {
-        .stat = desc->dev_pipeStatic,
-        .frame = desc->dev_pipeFrame,
-        .submission = desc->dev_pipeSubmission,
+        .stat = desc->dev_pipeStatic.get(),
+        .frame = desc->dev_pipeFrame.get(),
+        .submission = desc->dev_pipeSubmission.get(),
         .scratch = pipeScratch
     };
 
-    CUDA_CHK(cudaMemcpyAsync(desc->dev_pipeSubmission, &pipeSubmission, sizeof(cudarf::rast::PipeSubmissionContext), cudaMemcpyHostToDevice, cuStream));
-    CUDA_CHK(cudaMemcpyAsync(desc->dev_pipeParams, &pipe, sizeof(cudarf::rast::PipeParams), cudaMemcpyHostToDevice, cuStream));
+    CUDA_CHK(cudaMemcpyAsync(desc->dev_pipeSubmission.get(), &pipeSubmission, sizeof(cudarf::rast::PipeSubmissionContext), cudaMemcpyHostToDevice, cuStream));
+    CUDA_CHK(cudaMemcpyAsync(desc->dev_pipeParams.get(), &pipe, sizeof(cudarf::rast::PipeParams), cudaMemcpyHostToDevice, cuStream));
 
     // initialize atomics
     // --
@@ -575,24 +575,24 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
                 if (commonShaderType == SHADER_TYPE_PBR) {
                     vertex_transform<cudarf::SHADER_TYPE_PBR, true, true>
                         <<<blocksPerGrid, threadsPerBlock, 0, cuStream>>>
-                        (desc->dev_pipeParams, totalVertices);
+                        (desc->dev_pipeParams.get(), totalVertices);
                 }
                 else {
                     vertex_transform<cudarf::SHADER_TYPE_UNLIT, true, true>
                         <<<blocksPerGrid, threadsPerBlock, 0, cuStream>>>
-                        (desc->dev_pipeParams, totalVertices);
+                        (desc->dev_pipeParams.get(), totalVertices);
                 }
             }
             else {
                 if (commonShaderType == SHADER_TYPE_PBR) {
                     vertex_transform<cudarf::SHADER_TYPE_PBR, false, true>
                         <<<blocksPerGrid, threadsPerBlock, 0, cuStream>>>
-                        (desc->dev_pipeParams, totalVertices);
+                        (desc->dev_pipeParams.get(), totalVertices);
                 }
                 else {
                     vertex_transform<cudarf::SHADER_TYPE_UNLIT, false, true>
                         <<<blocksPerGrid, threadsPerBlock, 0, cuStream>>>
-                        (desc->dev_pipeParams, totalVertices);
+                        (desc->dev_pipeParams.get(), totalVertices);
                 }
             }
         }
@@ -601,24 +601,24 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
                 if (commonShaderType == SHADER_TYPE_PBR) {
                     vertex_transform<cudarf::SHADER_TYPE_PBR, true, false>
                         <<<blocksPerGrid, threadsPerBlock, 0, cuStream>>>
-                        (desc->dev_pipeParams, totalVertices);
+                        (desc->dev_pipeParams.get(), totalVertices);
                 }
                 else {
                     vertex_transform<cudarf::SHADER_TYPE_UNLIT, true, false>
                         <<<blocksPerGrid, threadsPerBlock, 0, cuStream>>>
-                        (desc->dev_pipeParams, totalVertices);
+                        (desc->dev_pipeParams.get(), totalVertices);
                 }
             }
             else {
                 if (commonShaderType == SHADER_TYPE_PBR) {
                     vertex_transform<cudarf::SHADER_TYPE_PBR, false, false>
                         <<<blocksPerGrid, threadsPerBlock, 0, cuStream>>>
-                        (desc->dev_pipeParams, totalVertices);
+                        (desc->dev_pipeParams.get(), totalVertices);
                 }
                 else {
                     vertex_transform<cudarf::SHADER_TYPE_UNLIT, false, false>
                         <<<blocksPerGrid, threadsPerBlock, 0, cuStream>>>
-                        (desc->dev_pipeParams, totalVertices);
+                        (desc->dev_pipeParams.get(), totalVertices);
                 }
             }
         }
@@ -651,21 +651,21 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         if (launchConfig.withTexturing) {
             if (commonShaderType == SHADER_TYPE_PBR) {
                 triangle_assembly<cudarf::SHADER_TYPE_PBR, true><<<blocksPerGrid, threadsPerBlock, 0, cuStream>>>
-                    (desc->dev_pipeParams, total_triangles);
+                    (desc->dev_pipeParams.get(), total_triangles);
             }
             else {
                 triangle_assembly<cudarf::SHADER_TYPE_UNLIT, true><<<blocksPerGrid, threadsPerBlock, 0, cuStream>>>
-                    (desc->dev_pipeParams, total_triangles);
+                    (desc->dev_pipeParams.get(), total_triangles);
             }
         }
         else {
             if (commonShaderType == SHADER_TYPE_PBR) {
                 triangle_assembly<cudarf::SHADER_TYPE_PBR, false><<<blocksPerGrid, threadsPerBlock, 0, cuStream>>>
-                    (desc->dev_pipeParams, total_triangles);
+                    (desc->dev_pipeParams.get(), total_triangles);
             }
             else {
                 triangle_assembly<cudarf::SHADER_TYPE_UNLIT, false><<<blocksPerGrid, threadsPerBlock, 0, cuStream>>>
-                    (desc->dev_pipeParams, total_triangles);
+                    (desc->dev_pipeParams.get(), total_triangles);
             }
         }
 
@@ -697,7 +697,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         // 512 threads
         CUDA_TIME_BEGIN(tiler_bin);
         tiler_bin<<<dim3(CUDARF_BIN_STREAMS_SIZE), dim3(32, CUDARF_BIN_WARPS), 0, cuStream>>>
-            (desc->dev_pipeParams, desc->dev_pipeAtomics, bufferSet.dev_triangles);
+            (desc->dev_pipeParams.get(), desc->dev_pipeAtomics, bufferSet.dev_triangles);
 
         CUDA_CHK_ERROR("tiler_bin");
 
@@ -734,10 +734,10 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
         if (params.with_blending) {
             tilerCoarse<true>
-            <<<gridSize, blockSize, 0, cuStream >>>(desc->dev_pipeParams, desc->dev_pipeAtomics);
+            <<<gridSize, blockSize, 0, cuStream >>>(desc->dev_pipeParams.get(), desc->dev_pipeAtomics);
         } else {
             tilerCoarse<false>
-            <<<gridSize, blockSize, 0, cuStream >>>(desc->dev_pipeParams, desc->dev_pipeAtomics);
+            <<<gridSize, blockSize, 0, cuStream >>>(desc->dev_pipeParams.get(), desc->dev_pipeAtomics);
         }
 
         CUDA_CHK_ERROR("tilerCoarse");
@@ -798,28 +798,28 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
             if (params.with_blending) {
                 if (commonShaderType == SHADER_TYPE_PBR) {
                     fine_raster_naive<true, false, SHADER_TYPE_PBR, true><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, geomOutput);
+                        (desc->dev_pipeParams.get(), framebuffer, desc->dev_depthbuffer, geomOutput);
                 } else {
                     fine_raster_naive<true, false, SHADER_TYPE_UNLIT, true><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer,  desc->dev_depthbuffer, geomOutput);
+                        (desc->dev_pipeParams.get(), framebuffer,  desc->dev_depthbuffer, geomOutput);
                 }
             }
             else {
                 if (commonShaderType == SHADER_TYPE_PBR) {
                     if (launchConfig.withOpaqueVisibuf) {
                         fine_raster_naive<false, true, SHADER_TYPE_PBR, true><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                            (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, geomOutput);
+                            (desc->dev_pipeParams.get(), framebuffer, desc->dev_depthbuffer, geomOutput);
                     } else {
                         fine_raster_naive<false, false, SHADER_TYPE_PBR, true><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                            (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, geomOutput);
+                            (desc->dev_pipeParams.get(), framebuffer, desc->dev_depthbuffer, geomOutput);
                     }
                 } else {
                     if (launchConfig.withOpaqueVisibuf) {
                         fine_raster_naive<false, true, SHADER_TYPE_UNLIT, true><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                            (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, geomOutput);
+                            (desc->dev_pipeParams.get(), framebuffer, desc->dev_depthbuffer, geomOutput);
                     } else {
                         fine_raster_naive<false, false, SHADER_TYPE_UNLIT, true><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                            (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, geomOutput);
+                            (desc->dev_pipeParams.get(), framebuffer, desc->dev_depthbuffer, geomOutput);
                     }
                 }
             }
@@ -828,28 +828,28 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
             if (params.with_blending) {
                 if (commonShaderType == SHADER_TYPE_PBR) {
                     fine_raster_naive<true, false, SHADER_TYPE_PBR, false><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, geomOutput);
+                        (desc->dev_pipeParams.get(), framebuffer, desc->dev_depthbuffer, geomOutput);
                 } else {
                     fine_raster_naive<true, false, SHADER_TYPE_UNLIT, false><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                        (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, geomOutput);
+                        (desc->dev_pipeParams.get(), framebuffer, desc->dev_depthbuffer, geomOutput);
                 }
             }
             else {
                 if (commonShaderType == SHADER_TYPE_PBR) {
                     if (launchConfig.withOpaqueVisibuf) {
                         fine_raster_naive<false, true, SHADER_TYPE_PBR, false><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                            (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, geomOutput);
+                            (desc->dev_pipeParams.get(), framebuffer, desc->dev_depthbuffer, geomOutput);
                     } else {
                         fine_raster_naive<false, false, SHADER_TYPE_PBR, false><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                            (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, geomOutput);
+                            (desc->dev_pipeParams.get(), framebuffer, desc->dev_depthbuffer, geomOutput);
                     }
                 } else {
                     if (launchConfig.withOpaqueVisibuf) {
                         fine_raster_naive<false, true, SHADER_TYPE_UNLIT, false><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                            (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, geomOutput);
+                            (desc->dev_pipeParams.get(), framebuffer, desc->dev_depthbuffer, geomOutput);
                     } else {
                         fine_raster_naive<false, false, SHADER_TYPE_UNLIT, false><<<blockCount2d, blockSize2d, 0, cuStream>>>
-                            (desc->dev_pipeParams, framebuffer, desc->dev_depthbuffer, geomOutput);
+                            (desc->dev_pipeParams.get(), framebuffer, desc->dev_depthbuffer, geomOutput);
                     }
                 }
             }
@@ -876,7 +876,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
         CUDA_TIME_BEGIN(visibuf_build_xy_lists);
         visibuf_build_xy_lists<<<blockCount2d, blockSize2d, 0, cuStream>>>
-            (desc->dev_pipeParams, desc->dev_geom_output, desc->dev_pipeAtomics,
+            (desc->dev_pipeParams.get(), desc->dev_geom_output, desc->dev_pipeAtomics,
              desc->dev_xyCommands);
 
         CUDA_TIME_END(visibuf_build_xy_lists);
@@ -893,7 +893,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
                           (desc->height - 1) / blockSize2d.y + 1);
 
         visibuf_material_pass<<<blockCount2d, blockSize2d, 0, cuStream>>>
-            (desc->dev_pipeParams, desc->dev_geom_output, desc->dev_pipeAtomics,
+            (desc->dev_pipeParams.get(), desc->dev_geom_output, desc->dev_pipeAtomics,
              desc->dev_xyCommands, framebuffer);
 
         CUDA_CHK_ERROR("visibuf_material_pass");
@@ -915,7 +915,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 #endif
 
         visualizeBins<<<blockCount2d, blockSize2d, 0, cuStream>>>(
-            desc->dev_pipeParams, framebuffer);
+            desc->dev_pipeParams.get(), framebuffer);
 
         CUDA_CHK_ERROR("visualizeBins");
     }
@@ -932,7 +932,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         dim3 blockCount2d((desc->width  - 1) / blockSize2d.x + 1,
                           (desc->height - 1) / blockSize2d.y + 1);
 
-        visualizeTiles <<< blockCount2d, blockSize2d, 0, cuStream >>>(desc->dev_pipeParams, framebuffer);
+        visualizeTiles <<< blockCount2d, blockSize2d, 0, cuStream >>>(desc->dev_pipeParams.get(), framebuffer);
 
         CUDA_CHK_ERROR("visualizeTiles");
     }
