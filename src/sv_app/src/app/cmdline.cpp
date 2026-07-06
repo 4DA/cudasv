@@ -118,6 +118,8 @@ int parse_cmdline(int argc, char **argv, CmdlineOpts &options)
             }
 
             options.height = atoi(argv[++index]);
+        } else if (!strcmp(argv[index], "--debug-bin-tiler")) {
+            options.debug_bin_tiler = true;
         }
     }
 

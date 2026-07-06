@@ -145,6 +145,8 @@ int main(int argc, char* argv[])
         load_config(&app.engine->config);
     }
 
+    app.engine->config.debugBinTiler = cmdline.debug_bin_tiler;
+
     if (!cmdline.test_scenario_file.empty()) {
         if (!svapp::load_test_scenario_config(
                 cmdline.test_scenario_file,

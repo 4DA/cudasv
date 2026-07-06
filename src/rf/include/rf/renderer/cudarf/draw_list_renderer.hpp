@@ -76,6 +76,7 @@ public:
                  bool withOpaqueVisibuf,
                  cudarf::Framebuffer output,
                  unsigned int frameCounter,
+                 bool testBinTiler,
                  cudaStream_t cuStream);
 
     Stats render(cudarf::pipe::Ctx* rasterization_desc,
@@ -88,6 +89,7 @@ public:
                  cudarf::Framebuffer output,
                  cudarf::ShaderType shaderType,
                  unsigned int frameCounter,
+                 bool testBinTiler,
                  cudaStream_t cuStream);
 
     Stats render(cudarf::pipe::Ctx* rasterization_desc,
@@ -100,6 +102,7 @@ public:
                  cudarf::Framebuffer output,
                  cudarf::ShaderType shaderType,
                  unsigned int frameCounter,
+                 bool testBinTiler,
                  cudaStream_t cuStream);
 
 private:

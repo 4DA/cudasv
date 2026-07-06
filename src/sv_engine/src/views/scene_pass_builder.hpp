@@ -42,6 +42,7 @@ public:
                 cudarf::Framebuffer output,
                 cudarf::Framebuffer uiOutput,
                 unsigned int frameCounter,
+                bool testBinTiler,
                 cudaStream_t cudaStream) const;
 };
 

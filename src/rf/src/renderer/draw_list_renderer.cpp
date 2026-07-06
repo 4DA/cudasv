@@ -45,6 +45,7 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
                                  bool withOpaqueVisibuf,
                                  cudarf::Framebuffer output,
                                  unsigned int frameCounter,
+                                 bool testBinTiler,
                                  cudaStream_t cuStream)
 {
     assert(rasterization_desc);
@@ -101,7 +102,8 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
                                                                 withOpaqueVisibuf,
                                                                 frameCounter,
                                                                 output,
-                                                                opaqueTime),
+                                                                opaqueTime,
+                                                                testBinTiler),
                                      cuStream);
 
         if (opaqueTime != nullptr) {opaqueTime->stop_interval(opaqueTotal);}
@@ -128,7 +130,8 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
                                                         withOpaqueVisibuf,
                                                         frameCounter,
                                                         output,
-                                                        opaqueTimeFlat),
+                                                        opaqueTimeFlat,
+                                                        testBinTiler),
                              cuStream);
 
         if (opaqueTimeFlat != nullptr) {opaqueTimeFlat->stop_interval(opaqueTotal);}
@@ -151,6 +154,7 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
                                  cudarf::Framebuffer output,
                                  cudarf::ShaderType shaderType,
                                  unsigned int frameCounter,
+                                 bool testBinTiler,
                                  cudaStream_t cuStream)
 {
     assert(rasterization_desc);
@@ -205,7 +209,8 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
                                                         false,
                                                         frameCounter,
                                                         output,
-                                                        translucentTime),
+                                                        translucentTime,
+                                                        testBinTiler),
                              cuStream
             );
 
@@ -235,7 +240,8 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
                                                                 false,
                                                                 frameCounter,
                                                                 output,
-                                                                translucentTimeFlat),
+                                                                translucentTimeFlat,
+                                                                testBinTiler),
                                      cuStream
             );
 
@@ -260,6 +266,7 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
                                  cudarf::Framebuffer output,
                                  cudarf::ShaderType shaderType,
                                  unsigned int frameCounter,
+                                 bool testBinTiler,
                                  cudaStream_t cuStream)
 {
     assert(rasterization_desc);
@@ -311,7 +318,8 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
                                                         false,
                                                         frameCounter,
                                                         output,
-                                                        translucentTime),
+                                                        translucentTime,
+                                                        testBinTiler),
                              cuStream
             );
 
@@ -339,7 +347,8 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
                                                                 false,
                                                                 frameCounter,
                                                                 output,
-                                                                translucentTimeFlat),
+                                                                translucentTimeFlat,
+                                                                testBinTiler),
                                      cuStream
             );
 

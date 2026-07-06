@@ -721,8 +721,10 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
             return;
         }
 
-#ifdef TEST_TILER_BIN
-        test_bin_output(*desc, pipe, pipe_atomics, cuStream);
+#ifndef NDEBUG
+        if (launchConfig.testBinTiler) {
+            test_bin_output(*desc, pipeScratch, total_triangles, pipe_atomics, cuStream);
+        }
 #endif
     }
 

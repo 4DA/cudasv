@@ -105,6 +105,7 @@ void engine::view::ScenePassBuilder::render(
     cudarf::Framebuffer output,
     cudarf::Framebuffer uiOutput,
     unsigned int frameCounter,
+    bool testBinTiler,
     cudaStream_t cudaStream) const
 {
     drawListRenderer.render(rasterCtx,
@@ -117,6 +118,7 @@ void engine::view::ScenePassBuilder::render(
                             withOpaqueVisibuf,
                             output,
                             frameCounter,
+                            testBinTiler,
                             cudaStream);
 
     drawListRenderer.render(rasterCtx,
@@ -129,6 +131,7 @@ void engine::view::ScenePassBuilder::render(
                             output,
                             cudarf::SHADER_TYPE_PBR,
                             frameCounter,
+                            testBinTiler,
                             cudaStream);
 
     drawListRenderer.render(rasterCtx,
@@ -141,6 +144,7 @@ void engine::view::ScenePassBuilder::render(
                             output,
                             cudarf::SHADER_TYPE_UNLIT,
                             frameCounter,
+                            testBinTiler,
                             cudaStream);
 
     drawListRenderer.render(rasterCtx,
@@ -153,6 +157,7 @@ void engine::view::ScenePassBuilder::render(
                             uiOutput,
                             cudarf::SHADER_TYPE_PBR,
                             frameCounter,
+                            testBinTiler,
                             cudaStream);
 
     drawListRenderer.render(rasterCtx,
@@ -165,5 +170,6 @@ void engine::view::ScenePassBuilder::render(
                             uiOutput,
                             cudarf::SHADER_TYPE_UNLIT,
                             frameCounter,
+                            testBinTiler,
                             cudaStream);
 }

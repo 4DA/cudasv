@@ -283,6 +283,7 @@ void View3D::compose(videoio::FrameSet<camera::CAMERAS_TOTAL> frames_set,
                               internalFB,
                               uiFB,
                               frameCounter,
+                              _config->debugBinTiler,
                               cudaStreams.rendering);
 
     if constexpr (CUDARF_ENABLE_CUDA_PROFILING) {

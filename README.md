@@ -152,6 +152,42 @@ source scripts/set_workspace.sh
 c
 ```
 
+# Debug And Test Runs
+
+The sample app also has targeted debug paths for renderer validation. These are not part of the normal demo or benchmark flow.
+
+Run the public sample with the mip-checker GLB scenario:
+
+```bash
+cd assets/sample_pack_4cam
+source ../../scripts/set_workspace.sh
+sv_app --frames right.png left.png front.png rear.png \
+       --rig canonical-rig.json \
+       --width 1920 \
+       --height 1080 \
+       --test-scenario ../cudarf_test/mip-checker.json \
+       --dump-frame /tmp/cudasv-mip-checker.png \
+       --dump-frame-number 1
+```
+
+Enable bin-tiler validation output for a Debug build:
+
+```bash
+cd assets/sample_pack_4cam
+source ../../scripts/set_workspace.sh
+set_build_type Debug
+b
+sv_app --frames right.png left.png front.png rear.png \
+       --rig canonical-rig.json \
+       --width 1920 \
+       --height 1080 \
+       --debug-bin-tiler \
+       --dump-frame /tmp/cudasv-bin-tiler.png \
+       --dump-frame-number 1
+```
+
+`--debug-bin-tiler` copies bin-tiler buffers back to the CPU, synchronizes the CUDA stream, and validates the GPU bin assignments against CPU-side bin/triangle intersection checks while printing per-bin statistics. It is compiled only when `NDEBUG` is not defined, so use it with the default `Debug` build type.
+
 # Controls
 
 - Hold the left mouse button and move the mouse to pan the active view.

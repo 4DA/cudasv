@@ -58,6 +58,7 @@ struct OutputSet
 
 struct Config
 {
+    bool debugBinTiler = false;
     // Calibration config
     CalibrationConfig calibration_config;
     // Number of outputs (used at initialization)

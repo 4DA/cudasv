@@ -22,6 +22,7 @@ struct CmdlineOpts
     int width = 0;
     int height = 0;
     int fps = 1000;
+    bool debug_bin_tiler = false;
 };
 
 int parse_cmdline(int argc, char **argv, CmdlineOpts &options);

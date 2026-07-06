@@ -187,17 +187,20 @@ struct LaunchConfig
     cudarf::Framebuffer nativeOutput;  // if set, used as output instead of internal fb
 
     std::shared_ptr<cudarf::profiling::Events> eventDB;
+    bool testBinTiler;
 
     LaunchConfig(bool withTexturing,
                  bool withOpaqueVisibuf,
                  unsigned int frameCounter,
                  cudarf::Framebuffer nativeOutput,
-                 std::shared_ptr<cudarf::profiling::Events> eventDB = nullptr):
+                 std::shared_ptr<cudarf::profiling::Events> eventDB = nullptr,
+                 bool testBinTiler = false):
         withTexturing(withTexturing),
         withOpaqueVisibuf(withOpaqueVisibuf),
         frameCounter(frameCounter),
         nativeOutput(nativeOutput),
-        eventDB(eventDB)
+        eventDB(eventDB),
+        testBinTiler(testBinTiler)
         {}
 };
 
