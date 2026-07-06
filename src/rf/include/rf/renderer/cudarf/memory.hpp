@@ -9,6 +9,8 @@
 
 namespace cudarf
 {
+namespace memory
+{
 template <class T>
 struct DeviceBuffer {
     DeviceBuffer(): _devPtr(nullptr), _byteSize(0), _count(0) {}
@@ -88,6 +90,8 @@ DeviceBuffer<T>::~DeviceBuffer()
     reset();
 }
 
-}
+} // namespace memory
+
+} // namespace cudarf
 
 #endif

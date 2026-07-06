@@ -85,6 +85,8 @@ struct ProjectionParams {
 namespace pipe
 {
 
+using cudarf::memory::DeviceBuffer;
+
 struct Atomics {
     uint32_t subtris_count;  // triangle setup
     uint32_t null_tris;
