@@ -161,7 +161,18 @@ struct Ctx
     cudarf::FBTexture dev_framebufferTex;
     cudarf::Framebuffer uiFramebuffer;
 #endif
+
+    Ctx(int screenWidth,
+        int screenHeight,
+        int tileQLimit,
+        int SMPCount,
+        bool TAAEnabled,
+        int clockRate,
+        const cudaStream_t &cuStream);
+
+    ~Ctx();
 };
+
 
 struct LaunchConfig
 {
@@ -198,15 +209,6 @@ void clear_depth(Ctx *desc, cudaStream_t stream);
 void copy_to_pbo(Ctx *desc, cudarf::Framebuffer src, uchar4 *pbo);
 
 void copy_depth_to_pbo(Ctx *desc, uchar4 *pbo);
-
-void init(Ctx *desc,
-          int screenWidth,
-          int screenHeight,
-          int tileQLimit,
-          int SMPCount,
-          bool TAAEnabled,
-          int clockRate,
-          const cudaStream_t &cuStream);
 
 unsigned int alloc_draw_packet(Ctx *desc);
 
@@ -284,8 +286,6 @@ void TAA(Ctx *desc,
 #endif
 
 void generate_checkers(Ctx *desc, cudarf::Framebuffer fb, cudaStream_t cuStream);
-
-void destroy(Ctx *desc);
 
 } // namespace pipe
 

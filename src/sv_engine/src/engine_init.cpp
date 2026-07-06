@@ -64,9 +64,7 @@ engine::Error Engine::init()
                                  displayWidth,
                                  displayHeight));
 
-        _impl->cuda_rasterizers[outputIndex] = std::make_unique<cudarf::pipe::Ctx>();
-
-        cudarf::pipe::init(_impl->cuda_rasterizers[outputIndex].get(),
+        _impl->cuda_rasterizers[outputIndex] = std::make_unique<cudarf::pipe::Ctx>(
                            displayWidth,
                            displayHeight,
                            DefaultTileQueueLimit,
@@ -77,7 +75,7 @@ engine::Error Engine::init()
                            false,
 #endif
                            -1,
-                           0);
+                           _impl->cudaOutputStreams[outputIndex]);
 
         cudarf::create_surface(_impl->mesh_gpu_outputs[outputIndex],
                                displayWidth,

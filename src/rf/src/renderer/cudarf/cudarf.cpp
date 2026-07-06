@@ -414,34 +414,39 @@ void cudarf::free_surface(cudaSurfaceObject_t &fb)
     fb = 0;
 }
 
-void cudarf::pipe::init(cudarf::pipe::Ctx *desc, int window_width, int window_height,
-                        int tileQLimit, int SMPCount, bool TAAEnabled, int clockRate, const cudaStream_t &cuStream)
+cudarf::pipe::Ctx::Ctx(int window_width,
+                       int window_height,
+                       int tileQLimit,
+                       int SMPCount,
+                       bool TAAEnabled,
+                       int clockRate,
+                       const cudaStream_t &cuStream)
 {
-    desc->width = window_width;
-    desc->height = window_height;
-    desc->SMPCount = SMPCount;
-    desc->clockRate = clockRate;
-    desc->TAAEnabled = TAAEnabled;
+    width = window_width;
+    height = window_height;
+    this->SMPCount = SMPCount;
+    this->clockRate = clockRate;
+    this->TAAEnabled = TAAEnabled;
 
-    CUDA_CHK(cudaMalloc((void **)&desc->dev_pipeParams, sizeof(cudarf::rast::PipeParams)));
+    CUDA_CHK(cudaMalloc((void **)&dev_pipeParams, sizeof(cudarf::rast::PipeParams)));
 
-    CUDA_CHK(cudaMalloc((void **)&desc->dev_pipeStatic, sizeof(cudarf::rast::PipeStaticContext)));
+    CUDA_CHK(cudaMalloc((void **)&dev_pipeStatic, sizeof(cudarf::rast::PipeStaticContext)));
 
-    CUDA_CHK(cudaMalloc((void **)&desc->dev_pipeFrame, sizeof(cudarf::rast::PipeFrameContext)));
+    CUDA_CHK(cudaMalloc((void **)&dev_pipeFrame, sizeof(cudarf::rast::PipeFrameContext)));
 
-    CUDA_CHK(cudaMalloc((void **)&desc->dev_pipeSubmission, sizeof(cudarf::rast::PipeSubmissionContext)));
+    CUDA_CHK(cudaMalloc((void **)&dev_pipeSubmission, sizeof(cudarf::rast::PipeSubmissionContext)));
 
-    CUDA_CHK(cudarf_cuda_malloc(&desc->dev_pipeAtomics, sizeof(cudarf::pipe::Atomics)));
+    CUDA_CHK(cudarf_cuda_malloc(&dev_pipeAtomics, sizeof(cudarf::pipe::Atomics)));
 
-    unsigned long rasterizerW = round_up_to_mult_pwr(desc->width, CUDARF_BIN_LOG2 + CUDARF_TILE_LOG2);
-    unsigned long rasterizerH = round_up_to_mult_pwr(desc->height, CUDARF_BIN_LOG2 + CUDARF_TILE_LOG2);
+    unsigned long rasterizerW = round_up_to_mult_pwr(width, CUDARF_BIN_LOG2 + CUDARF_TILE_LOG2);
+    unsigned long rasterizerH = round_up_to_mult_pwr(height, CUDARF_BIN_LOG2 + CUDARF_TILE_LOG2);
 
     cudarf::rast::PipeStaticContext pipeStatic{};
-    pipeStatic.windowWidth = desc->width;
-    pipeStatic.windowHeight = desc->height;
+    pipeStatic.windowWidth = width;
+    pipeStatic.windowHeight = height;
     pipeStatic.rasterizerSize = make_int2(rasterizerW, rasterizerH);
-    pipeStatic.clockRate = desc->clockRate;
-    CUDA_CHK(cudaMemcpyAsync(desc->dev_pipeStatic,
+    pipeStatic.clockRate = clockRate;
+    CUDA_CHK(cudaMemcpyAsync(dev_pipeStatic,
                              &pipeStatic,
                              sizeof(cudarf::rast::PipeStaticContext),
                              cudaMemcpyHostToDevice,
@@ -469,118 +474,120 @@ void cudarf::pipe::init(cudarf::pipe::Ctx *desc, int window_width, int window_he
 
     // Vertex transform
     // ---------------------------------
-    CUDA_CHK(cudarf_cuda_free(desc->dev_uniforms));
-    CUDA_CHK(cudarf_cuda_malloc(&desc->dev_uniforms, CUDARF_DRAW_PACKET_BATCH_LIMIT * sizeof(cudarf::Uniforms)));
+    CUDA_CHK(cudarf_cuda_free(dev_uniforms));
+    CUDA_CHK(cudarf_cuda_malloc(&dev_uniforms, CUDARF_DRAW_PACKET_BATCH_LIMIT * sizeof(cudarf::Uniforms)));
 
 #ifdef WITH_TAA
-    CUDA_CHK(cudarf_cuda_free(desc->dev_uniformsHist));
-    CUDA_CHK(cudarf_cuda_malloc(&desc->dev_uniformsHist, CUDARF_DRAW_PACKET_BATCH_LIMIT * sizeof(cudarf::Uniforms)));
+    CUDA_CHK(cudarf_cuda_free(dev_uniformsHist));
+    CUDA_CHK(cudarf_cuda_malloc(&dev_uniformsHist, CUDARF_DRAW_PACKET_BATCH_LIMIT * sizeof(cudarf::Uniforms)));
 #endif
 
     // Bin tiler
     // ---------------------------------
-    CUDA_CHK(cudarf_cuda_free(desc->dev_binFirstSeg));
-    CUDA_CHK(cudarf_cuda_malloc(&desc->dev_binFirstSeg, CUDARF_MAXBINS_SQR * CUDARF_BIN_STREAMS_SIZE * sizeof(int32_t)));
+    CUDA_CHK(cudarf_cuda_free(dev_binFirstSeg));
+    CUDA_CHK(cudarf_cuda_malloc(&dev_binFirstSeg, CUDARF_MAXBINS_SQR * CUDARF_BIN_STREAMS_SIZE * sizeof(int32_t)));
 
-    CUDA_CHK(cudarf_cuda_free(desc->dev_binTotal));
-    CUDA_CHK(cudarf_cuda_malloc(&desc->dev_binTotal, CUDARF_MAXBINS_SQR * CUDARF_BIN_STREAMS_SIZE * sizeof(int32_t)));
+    CUDA_CHK(cudarf_cuda_free(dev_binTotal));
+    CUDA_CHK(cudarf_cuda_malloc(&dev_binTotal, CUDARF_MAXBINS_SQR * CUDARF_BIN_STREAMS_SIZE * sizeof(int32_t)));
 
     SPDLOG_INFO("{}", fmt::sprintf("Bin tiler (only fixed size): %lu KB", (CUDARF_MAXBINS_SQR * CUDARF_BIN_STREAMS_SIZE * sizeof(int32_t) +
            CUDARF_MAXBINS_SQR * CUDARF_BIN_STREAMS_SIZE * sizeof(int32_t)) / 1024));
 
-    // CUDA_CHK(cudarf_cuda_free(desc->dev_binQueues));
-    // CUDA_CHK(cudarf_cuda_malloc(&desc->dev_binQueues, CUDARF_MAXBINS_SQR * sizeof(SimpleQueue::Segment<NQ_BINSEG_SIZE>)));
+    // CUDA_CHK(cudarf_cuda_free(dev_binQueues));
+    // CUDA_CHK(cudarf_cuda_malloc(&dev_binQueues, CUDARF_MAXBINS_SQR * sizeof(SimpleQueue::Segment<NQ_BINSEG_SIZE>)));
 
     // Coarse tiler
     // ---------------------------------
     unsigned int tileCount = rasterizerW / CUDARF_TILE_SZ * rasterizerH / CUDARF_TILE_SZ;
 
-    desc->tileQLimit = tileQLimit;
+    this->tileQLimit = tileQLimit;
 
-    CUDA_CHK(cudarf_cuda_free(desc->dev_tileQData));
-    CUDA_CHK(cudarf_cuda_malloc(&desc->dev_tileQData, tileCount * sizeof(int32_t) * tileQLimit));
+    CUDA_CHK(cudarf_cuda_free(dev_tileQData));
+    CUDA_CHK(cudarf_cuda_malloc(&dev_tileQData, tileCount * sizeof(int32_t) * tileQLimit));
 
-    CUDA_CHK(cudarf_cuda_free(desc->dev_tileQHeaders));
-    CUDA_CHK(cudarf_cuda_malloc(&desc->dev_tileQHeaders, tileCount * sizeof(SimpleQueue::Segment)));
+    CUDA_CHK(cudarf_cuda_free(dev_tileQHeaders));
+    CUDA_CHK(cudarf_cuda_malloc(&dev_tileQHeaders, tileCount * sizeof(SimpleQueue::Segment)));
 
     SPDLOG_INFO("{}", fmt::sprintf("Coarse tiler: %lu KB", tileCount * (tileQLimit * sizeof(int32_t) + sizeof(SimpleQueue::Segment)) /  1024));
 
-    init_tile_queue_static(desc, cuStream);
+    init_tile_queue_static(this, cuStream);
 
     // Output framebuffer & depth
     // ---------------------------------
-    CUDA_CHK(cudarf_cuda_free(desc->dev_depthbuffer));
+    CUDA_CHK(cudarf_cuda_free(dev_depthbuffer));
     // TODO: write method to initialize depth and set it here
-    CUDA_CHK(cudarf_cuda_malloc(&desc->dev_depthbuffer,   desc->width * desc->height * sizeof(DepthValue)));
-    CUDA_CHK(cudarf_cuda_free(desc->dev_geom_output));
-    CUDA_CHK(cudarf_cuda_malloc(&desc->dev_geom_output,
-                                desc->width * desc->height * sizeof(cudarf::visibuf::GeomOutput)));
-    CUDA_CHK(cudarf_cuda_free(desc->dev_xyCommands));
-    CUDA_CHK(cudarf_cuda_malloc(&desc->dev_xyCommands,
-                                desc->width * desc->height * sizeof(cudarf::visibuf::XYCommand)));
+    CUDA_CHK(cudarf_cuda_malloc(&dev_depthbuffer,   width * height * sizeof(DepthValue)));
+    CUDA_CHK(cudarf_cuda_free(dev_geom_output));
+    CUDA_CHK(cudarf_cuda_malloc(&dev_geom_output,
+                                width * height * sizeof(cudarf::visibuf::GeomOutput)));
+    CUDA_CHK(cudarf_cuda_free(dev_xyCommands));
+    CUDA_CHK(cudarf_cuda_malloc(&dev_xyCommands,
+                                width * height * sizeof(cudarf::visibuf::XYCommand)));
 
-    SPDLOG_INFO("{}", fmt::sprintf("Depth buffer: %lu KB", desc->width * desc->height * sizeof(DepthValue) / 1024));
+    SPDLOG_INFO("{}", fmt::sprintf("Depth buffer: %lu KB", width * height * sizeof(DepthValue) / 1024));
 
 #if defined(WITH_TAA)
 
-    create_surface(desc->dev_framebuffer[0], desc->dev_framebufferTex[0], desc->width, desc->height, cuStream);
-    create_surface(desc->dev_framebuffer[1], desc->dev_framebufferTex[1], desc->width, desc->height, cuStream);
-    create_surface(desc->rasterSurface, desc->rasterTexture, desc->width, desc->height, cuStream);
-    create_surface(desc->uiFramebuffer, desc->width, desc->height, cuStream);
+    create_surface(dev_framebuffer[0], dev_framebufferTex[0], width, height, cuStream);
+    create_surface(dev_framebuffer[1], dev_framebufferTex[1], width, height, cuStream);
+    create_surface(rasterSurface, rasterTexture, width, height, cuStream);
+    create_surface(uiFramebuffer, width, height, cuStream);
 
-    CUDA_CHK(cudaFree(desc->dev_velocityTex));
-    CUDA_CHK(cudaMalloc(&desc->dev_velocityTex, sizeof(cudarf::Velocity) * desc->width * desc->height));
+    CUDA_CHK(cudaFree(dev_velocityTex));
+    CUDA_CHK(cudaMalloc(&dev_velocityTex, sizeof(cudarf::Velocity) * width * height));
 
     SPDLOG_INFO("{}", fmt::sprintf("Internal framebuffer %d x %d @ 32: %lu KB",
-                desc->width, desc->height,
-                (desc->width * desc->height * sizeof(ColorN)) / 1024));
+                width, height,
+                (width * height * sizeof(ColorN)) / 1024));
 
     SPDLOG_INFO("{}", fmt::sprintf("Output framebuffer[0] %d x %d @ 32: %lu KB",
-                desc->width, desc->height,
-                (desc->width * desc->height * sizeof(ColorN)) / 1024));
+                width, height,
+                (width * height * sizeof(ColorN)) / 1024));
 
     SPDLOG_INFO("{}", fmt::sprintf("Output framebuffer[1] %d x %d @ 32: %lu KB",
-                desc->width, desc->height,
-                (desc->width * desc->height * sizeof(ColorN)) / 1024));
+                width, height,
+                (width * height * sizeof(ColorN)) / 1024));
 
     SPDLOG_INFO("{}", fmt::sprintf("UI framebuffer %d x %d @ 32: %lu KB",
-                desc->width, desc->height,
-                (desc->width * desc->height * sizeof(ColorN)) / 1024));
+                width, height,
+                (width * height * sizeof(ColorN)) / 1024));
 
     SPDLOG_INFO("{}", fmt::sprintf("Velocity texture %d x %d: %lu KB",
-                desc->width, desc->height,
-                (desc->width * desc->height * sizeof(cudarf::Velocity)) / 1024));
+                width, height,
+                (width * height * sizeof(cudarf::Velocity)) / 1024));
 #else
 
-    free_surface(desc->dev_framebuffer);
-    create_surface(desc->dev_framebuffer, desc->dev_framebufferTex, desc->width, desc->height, cuStream);
-    free_surface(desc->uiFramebuffer);
-    create_surface(desc->uiFramebuffer, desc->width, desc->height, cuStream);
+    free_surface(dev_framebuffer);
+    create_surface(dev_framebuffer, dev_framebufferTex, width, height, cuStream);
+    free_surface(uiFramebuffer);
+    create_surface(uiFramebuffer, width, height, cuStream);
 
     SPDLOG_INFO("{}", fmt::sprintf("Output framebuffer %d x %d @ 32: %lu KB",
-                desc->width, desc->height,
-                (desc->width * desc->height * sizeof(ColorN)) / 1024));
+                width, height,
+                (width * height * sizeof(ColorN)) / 1024));
 
     SPDLOG_INFO("{}", fmt::sprintf("UI framebuffer %d x %d @ 32: %lu KB",
-                desc->width, desc->height,
-                (desc->width * desc->height * sizeof(ColorN)) / 1024));
+                width, height,
+                (width * height * sizeof(ColorN)) / 1024));
 #endif
 
 #ifdef WITH_TAA
-    desc->TAA.pointsHalton.resize(HALTON_POINTS);
-    initialize_halton_2_3(desc->TAA.pointsHalton);
+    TAA.pointsHalton.resize(HALTON_POINTS);
+    initialize_halton_2_3(TAA.pointsHalton);
 
     std::string points;
     points.reserve(20);
 
-    for (float2 pt: desc->TAA.pointsHalton) {
+    for (float2 pt: TAA.pointsHalton) {
         points += ("(" + std::to_string(pt.x) + ", " + std::to_string(pt.y) + ") ");
     }
     SPDLOG_INFO("{}", fmt::sprintf("Halton points: %s", points.c_str()));
 #endif
 }
 
-void cudarf::pipe::destroy(cudarf::pipe::Ctx *desc) {
+cudarf::pipe::Ctx::~Ctx()
+{
+    cudarf::pipe::Ctx *desc = this;
     // user is responsible for cleaning draw packets
 
     CUDA_CHK(cudaFree(desc->dev_pipeParams));
