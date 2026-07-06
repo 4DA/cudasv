@@ -115,7 +115,7 @@ struct Ctx
     DeviceBuffer<cudarf::rast::PipeSubmissionContext> dev_pipeSubmission;
     DeviceBuffer<cudarf::rast::PipeParams> dev_pipeParams;
 
-    Atomics *dev_pipeAtomics;
+    DeviceBuffer<Atomics> dev_pipeAtomics;
 
     cudarf::DrawPacket drawPackets[CUDARF_MAX_DRAW_PACKETS];
 
@@ -132,12 +132,12 @@ struct Ctx
     int32_t *dev_binTotal = NULL;
 
     unsigned int tileQLimit;
-    cudarf::rast::SimpleQueue::Segment *dev_tileQHeaders = NULL;
-    int32_t *dev_tileQData = NULL;
+    DeviceBuffer<cudarf::rast::SimpleQueue::Segment> dev_tileQHeaders;
+    DeviceBuffer<int32_t> dev_tileQData;
 
-    cudarf::DepthValue *dev_depthbuffer = NULL;
-    cudarf::visibuf::GeomOutput *dev_geom_output = NULL;
-    cudarf::visibuf::XYCommand *dev_xyCommands = NULL;
+    DeviceBuffer<cudarf::DepthValue> dev_depthbuffer;
+    DeviceBuffer<cudarf::visibuf::GeomOutput> dev_geom_output;
+    DeviceBuffer<cudarf::visibuf::XYCommand> dev_xyCommands;
 
 #ifdef WITH_TAA
     cudarf::Framebuffer rasterSurface;

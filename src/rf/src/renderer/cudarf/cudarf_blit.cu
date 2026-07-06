@@ -269,7 +269,7 @@ void cudarf::pipe::clear_depth(cudarf::pipe::Ctx *desc, cudaStream_t stream)
     dim3 blockSize2d(8, 8);
     dim3 blockCount2d((desc->width  - 1) / blockSize2d.x + 1,
                       (desc->height - 1) / blockSize2d.y + 1);
-    init_depth<<<blockCount2d, blockSize2d, 0, stream>>>(desc->dev_depthbuffer,
+    init_depth<<<blockCount2d, blockSize2d, 0, stream>>>(desc->dev_depthbuffer.get(),
                                                          desc->width, desc->height);
     CUDA_CHK_ERROR("clear_depth");
 }
@@ -302,7 +302,7 @@ void cudarf::pipe::copy_depth_to_pbo(cudarf::pipe::Ctx *desc, uchar4 *pbo)
     dim3 blockSize2d(8, 8);
     dim3 blockCount2d((desc->width  - 1) / blockSize2d.x + 1,
                       (desc->height - 1) / blockSize2d.y + 1);
-    copy_depth_to_pbo<<<blockCount2d, blockSize2d>>>(desc->dev_depthbuffer,
+    copy_depth_to_pbo<<<blockCount2d, blockSize2d>>>(desc->dev_depthbuffer.get(),
                                                      desc->width, desc->height, pbo);
     CUDA_CHK_ERROR("copy_depth_to_pbo");
 }

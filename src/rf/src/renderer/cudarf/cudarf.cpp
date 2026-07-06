@@ -425,15 +425,14 @@ cudarf::pipe::Ctx::Ctx(int window_width,
     : dev_pipeStatic(1),
       dev_pipeFrame(1),
       dev_pipeSubmission(1),
-      dev_pipeParams(1)
+      dev_pipeParams(1),
+      dev_pipeAtomics(1)
 {
     width = window_width;
     height = window_height;
     this->SMPCount = SMPCount;
     this->clockRate = clockRate;
     this->TAAEnabled = TAAEnabled;
-
-    CUDA_CHK(cudarf_cuda_malloc(&dev_pipeAtomics, sizeof(cudarf::pipe::Atomics)));
 
     unsigned long rasterizerW = round_up_to_mult_pwr(width, CUDARF_BIN_LOG2 + CUDARF_TILE_LOG2);
     unsigned long rasterizerH = round_up_to_mult_pwr(height, CUDARF_BIN_LOG2 + CUDARF_TILE_LOG2);
@@ -499,11 +498,9 @@ cudarf::pipe::Ctx::Ctx(int window_width,
 
     this->tileQLimit = tileQLimit;
 
-    CUDA_CHK(cudarf_cuda_free(dev_tileQData));
-    CUDA_CHK(cudarf_cuda_malloc(&dev_tileQData, tileCount * sizeof(int32_t) * tileQLimit));
+    dev_tileQData.reset(tileCount * tileQLimit);
 
-    CUDA_CHK(cudarf_cuda_free(dev_tileQHeaders));
-    CUDA_CHK(cudarf_cuda_malloc(&dev_tileQHeaders, tileCount * sizeof(SimpleQueue::Segment)));
+    dev_tileQHeaders.reset(tileCount);
 
     SPDLOG_INFO("{}", fmt::sprintf("Coarse tiler: %lu KB", tileCount * (tileQLimit * sizeof(int32_t) + sizeof(SimpleQueue::Segment)) /  1024));
 
@@ -511,15 +508,10 @@ cudarf::pipe::Ctx::Ctx(int window_width,
 
     // Output framebuffer & depth
     // ---------------------------------
-    CUDA_CHK(cudarf_cuda_free(dev_depthbuffer));
     // TODO: write method to initialize depth and set it here
-    CUDA_CHK(cudarf_cuda_malloc(&dev_depthbuffer,   width * height * sizeof(DepthValue)));
-    CUDA_CHK(cudarf_cuda_free(dev_geom_output));
-    CUDA_CHK(cudarf_cuda_malloc(&dev_geom_output,
-                                width * height * sizeof(cudarf::visibuf::GeomOutput)));
-    CUDA_CHK(cudarf_cuda_free(dev_xyCommands));
-    CUDA_CHK(cudarf_cuda_malloc(&dev_xyCommands,
-                                width * height * sizeof(cudarf::visibuf::XYCommand)));
+    dev_depthbuffer.reset(width * height);
+    dev_geom_output.reset(width * height);
+    dev_xyCommands.reset(width * height);
 
     SPDLOG_INFO("{}", fmt::sprintf("Depth buffer: %lu KB", width * height * sizeof(DepthValue) / 1024));
 
@@ -586,15 +578,6 @@ cudarf::pipe::Ctx::~Ctx()
 {
     cudarf::pipe::Ctx *desc = this;
     // user is responsible for cleaning draw packets
-    CUDA_CHK(cudarf_cuda_free(desc->dev_pipeAtomics));
-    desc->dev_pipeAtomics = nullptr;
-
-    CUDA_CHK(cudarf_cuda_free(desc->dev_depthbuffer));
-    desc->dev_depthbuffer = NULL;
-    CUDA_CHK(cudarf_cuda_free(desc->dev_geom_output));
-    desc->dev_geom_output = NULL;
-    CUDA_CHK(cudarf_cuda_free(desc->dev_xyCommands));
-    desc->dev_xyCommands = NULL;
 
 #ifdef WITH_TAA
     free_surface(desc->dev_framebuffer[0]);
@@ -730,12 +713,12 @@ void cudarf::pipe::begin_frame(cudarf::pipe::Ctx *desc,
 
     cudarf::pipe::clear_depth(desc, cuStream);
 
-    CUDA_CHK(cudaMemsetAsync(desc->dev_geom_output,
+    CUDA_CHK(cudaMemsetAsync(desc->dev_geom_output.get(),
                              0xFF,
                              sizeof(cudarf::visibuf::GeomOutput) * desc->width * desc->height,
                              cuStream));
 
-    CUDA_CHK(cudaMemsetAsync(desc->dev_xyCommands,
+    CUDA_CHK(cudaMemsetAsync(desc->dev_xyCommands.get(),
                              0xFF,
                              sizeof(cudarf::visibuf::XYCommand) * desc->width * desc->height,
                              cuStream));

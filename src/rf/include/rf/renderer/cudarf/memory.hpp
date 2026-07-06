@@ -14,6 +14,7 @@ struct DeviceBuffer {
     DeviceBuffer(): _devPtr(nullptr), _byteSize(0), _count(0) {}
     DeviceBuffer(unsigned int count);
     DeviceBuffer(DeviceBuffer &&other) noexcept;
+    DeviceBuffer &operator=(DeviceBuffer &&other) noexcept;
     ~DeviceBuffer();
 
     DeviceBuffer(const DeviceBuffer &) = delete;
@@ -22,6 +23,8 @@ struct DeviceBuffer {
     T *get() const { return _devPtr; }
     std::size_t size() const { return _byteSize; }
     unsigned int count() const { return _count; }
+    explicit operator bool() const { return _devPtr != nullptr; }
+    void reset(unsigned int count = 0);
 
 private:
     T *_devPtr;
@@ -49,17 +52,42 @@ DeviceBuffer<T>::DeviceBuffer(DeviceBuffer &&other) noexcept
 }
 
 template <typename T>
-DeviceBuffer<T>::~DeviceBuffer()
+DeviceBuffer<T> &DeviceBuffer<T>::operator=(DeviceBuffer &&other) noexcept
 {
-    if (_count && _byteSize) {
+    if (this != &other) {
+        reset();
+        _devPtr = std::exchange(other._devPtr, nullptr);
+        _byteSize = std::exchange(other._byteSize, 0);
+        _count = std::exchange(other._count, 0);
+    }
+    return *this;
+}
+
+template <typename T>
+void DeviceBuffer<T>::reset(unsigned int count)
+{
+    if (_devPtr) {
         cudaError_t err = cudaFree(_devPtr);
         assert(err == cudaSuccess);
         (void)err;
-        _devPtr = 0;
-        _count = 0;
-        _byteSize = 0;
+        _devPtr = nullptr;
+    }
+
+    _count = count;
+    _byteSize = _count * sizeof(T);
+    if (_count) {
+        cudaError_t err = cudaMalloc((void **)&_devPtr, _byteSize);
+        assert(err == cudaSuccess);
+        (void)err;
     }
 }
+
+template <typename T>
+DeviceBuffer<T>::~DeviceBuffer()
+{
+    reset();
+}
+
 }
 
 #endif

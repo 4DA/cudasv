@@ -175,7 +175,7 @@ void clear_depth__async(cudarf::pipe::Ctx *desc, cudaStream_t stream)
                       (desc->height - 1) / blockSize2d.y + 1);
 
     init_depth_kernel<<<blockCount2d, blockSize2d,0, stream>>>(
-                        desc->dev_depthbuffer,
+                        desc->dev_depthbuffer.get(),
                         desc->width, desc->height);
 
     CUDA_CHK_ERROR("init_depth");
