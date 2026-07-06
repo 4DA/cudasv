@@ -119,13 +119,13 @@ void cudarf::pipe::set_draw_packet_buffers(cudarf::pipe::Ctx *desc,
     drawPacket->vertCount = vertCount;
 
     if (bufIdx == nullptr) {
-        CUDA_CHK(cudarf_cuda_free(drawPacket->dev_bufIdx));
+        desc->drawPacketIdxBuffers[drawPacketId].reset();
         drawPacket->dev_bufIdx = nullptr;
         drawPacket->indexCapacity = 0;
     } else {
         if (index_count > drawPacket->indexCapacity) {
-            CUDA_CHK(cudarf_cuda_free(drawPacket->dev_bufIdx));
-            CUDA_CHK(cudarf_cuda_malloc(&drawPacket->dev_bufIdx, drawPacket->index_count * sizeof(PrimitiveIndex)));
+            desc->drawPacketIdxBuffers[drawPacketId].reset(drawPacket->index_count);
+            drawPacket->dev_bufIdx = desc->drawPacketIdxBuffers[drawPacketId].get();
             drawPacket->indexCapacity = index_count;
         }
 
@@ -143,8 +143,8 @@ void cudarf::pipe::set_draw_packet_buffers(cudarf::pipe::Ctx *desc,
                  sizeof(PrimitiveIndex)));
 
     if (vertCount > drawPacket->vertexCapacity) {
-        CUDA_CHK(cudarf_cuda_free(drawPacket->dev_bufVertex));
-        CUDA_CHK(cudarf_cuda_malloc(&drawPacket->dev_bufVertex, drawPacket->vertCount * sizeof(VertexIn)));
+        desc->drawPacketVertexBuffers[drawPacketId].reset(drawPacket->vertCount);
+        drawPacket->dev_bufVertex = desc->drawPacketVertexBuffers[drawPacketId].get();
 
         CUDA_CHK(cudarf_cuda_free_host(drawPacket->stagingBufVertex));
         CUDA_CHK(cudarf_cuda_malloc_host((void **)&drawPacket->stagingBufVertex, drawPacket->vertCount * sizeof(VertexIn)));
@@ -224,8 +224,8 @@ void cudarf::pipe::set_draw_packet_buffers(cudarf::pipe::Ctx *desc,
     drawPacket->vertCount = vertCount;
 
     if (index_count > drawPacket->indexCapacity) {
-        CUDA_CHK(cudaFree(drawPacket->dev_bufIdx));
-        CUDA_CHK(cudaMalloc(&drawPacket->dev_bufIdx, drawPacket->index_count * sizeof(PrimitiveIndex)));
+        desc->drawPacketIdxBuffers[drawPacketId].reset(drawPacket->index_count);
+        drawPacket->dev_bufIdx = desc->drawPacketIdxBuffers[drawPacketId].get();
         drawPacket->indexCapacity = index_count;
     }
 
@@ -257,8 +257,8 @@ void cudarf::pipe::set_draw_packet_buffers(cudarf::pipe::Ctx *desc,
                  sizeof(PrimitiveIndex)));
 
     if (vertCount > drawPacket->vertexCapacity) {
-        CUDA_CHK(cudarf_cuda_free(drawPacket->dev_bufVertex));
-        CUDA_CHK(cudarf_cuda_malloc(&drawPacket->dev_bufVertex, drawPacket->vertCount * sizeof(VertexIn)));
+        desc->drawPacketVertexBuffers[drawPacketId].reset(drawPacket->vertCount);
+        drawPacket->dev_bufVertex = desc->drawPacketVertexBuffers[drawPacketId].get();
 
         CUDA_CHK(cudarf_cuda_free_host(drawPacket->stagingBufVertex));
         CUDA_CHK(cudarf_cuda_malloc_host((void **)&drawPacket->stagingBufVertex, drawPacket->vertCount * sizeof(VertexIn)));
@@ -470,21 +470,17 @@ cudarf::pipe::Ctx::Ctx(int window_width,
 
     // Vertex transform
     // ---------------------------------
-    CUDA_CHK(cudarf_cuda_free(dev_uniforms));
-    CUDA_CHK(cudarf_cuda_malloc(&dev_uniforms, CUDARF_DRAW_PACKET_BATCH_LIMIT * sizeof(cudarf::Uniforms)));
+    dev_uniforms.reset(CUDARF_DRAW_PACKET_BATCH_LIMIT);
 
 #ifdef WITH_TAA
-    CUDA_CHK(cudarf_cuda_free(dev_uniformsHist));
-    CUDA_CHK(cudarf_cuda_malloc(&dev_uniformsHist, CUDARF_DRAW_PACKET_BATCH_LIMIT * sizeof(cudarf::Uniforms)));
+    dev_uniformsHist.reset(CUDARF_DRAW_PACKET_BATCH_LIMIT);
 #endif
 
     // Bin tiler
     // ---------------------------------
-    CUDA_CHK(cudarf_cuda_free(dev_binFirstSeg));
-    CUDA_CHK(cudarf_cuda_malloc(&dev_binFirstSeg, CUDARF_MAXBINS_SQR * CUDARF_BIN_STREAMS_SIZE * sizeof(int32_t)));
+    dev_binFirstSeg.reset(CUDARF_MAXBINS_SQR * CUDARF_BIN_STREAMS_SIZE);
 
-    CUDA_CHK(cudarf_cuda_free(dev_binTotal));
-    CUDA_CHK(cudarf_cuda_malloc(&dev_binTotal, CUDARF_MAXBINS_SQR * CUDARF_BIN_STREAMS_SIZE * sizeof(int32_t)));
+    dev_binTotal.reset(CUDARF_MAXBINS_SQR * CUDARF_BIN_STREAMS_SIZE);
 
     SPDLOG_INFO("{}", fmt::sprintf("Bin tiler (only fixed size): %lu KB", (CUDARF_MAXBINS_SQR * CUDARF_BIN_STREAMS_SIZE * sizeof(int32_t) +
            CUDARF_MAXBINS_SQR * CUDARF_BIN_STREAMS_SIZE * sizeof(int32_t)) / 1024));
@@ -522,8 +518,7 @@ cudarf::pipe::Ctx::Ctx(int window_width,
     create_surface(rasterSurface, rasterTexture, width, height, cuStream);
     create_surface(uiFramebuffer, width, height, cuStream);
 
-    CUDA_CHK(cudaFree(dev_velocityTex));
-    CUDA_CHK(cudaMalloc(&dev_velocityTex, sizeof(cudarf::Velocity) * width * height));
+    dev_velocityTex.reset(width * height);
 
     SPDLOG_INFO("{}", fmt::sprintf("Internal framebuffer %d x %d @ 32: %lu KB",
                 width, height,
@@ -684,8 +679,8 @@ void cudarf::pipe::begin_frame(cudarf::pipe::Ctx *desc,
     }
 
     pipeFrame.taa.commonHist = (frameCounter > 0) ? commonHist : common;
-    pipeFrame.taa.uniformsHist = desc->dev_uniformsHist;
-    pipeFrame.taa.velocityTex = desc->dev_velocityTex;
+    pipeFrame.taa.uniformsHist = desc->dev_uniformsHist.get();
+    pipeFrame.taa.velocityTex = desc->dev_velocityTex.get();
     pipeFrame.taa.velocityThreshold = desc->TAA.velocityThreshold;
 #else
     pipeFrame.common = common;
@@ -725,7 +720,7 @@ void cudarf::pipe::begin_frame(cudarf::pipe::Ctx *desc,
 
 #ifdef WITH_TAA
     cudarf::pipe::clear_framebuffer(desc, desc->rasterSurface, make_uchar4(0, 0, 0, 0), cuStream);
-    CUDA_CHK(cudaMemsetAsync(desc->dev_velocityTex, 0, sizeof(cudarf::Velocity) * desc->width * desc->height, cuStream));
+    CUDA_CHK(cudaMemsetAsync(desc->dev_velocityTex.get(), 0, sizeof(cudarf::Velocity) * desc->width * desc->height, cuStream));
 #else
     cudarf::pipe::clear_framebuffer(desc,
                                     cudarf::pipe::get_output_fb(desc, frameCounter),

@@ -428,13 +428,13 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     CUDA_TIME_BEGIN(init_buffers);
 
     // initialize all uniforms
-    CUDA_CHK(cudaMemcpyAsync(desc->dev_uniforms, uniforms.data(), sizeof(Uniforms) * drawPacketIds.size(),
+    CUDA_CHK(cudaMemcpyAsync(desc->dev_uniforms.get(), uniforms.data(), sizeof(Uniforms) * drawPacketIds.size(),
                              cudaMemcpyHostToDevice, cuStream));
 
 #ifdef WITH_TAA
     assert(uniforms.size() == uniformsHist.size());
     assert(uniformsHist.size());
-    CUDA_CHK(cudaMemcpyAsync(desc->dev_uniformsHist, uniformsHist.data(), sizeof(Uniforms) * drawPacketIds.size(),
+    CUDA_CHK(cudaMemcpyAsync(desc->dev_uniformsHist.get(), uniformsHist.data(), sizeof(Uniforms) * drawPacketIds.size(),
                              cudaMemcpyHostToDevice, cuStream));
 #endif
 
@@ -460,7 +460,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
     // init bin tiler buffers
     {
-        CUDA_CHK(cudaMemsetAsync(desc->dev_binTotal, 0, CUDARF_MAXBINS_SQR * CUDARF_BIN_STREAMS_SIZE * sizeof(int32_t), cuStream));
+        CUDA_CHK(cudaMemsetAsync(desc->dev_binTotal.get(), 0, CUDARF_MAXBINS_SQR * CUDARF_BIN_STREAMS_SIZE * sizeof(int32_t), cuStream));
     }
 
     // init coarse tiler buffers
@@ -489,7 +489,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         pipeSubmission.drawPackets[id] = desc->drawPackets[id];
     }
 
-    pipeSubmission.uniforms = desc->dev_uniforms;
+    pipeSubmission.uniforms = desc->dev_uniforms.get();
     pipeScratch.vertexOut = bufferSet.dev_bufVertexOut;
     pipeSubmission.drawPacketCount = drawPacketIds.size();
 
@@ -522,8 +522,8 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
             iclamp(total_triangles / (roundSize * minBatches), 1, maxRounds) * roundSize;
 
         pipeScratch.binCtx.maxBinSegs = bufferSet.maxBinSegs;
-        pipeScratch.binCtx.binFirstSeg = desc->dev_binFirstSeg;
-        pipeScratch.binCtx.binTotal = desc->dev_binTotal;
+        pipeScratch.binCtx.binFirstSeg = desc->dev_binFirstSeg.get();
+        pipeScratch.binCtx.binTotal = desc->dev_binTotal.get();
         pipeScratch.binCtx.binSegData = bufferSet.dev_binSegData;
         pipeScratch.binCtx.binSegNext = bufferSet.dev_binSegNext;
         pipeScratch.binCtx.binSegCount = bufferSet.dev_binSegCount;
@@ -965,7 +965,7 @@ void cudarf::pipe::TAA(cudarf::pipe::Ctx *desc,
         desc->height,
         desc->rasterTexture,
         get_history_tex(desc, frameCounter),
-        desc->dev_velocityTex,
+        desc->dev_velocityTex.get(),
         frameUniforms,
         histUniforms,
         get_output_fb(desc, frameCounter),
@@ -977,7 +977,7 @@ void cudarf::pipe::TAA(cudarf::pipe::Ctx *desc,
 
     // DEBUG: visualize velocity buffer
     // visualize_velocity<<<blockCount2d, blockSize2d, 0, cuStream>>>
-    //     (desc->dev_velocityTex, desc->width, desc->height, get_output_fb(desc, frameCounter));
+    //     (desc->dev_velocityTex.get(), desc->width, desc->height, get_output_fb(desc, frameCounter));
 }
 #endif
 

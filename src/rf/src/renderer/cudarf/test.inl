@@ -20,7 +20,7 @@ void test_bin_output(const cudarf::pipe::Ctx &desc, const cudarf::rast::PipePara
     std::unique_ptr<cudarf::rast::Triangle[]> triBuf(new cudarf::rast::Triangle[pipe.numTriangles]);
 
 
-    CUDA_CHK(cudaMemcpyAsync(binTotal.get(), desc.dev_binTotal,
+    CUDA_CHK(cudaMemcpyAsync(binTotal.get(), desc.dev_binTotal.get(),
                         binTotalL * sizeof(int32_t), cudaMemcpyDeviceToHost, cuStream));
 
     CUDA_CHK(cudaMemcpyAsync(binSegData.get(), desc.internalBufs.dev_binSegData,
@@ -32,7 +32,7 @@ void test_bin_output(const cudarf::pipe::Ctx &desc, const cudarf::rast::PipePara
     CUDA_CHK(cudaMemcpyAsync(binSegCount.get(), desc.internalBufs.dev_binSegCount,
                         desc.internalBufs.maxBinSegs * sizeof(int32_t), cudaMemcpyDeviceToHost, cuStream));
 
-    CUDA_CHK(cudaMemcpyAsync(binFirstSeg.get(), desc.dev_binFirstSeg,
+    CUDA_CHK(cudaMemcpyAsync(binFirstSeg.get(), desc.dev_binFirstSeg.get(),
                         CUDARF_MAXBINS_SQR * CUDARF_BIN_STREAMS_SIZE * sizeof(int32_t),
                         cudaMemcpyDeviceToHost, cuStream));
 

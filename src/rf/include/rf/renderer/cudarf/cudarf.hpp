@@ -118,18 +118,20 @@ struct Ctx
     DeviceBuffer<Atomics> dev_pipeAtomics;
 
     cudarf::DrawPacket drawPackets[CUDARF_MAX_DRAW_PACKETS];
+    DeviceBuffer<cudarf::PrimitiveIndex> drawPacketIdxBuffers[CUDARF_MAX_DRAW_PACKETS];
+    DeviceBuffer<cudarf::rast::VertexIn> drawPacketVertexBuffers[CUDARF_MAX_DRAW_PACKETS];
 
     cudarf::rast::PipeInternalBufferSet internalBufs;
 
     unsigned int drawPacketCount = 1;  // zero draw packet is for dynamic geometry
 
-    cudarf::Uniforms *dev_uniforms = NULL;
+    DeviceBuffer<cudarf::Uniforms> dev_uniforms;
 #ifdef WITH_TAA
-    cudarf::Uniforms *dev_uniformsHist = NULL;
+    DeviceBuffer<cudarf::Uniforms> dev_uniformsHist;
 #endif
 
-    int32_t *dev_binFirstSeg = NULL;
-    int32_t *dev_binTotal = NULL;
+    DeviceBuffer<int32_t> dev_binFirstSeg;
+    DeviceBuffer<int32_t> dev_binTotal;
 
     unsigned int tileQLimit;
     DeviceBuffer<cudarf::rast::SimpleQueue::Segment> dev_tileQHeaders;
@@ -147,7 +149,7 @@ struct Ctx
     cudarf::Framebuffer dev_framebuffer[2];
     cudarf::FBTexture dev_framebufferTex[2] = {0};
 
-    cudarf::Velocity *dev_velocityTex = nullptr;
+    DeviceBuffer<cudarf::Velocity> dev_velocityTex;
 
     struct TAA_Params {
         float scale = 1.0f;
