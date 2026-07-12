@@ -71,6 +71,7 @@ target_link_libraries(sv_app
   sv_engine
   EGL::EGL
   OpenGLES3::OpenGLES3
+  m
 )
 
 install(
