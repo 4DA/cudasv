@@ -62,21 +62,6 @@ size_t MaterialInfo::compute_key() const
     return seed;
 }
 
-bool MaterialInfo::operator==(const MaterialInfo &other) const
-{
-    return
-        isOpaque                == other.isOpaque &&
-        isDoubleSided          == other.isDoubleSided &&
-        isUnlit                 == other.isUnlit &&
-        isEmissive              == other.isEmissive &&
-        withClearcoat           == other.withClearcoat &&
-        uvTextureTransformKey == other.uvTextureTransformKey &&
-        albedoTexChannels      == other.albedoTexChannels &&
-        normalTexChannels      == other.normalTexChannels &&
-        OMRTexChannels         == other.OMRTexChannels &&
-        emissiveTexChannels    == other.emissiveTexChannels;
-}
-
 std::string MaterialInfo::to_string() const {
     std::stringstream ss;
     ss.precision(2);

@@ -99,8 +99,7 @@ struct MaterialInfo
         emissiveTexChannels(emissiveTexChannels),
         materialKey(compute_key()) {}
 
-    bool operator==(const MaterialInfo &other) const;
-    bool operator!=(const MaterialInfo &other) const {return !(*this == other);}
+    bool operator<=>(const MaterialInfo &other) const = default;
 
     size_t compute_key() const;
 
