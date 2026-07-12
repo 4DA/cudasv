@@ -3,7 +3,6 @@
 #include <functional>
 
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include "viewpoint_animation.hpp"
 #include "rotator.hpp"
@@ -27,7 +26,7 @@ float rf::CameraAnimationBase::ease(float t)
     case CameraAnimationBase::Easing::Quintic:
         return quintic(0.0f, 1.0f, t);
     default:
-        SPDLOG_ERROR("{}", fmt::sprintf("unkown easing function"));
+        SPDLOG_ERROR("unkown easing function");
         return 1.0f;
     }
 }
@@ -60,16 +59,12 @@ float rf::LookatCameraAnimation::update(VirtualCamera &camera,
 
     camera.set_projection(Projection::mix(_from_projection, _to_projection, _t));
 
-    SPDLOG_TRACE("{}", fmt::sprintf("camera pos = %f, %f, %f sph:(%f, %f)",
-                 camera.transform.translation.x,
-                 camera.transform.translation.y,
-                 camera.transform.translation.z,
-                 coord.polar, coord.azimuthal));
-    SPDLOG_TRACE("{}", fmt::sprintf("t = %lf", t));
+    SPDLOG_TRACE("camera pos = {:f}, {:f}, {:f} sph:({:f}, {:f})", camera.transform.translation.x, camera.transform.translation.y, camera.transform.translation.z, coord.polar, coord.azimuthal);
+    SPDLOG_TRACE("t = {:f}", t);
 
     if (is_finished(camera)) {
         coord = rotator.get_position(camera);
-        SPDLOG_INFO("{}", fmt::sprintf("coord from xyz = <%f, %f>", coord.polar, coord.azimuthal));
+        SPDLOG_INFO("coord from xyz = <{:f}, {:f}>", coord.polar, coord.azimuthal);
     }
 
     return _t;
@@ -187,7 +182,7 @@ float rf::ViewpointAnimator::update(VirtualCamera &camera,
 
         if (_anim->is_finished(camera)) {
             _anim.reset();
-            SPDLOG_INFO("{}", fmt::sprintf("stopped camera animation"));
+            SPDLOG_INFO("stopped camera animation");
         }
     }
 

@@ -1,7 +1,6 @@
 #include <chrono>
 #include <glm/common.hpp>
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include "camera_control.hpp"
 

@@ -1,7 +1,6 @@
 #include <cassert>
 
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include <rf/renderer/image.hpp>
 #include <rf/renderer/cudarf/texture.hpp>
@@ -138,7 +137,7 @@ std::optional<cudarf::Texture> cudarf::create_cuda_texture(rf::Image image,
     case 4:
         break;
     default:
-        SPDLOG_ERROR("{}", fmt::sprintf("unsupported channel count: %d", image.channels));
+        SPDLOG_ERROR("unsupported channel count: {}", image.channels);
         return std::nullopt;
     }
 

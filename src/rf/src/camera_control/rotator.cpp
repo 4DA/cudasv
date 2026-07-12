@@ -1,7 +1,6 @@
 #include <limits>
 
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include "rotator.hpp"
 
@@ -91,22 +90,20 @@ bool SphericalBoundary::point_inside(const SphericalCoord &c) const
         bool less_than_start = c.azimuthal <= start_azimuthal;
         bool less_than_end = c.azimuthal <= end_azimuthal;
 
-        SPDLOG_TRACE("{}", fmt::sprintf("is_inside[rev] azimuthal %f in [%f; %f] = %d",
-        c.azimuthal, start_azimuthal, end_azimuthal, less_than_start == less_than_end));
+        SPDLOG_TRACE("is_inside[rev] azimuthal {:f} in [{:f}; {:f}] = {}", c.azimuthal, start_azimuthal, end_azimuthal, less_than_start == less_than_end);
 
         azimuthalOk = less_than_start == less_than_end;
     }
     else
     {
-        SPDLOG_TRACE("{}", fmt::sprintf("is_inside[dir] azimuthal %f in [%f; %f] = %d",
-            c.azimuthal, start_azimuthal, end_azimuthal, (c.azimuthal >= start_azimuthal) && (c.azimuthal <= end_azimuthal)));
+        SPDLOG_TRACE("is_inside[dir] azimuthal {:f} in [{:f}; {:f}] = {}", c.azimuthal, start_azimuthal, end_azimuthal, (c.azimuthal >= start_azimuthal) && (c.azimuthal <= end_azimuthal));
 
         azimuthalOk = (c.azimuthal >= start_azimuthal) && (c.azimuthal <= end_azimuthal);
     }
 
     polarOk = (c.polar >= start_polar) && (c.polar <= end_polar);
 
-    SPDLOG_TRACE("{}", fmt::sprintf("is_inside[dir] polar %f in [%f; %f] = %d", c.polar, start_polar, end_polar, polarOk));
+    SPDLOG_TRACE("is_inside[dir] polar {:f} in [{:f}; {:f}] = {}", c.polar, start_polar, end_polar, polarOk);
 
     return azimuthalOk && polarOk;
 }

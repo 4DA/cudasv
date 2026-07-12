@@ -5,7 +5,6 @@
 
 #include <spdlog/spdlog.h>
 #include <spdlog/fmt/bundled/format.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include <rf/renderer/glm_common.hpp>
 #include <rf/renderer/material.hpp>

@@ -3,7 +3,6 @@
 #include <sstream>
 
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include "renderer/cudarf/helpers.hpp"
 #include "renderer/utils.hpp"
@@ -22,7 +21,7 @@ SphericalHarmonics SphericalHarmonics::load_from_file(const std::string &file)
     std::size_t fileLine = 0;
 
     if (!fin.good()) {
-        SPDLOG_ERROR("{}", fmt::sprintf("Error opening %s", file.c_str()));
+        SPDLOG_ERROR("Error opening {}", file.c_str());
         return SphericalHarmonics();
     }
 
@@ -50,14 +49,13 @@ SphericalHarmonics SphericalHarmonics::load_from_file(const std::string &file)
             continue;
         }
 
-        SPDLOG_INFO("{}", fmt::sprintf("SH coefs(%zu): %f, %f, %f", shLine, R, G, B));
+        SPDLOG_INFO("SH coefs({}): {:f}, {:f}, {:f}", shLine, R, G, B);
         result.push_back(glm::vec3(R, G, B));
         shLine++;
     }
 
    if (result.size() != SphericalHarmonics::ROWS_COUNT) {
-        SPDLOG_ERROR("{}", fmt::sprintf("Incorrect SH rows count: %zu (expected %zu) in %s",
-            result.size(), SphericalHarmonics::ROWS_COUNT, file.c_str()));
+        SPDLOG_ERROR("Incorrect SH rows count: {} (expected {}) in {}", result.size(), SphericalHarmonics::ROWS_COUNT, file.c_str());
     }
 
     return SphericalHarmonics{result};
@@ -147,7 +145,7 @@ rf::IBL rf::load_ibl(const std::string &path_prefix, cudaStream_t cuStream) {
         sphericalHarmonics = SphericalHarmonics::load_from_file(path_prefix + "ibl/diffuse/sh.txt");
     }
 
-    SPDLOG_INFO("{}", fmt::sprintf("Using spherical harmonics"));
+    SPDLOG_INFO("Using spherical harmonics");
 
     std::vector<CubemapDescription> specularMap;
 

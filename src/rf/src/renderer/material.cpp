@@ -2,7 +2,6 @@
 #include <sstream>
 
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 
 #include "math.hpp"

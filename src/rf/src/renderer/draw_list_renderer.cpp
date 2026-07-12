@@ -1,5 +1,4 @@
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include "cudarf/draw_list_renderer.hpp"
 
@@ -29,7 +28,7 @@ int cudarf::DrawListRenderer::register_material(std::shared_ptr<cudarf::Material
     materialPtrMap[material] = matID;
     objMaterials[matID] = material;
 
-    SPDLOG_DEBUG("{}", fmt::sprintf("material id=%d [name=`%s`]", matID, name.c_str()));
+    SPDLOG_DEBUG("material id={} [name=`{}`]", matID, name.c_str());
 
     return matID;
 }

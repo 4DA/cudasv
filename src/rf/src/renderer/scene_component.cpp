@@ -1,6 +1,5 @@
 #include <stack>
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include "scene_component.hpp"
 

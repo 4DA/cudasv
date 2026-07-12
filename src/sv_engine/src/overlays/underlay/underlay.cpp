@@ -1,7 +1,6 @@
 #include <vector>
 
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include <engine/engine.hpp>
 #include <rf/renderer/gltf_loader.hpp>

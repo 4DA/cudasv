@@ -1,5 +1,4 @@
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include <world.hpp>
 
@@ -21,7 +20,7 @@ int World::init(cudarf::pipe::Ctx *desc, const Config *config, cudaStream_t cuSt
 
     if (overlays_config->renderer_config.use_ibl)
     {
-        SPDLOG_INFO("{}", fmt::sprintf("Loading IBL from path: %s", vehicle_model_config->ibl_path));
+        SPDLOG_INFO("Loading IBL from path: {}", vehicle_model_config->ibl_path);
         scene().set_ibl(rf::load_ibl(std::string(vehicle_model_config->ibl_path), cuStream));
     }
 
@@ -30,14 +29,14 @@ int World::init(cudarf::pipe::Ctx *desc, const Config *config, cudaStream_t cuSt
                                                "vehicle::",
                                                vehicle_model_config))
     {
-        SPDLOG_ERROR("{}", fmt::sprintf("Failed to init vehicle model controller"));
+        SPDLOG_ERROR("Failed to init vehicle model controller");
         return -1;
     }
 
     overlayRuntime.underlay = std::make_unique<Underlay>();
 
     if (overlayRuntime.underlay->init(desc, scene(), config, cuStream)) {
-        SPDLOG_ERROR("{}", fmt::sprintf("Failed to init underlay"));
+        SPDLOG_ERROR("Failed to init underlay");
         return -1;
     }
 

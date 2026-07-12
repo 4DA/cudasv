@@ -24,7 +24,6 @@
 #ifdef CUDARF_CPU_PROFILING
 #include <chrono>
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 #endif
 
 using namespace cudarf;
@@ -110,7 +109,7 @@ void cudarf::pipe::set_draw_packet_buffers(cudarf::pipe::Ctx *desc,
     assert(drawPacketId < CUDARF_MAX_DRAW_PACKETS);
 
     if (!index_count) {
-        SPDLOG_DEBUG("{}", fmt::sprintf("Zero index count for drawPacketId: %u", drawPacketId));
+        SPDLOG_DEBUG("Zero index count for drawPacketId: {}", drawPacketId);
     }
 
     DrawPacket *drawPacket = &desc->drawPackets[drawPacketId];
@@ -135,12 +134,7 @@ void cudarf::pipe::set_draw_packet_buffers(cudarf::pipe::Ctx *desc,
                                  cuStream));
     }
 
-    SPDLOG_DEBUG("{}",
-                 fmt::sprintf("set_draw_packet_buffers [drawPacketId:%d]: indices: %zu, sz: %zu",
-                 drawPacketId,
-                 (size_t) drawPacket->index_count,
-                 drawPacket->index_count * sizeof(PrimitiveIndex),
-                 sizeof(PrimitiveIndex)));
+    SPDLOG_DEBUG("set_draw_packet_buffers [drawPacketId:{}]: indices: {}, sz: {}", drawPacketId, (size_t) drawPacket->index_count, drawPacket->index_count * sizeof(PrimitiveIndex), sizeof(PrimitiveIndex));
 
     if (vertCount > drawPacket->vertexCapacity) {
         desc->drawPacketVertexBuffers[drawPacketId].reset(drawPacket->vertCount);
@@ -193,15 +187,13 @@ void cudarf::pipe::set_draw_packet_buffers(cudarf::pipe::Ctx *desc,
     CUDA_CHK(cudaMemcpyAsync(drawPacket->dev_bufVertex, drawPacket->stagingBufVertex,
                              drawPacket->vertCount * sizeof(VertexIn), cudaMemcpyHostToDevice, cuStream));
 
-    SPDLOG_DEBUG("{}", fmt::sprintf("Device vertex buffer [sz: %zu = %zu * %zu] set",
-                drawPacket->vertCount * sizeof(VertexIn),
-                (size_t) drawPacket->vertCount, sizeof(VertexIn)));
+    SPDLOG_DEBUG("Device vertex buffer [sz: {} = {} * {}] set", drawPacket->vertCount * sizeof(VertexIn), (size_t) drawPacket->vertCount, sizeof(VertexIn));
 
 #ifdef CUDARF_CPU_PROFILING
     cudaDeviceSynchronize();
     auto t2 = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> ms_double = t2 - t1;
-    SPDLOG_DEBUG("{}", fmt::sprintf("%s[#idx: %d] time: %lf ms\n", __func__, index_count, ms_double));
+    SPDLOG_DEBUG("{}[#idx: {}] time: {:f} ms\n", __func__, index_count, ms_double);
 #endif
 }
 
@@ -215,7 +207,7 @@ void cudarf::pipe::set_draw_packet_buffers(cudarf::pipe::Ctx *desc,
     assert(drawPacketId < CUDARF_MAX_DRAW_PACKETS);
 
     if (!index_count) {
-        SPDLOG_DEBUG("{}", fmt::sprintf("Zero index count for drawPacketId: %u", drawPacketId));
+        SPDLOG_DEBUG("Zero index count for drawPacketId: {}", drawPacketId);
     }
 
     DrawPacket *drawPacket = &desc->drawPackets[drawPacketId];
@@ -250,11 +242,7 @@ void cudarf::pipe::set_draw_packet_buffers(cudarf::pipe::Ctx *desc,
                                  cuStream));
     }
 
-    SPDLOG_DEBUG("{}", fmt::sprintf("set_buffers [drawPacketId:%d]: indices: %zu, sz: %zu",
-                 drawPacketId,
-                 (size_t) drawPacket->index_count,
-                 drawPacket->index_count * sizeof(PrimitiveIndex),
-                 sizeof(PrimitiveIndex)));
+    SPDLOG_DEBUG("set_buffers [drawPacketId:{}]: indices: {}, sz: {}", drawPacketId, (size_t) drawPacket->index_count, drawPacket->index_count * sizeof(PrimitiveIndex), sizeof(PrimitiveIndex));
 
     if (vertCount > drawPacket->vertexCapacity) {
         desc->drawPacketVertexBuffers[drawPacketId].reset(drawPacket->vertCount);
@@ -288,9 +276,7 @@ void cudarf::pipe::set_draw_packet_buffers(cudarf::pipe::Ctx *desc,
     CUDA_CHK(cudaMemcpyAsync(drawPacket->dev_bufVertex, drawPacket->stagingBufVertex,
                              drawPacket->vertCount * sizeof(VertexIn), cudaMemcpyHostToDevice, cuStream));
 
-    SPDLOG_DEBUG("{}", fmt::sprintf("Device vertex buffer [sz: %zu = %zu * %zu] set",
-                drawPacket->vertCount * sizeof(VertexIn),
-                (size_t) drawPacket->vertCount, sizeof(VertexIn)));
+    SPDLOG_DEBUG("Device vertex buffer [sz: {} = {} * {}] set", drawPacket->vertCount * sizeof(VertexIn), (size_t) drawPacket->vertCount, sizeof(VertexIn));
 }
 
 void cudarf::create_surface(cudaSurfaceObject_t &fb,
@@ -448,22 +434,15 @@ cudarf::pipe::Ctx::Ctx(int window_width,
                              cudaMemcpyHostToDevice,
                              cuStream));
 
-    SPDLOG_INFO("{}", fmt::sprintf("\nInitializing rasterization descriptor [TAA: %d] ...", TAAEnabled));
-    SPDLOG_INFO("{}", fmt::sprintf("----------------------------------------"));
-    SPDLOG_INFO("{}", fmt::sprintf("Rasterizer virtual viewport: %lu x %lu (mult of 2^%d), %lu x %lu tiles | bin size: %lu x %lu (%lu x %lu tiles) | tile sz: %d x %d",
-                rasterizerW, rasterizerH, CUDARF_BIN_LOG2 + CUDARF_TILE_LOG2,
-                rasterizerW / CUDARF_TILE_SZ, rasterizerH / CUDARF_TILE_SZ,
-                rasterizerW / CUDARF_BIN_COUNT, rasterizerH / CUDARF_BIN_COUNT,
-                rasterizerW / CUDARF_BIN_COUNT / CUDARF_TILE_SZ,
-                rasterizerH / CUDARF_BIN_COUNT / CUDARF_TILE_SZ,
-                CUDARF_TILE_SZ, CUDARF_TILE_SZ
-        ));
+    SPDLOG_INFO("\nInitializing rasterization descriptor [TAA: {}] ...", TAAEnabled);
+    SPDLOG_INFO("----------------------------------------");
+    SPDLOG_INFO("Rasterizer virtual viewport: {} x {} (mult of 2^{}), {} x {} tiles | bin size: {} x {} ({} x {} tiles) | tile sz: {} x {}", rasterizerW, rasterizerH, CUDARF_BIN_LOG2 + CUDARF_TILE_LOG2, rasterizerW / CUDARF_TILE_SZ, rasterizerH / CUDARF_TILE_SZ, rasterizerW / CUDARF_BIN_COUNT, rasterizerH / CUDARF_BIN_COUNT, rasterizerW / CUDARF_BIN_COUNT / CUDARF_TILE_SZ, rasterizerH / CUDARF_BIN_COUNT / CUDARF_TILE_SZ, CUDARF_TILE_SZ, CUDARF_TILE_SZ);
 
     int tilesInBin = rasterizerW / CUDARF_BIN_COUNT / CUDARF_TILE_SZ * rasterizerH / CUDARF_BIN_COUNT / CUDARF_TILE_SZ;
 
     // this will cause artifacts in coarse tiler
     if (tilesInBin > CUDARF_MAX_TILES) {
-        SPDLOG_ERROR("{}", fmt::sprintf("Tiles in bin(%d) > CUDARF_MAX_TILES(%d)", tilesInBin, CUDARF_MAX_TILES));
+        SPDLOG_ERROR("Tiles in bin({}) > CUDARF_MAX_TILES({})", tilesInBin, CUDARF_MAX_TILES);
         assert(false);
     }
 
@@ -482,8 +461,8 @@ cudarf::pipe::Ctx::Ctx(int window_width,
 
     dev_binTotal.reset(CUDARF_MAXBINS_SQR * CUDARF_BIN_STREAMS_SIZE);
 
-    SPDLOG_INFO("{}", fmt::sprintf("Bin tiler (only fixed size): %lu KB", (CUDARF_MAXBINS_SQR * CUDARF_BIN_STREAMS_SIZE * sizeof(int32_t) +
-           CUDARF_MAXBINS_SQR * CUDARF_BIN_STREAMS_SIZE * sizeof(int32_t)) / 1024));
+    SPDLOG_INFO("Bin tiler (only fixed size): {} KB", (CUDARF_MAXBINS_SQR * CUDARF_BIN_STREAMS_SIZE * sizeof(int32_t) +
+           CUDARF_MAXBINS_SQR * CUDARF_BIN_STREAMS_SIZE * sizeof(int32_t)) / 1024);
 
     // CUDA_CHK(cudarf_cuda_free(dev_binQueues));
     // CUDA_CHK(cudarf_cuda_malloc(&dev_binQueues, CUDARF_MAXBINS_SQR * sizeof(SimpleQueue::Segment<NQ_BINSEG_SIZE>)));
@@ -498,7 +477,7 @@ cudarf::pipe::Ctx::Ctx(int window_width,
 
     dev_tileQHeaders.reset(tileCount);
 
-    SPDLOG_INFO("{}", fmt::sprintf("Coarse tiler: %lu KB", tileCount * (tileQLimit * sizeof(int32_t) + sizeof(SimpleQueue::Segment)) /  1024));
+    SPDLOG_INFO("Coarse tiler: {} KB", tileCount * (tileQLimit * sizeof(int32_t) + sizeof(SimpleQueue::Segment)) /  1024);
 
     init_tile_queue_static(this, cuStream);
 
@@ -509,7 +488,7 @@ cudarf::pipe::Ctx::Ctx(int window_width,
     dev_geom_output.reset(width * height);
     dev_xyCommands.reset(width * height);
 
-    SPDLOG_INFO("{}", fmt::sprintf("Depth buffer: %lu KB", width * height * sizeof(DepthValue) / 1024));
+    SPDLOG_INFO("Depth buffer: {} KB", width * height * sizeof(DepthValue) / 1024);
 
 #if defined(WITH_TAA)
 
@@ -520,25 +499,15 @@ cudarf::pipe::Ctx::Ctx(int window_width,
 
     dev_velocityTex.reset(width * height);
 
-    SPDLOG_INFO("{}", fmt::sprintf("Internal framebuffer %d x %d @ 32: %lu KB",
-                width, height,
-                (width * height * sizeof(ColorN)) / 1024));
+    SPDLOG_INFO("Internal framebuffer {} x {} @ 32: {} KB", width, height, (width * height * sizeof(ColorN)) / 1024);
 
-    SPDLOG_INFO("{}", fmt::sprintf("Output framebuffer[0] %d x %d @ 32: %lu KB",
-                width, height,
-                (width * height * sizeof(ColorN)) / 1024));
+    SPDLOG_INFO("Output framebuffer[0] {} x {} @ 32: {} KB", width, height, (width * height * sizeof(ColorN)) / 1024);
 
-    SPDLOG_INFO("{}", fmt::sprintf("Output framebuffer[1] %d x %d @ 32: %lu KB",
-                width, height,
-                (width * height * sizeof(ColorN)) / 1024));
+    SPDLOG_INFO("Output framebuffer[1] {} x {} @ 32: {} KB", width, height, (width * height * sizeof(ColorN)) / 1024);
 
-    SPDLOG_INFO("{}", fmt::sprintf("UI framebuffer %d x %d @ 32: %lu KB",
-                width, height,
-                (width * height * sizeof(ColorN)) / 1024));
+    SPDLOG_INFO("UI framebuffer {} x {} @ 32: {} KB", width, height, (width * height * sizeof(ColorN)) / 1024);
 
-    SPDLOG_INFO("{}", fmt::sprintf("Velocity texture %d x %d: %lu KB",
-                width, height,
-                (width * height * sizeof(cudarf::Velocity)) / 1024));
+    SPDLOG_INFO("Velocity texture {} x {}: {} KB", width, height, (width * height * sizeof(cudarf::Velocity)) / 1024);
 #else
 
     free_surface(dev_framebuffer);
@@ -546,13 +515,9 @@ cudarf::pipe::Ctx::Ctx(int window_width,
     free_surface(uiFramebuffer);
     create_surface(uiFramebuffer, width, height, cuStream);
 
-    SPDLOG_INFO("{}", fmt::sprintf("Output framebuffer %d x %d @ 32: %lu KB",
-                width, height,
-                (width * height * sizeof(ColorN)) / 1024));
+    SPDLOG_INFO("Output framebuffer {} x {} @ 32: {} KB", width, height, (width * height * sizeof(ColorN)) / 1024);
 
-    SPDLOG_INFO("{}", fmt::sprintf("UI framebuffer %d x %d @ 32: %lu KB",
-                width, height,
-                (width * height * sizeof(ColorN)) / 1024));
+    SPDLOG_INFO("UI framebuffer {} x {} @ 32: {} KB", width, height, (width * height * sizeof(ColorN)) / 1024);
 #endif
 
 #ifdef WITH_TAA
@@ -565,7 +530,7 @@ cudarf::pipe::Ctx::Ctx(int window_width,
     for (float2 pt: TAA.pointsHalton) {
         points += ("(" + std::to_string(pt.x) + ", " + std::to_string(pt.y) + ") ");
     }
-    SPDLOG_INFO("{}", fmt::sprintf("Halton points: %s", points.c_str()));
+    SPDLOG_INFO("Halton points: {}", points.c_str());
 #endif
 }
 

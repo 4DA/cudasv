@@ -1,7 +1,6 @@
 #include <cuda_runtime.h>
 
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 
 #include "math.hpp"

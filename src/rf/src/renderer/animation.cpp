@@ -1,5 +1,4 @@
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include "animation.hpp"
 
@@ -117,10 +116,7 @@ void AnimationState::update_transforms()
         {
             target->toLocal.rotation = channel->getRotation(animationTime);
 
-            SPDLOG_TRACE("{}", fmt::sprintf("anim [name=%s, target=%s] (t = %f) rotation = <%f, %f, %f, %f>",
-                   name.c_str(), target->name.c_str(), animationTime, target->toLocal.rotation.x,
-                   target->toLocal.rotation.y, target->toLocal.rotation.z,
-                   target->toLocal.rotation.w));
+            SPDLOG_TRACE("anim [name={}, target={}] (t = {:f}) rotation = <{:f}, {:f}, {:f}, {:f}>", name.c_str(), target->name.c_str(), animationTime, target->toLocal.rotation.x, target->toLocal.rotation.y, target->toLocal.rotation.z, target->toLocal.rotation.w);
 
             break;
         }
@@ -129,9 +125,7 @@ void AnimationState::update_transforms()
         {
             target->toLocal.translation = channel->get_translation(animationTime);
 
-            SPDLOG_TRACE("{}", fmt::sprintf("anim [name=%s, target=%s] (t = %f) translation = <%f, %f, %f, %f>",
-                name.c_str(), target->name.c_str(), animationTime, target->toLocal.translation.x,
-                target->toLocal.translation.y, target->toLocal.translation.z));
+            SPDLOG_TRACE("anim [name={}, target={}] (t = {:f}) translation = <{:f}, {:f}, {:f}>", name.c_str(), target->name.c_str(), animationTime, target->toLocal.translation.x, target->toLocal.translation.y, target->toLocal.translation.z);
 
             break;
         }
@@ -140,15 +134,13 @@ void AnimationState::update_transforms()
         {
             target->toLocal.scale = channel->get_translation(animationTime);
 
-            SPDLOG_TRACE("{}", fmt::sprintf("anim [name=%s] (t = %f) scale = <%f, %f, %f>",
-                name.c_str(), animationTime, target->toLocal.scale.x,
-                target->toLocal.scale.y, target->toLocal.scale.z));
+            SPDLOG_TRACE("anim [name={}] (t = {:f}) scale = <{:f}, {:f}, {:f}>", name.c_str(), animationTime, target->toLocal.scale.x, target->toLocal.scale.y, target->toLocal.scale.z);
 
             break;
         }
 
         default:
-            SPDLOG_ERROR("{}", fmt::sprintf("Unsupported TargetPath (%d)", static_cast<int>(channel->targetPath)));
+            SPDLOG_ERROR("Unsupported TargetPath ({})", static_cast<int>(channel->targetPath));
             assert(false);
         }
 
@@ -159,7 +151,7 @@ void AnimationState::update_transforms()
 
     if (allChannelsFinished) {
         finished = true;
-        SPDLOG_INFO("{}", fmt::sprintf("animation [name=%s] is over", name.c_str()));
+        SPDLOG_INFO("animation [name={}] is over", name.c_str());
     }
 }
 

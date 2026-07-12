@@ -3,7 +3,6 @@
 #include <algorithm>
 
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include <world.hpp>
 
@@ -93,10 +92,7 @@ int ViewInteractionRouter::handle_ray_intersect(
         result.erase(result.begin());
     }
 
-    SPDLOG_INFO("{}", fmt::sprintf("pix[%.2f, %.2f] -> query[%f, %f, %f] results, cnt = %zu",
-                                   screen_ray.x, screen_ray.y,
-                                   ray.x, ray.y, ray.z,
-                                   result.size()));
+    SPDLOG_INFO("pix[{:.2f}, {:.2f}] -> query[{:f}, {:f}, {:f}] results, cnt = {}", screen_ray.x, screen_ray.y, ray.x, ray.y, ray.z, result.size());
 
     if (result.empty()) {
         return 0;
@@ -111,17 +107,14 @@ int ViewInteractionRouter::handle_ray_intersect(
     auto it = std::find(viewpoint_controls.begin(), viewpoint_controls.end(), result[0].object);
 
     if (it == viewpoint_controls.end()) {
-        SPDLOG_ERROR("{}", fmt::sprintf("viewpoint control[id = %s] is not registered",
-                                        result[0].object->name.c_str()));
+        SPDLOG_ERROR("viewpoint control[id = {}] is not registered", result[0].object->name.c_str());
         return -1;
     }
 
     unsigned int idx = std::distance(viewpoint_controls.begin(), it);
 
     if (idx < _controlsConfig->controls_count) {
-        SPDLOG_TRACE("{}", fmt::sprintf("controls_config->controls[idx].viewpoint %d %d",
-                                        idx,
-                                        _controlsConfig->controls[idx].viewpoint));
+        SPDLOG_TRACE("controls_config->controls[idx].viewpoint {} {}", idx, _controlsConfig->controls[idx].viewpoint);
         return on_viewpoint_selected(_controlsConfig->controls[idx].viewpoint);
     }
 

@@ -3,7 +3,6 @@
 #include <string>
 
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include <tinygltf/stb_image.h>
 
@@ -21,13 +20,13 @@ Image rf::load_image_hdr(const std::string &file) {
 
     image.data = stbi_loadf(file.c_str(), &image.w, &image.h, &image.channels, 4);
     if (!image.data) {
-        SPDLOG_ERROR("{}", fmt::sprintf("Can not load HDR image: %s", file.c_str()));
+        SPDLOG_ERROR("Can not load HDR image: {}", file.c_str());
         return image;
     }
 
     image.channels = 4;
 
-    SPDLOG_INFO("{}", fmt::sprintf("loaded image '%s': %d x %d @ %d", file.c_str(), image.w, image.h, image.channels));
+    SPDLOG_INFO("loaded image '{}': {} x {} @ {}", file.c_str(), image.w, image.h, image.channels);
 
     image.pixel_type = PixelChannelType::FLOAT32;
 
@@ -66,7 +65,7 @@ Image rf::load_image(
     }
 
     if (!image.data) {
-        SPDLOG_ERROR("{}", fmt::sprintf("Can not load image: %s", file.c_str()));
+        SPDLOG_ERROR("Can not load image: {}", file.c_str());
         return image;
     }
 
@@ -76,7 +75,7 @@ Image rf::load_image(
         image.channels = *channelCount;
     }
 
-    SPDLOG_INFO("{}", fmt::sprintf("Loaded image '%s': %d x %d @ %d", file.c_str(), image.w, image.h, image.channels));
+    SPDLOG_INFO("Loaded image '{}': {} x {} @ {}", file.c_str(), image.w, image.h, image.channels);
 
     if (flip_on_load) {
         stbi_set_flip_vertically_on_load(0);

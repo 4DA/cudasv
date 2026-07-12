@@ -1,5 +1,4 @@
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include <engine/engine.hpp>
 
@@ -184,14 +183,14 @@ engine::Error Engine::process(const videoio::RuntimeFramePacket4Cam &frame_packe
             }
             break;
         default:
-            SPDLOG_ERROR("{}", fmt::sprintf("Unknown view type %d", active_view));
+            SPDLOG_ERROR("Unknown view type {}", active_view);
             assert(false);
             return ERROR;
         }
     }
 
     if constexpr (CUDARF_ENABLE_CUDA_PROFILING) {
-        SPDLOG_INFO("{}", fmt::sprintf("frame counter: %u", _impl->frameCounter));
+        SPDLOG_INFO("frame counter: {}", _impl->frameCounter);
         _impl->frameTimeDB->show();
     }
 

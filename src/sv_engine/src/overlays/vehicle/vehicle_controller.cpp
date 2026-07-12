@@ -1,5 +1,4 @@
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include <vector>
 
@@ -56,7 +55,7 @@ rf::SceneComponent * WheelComponents::get_wheel_compo(const std::string &name,
 
     rf::SceneComponent * result = scene.get(name);
     if (!result) {
-        SPDLOG_ERROR("{}", fmt::sprintf("Wheel Component `%s` not found", name.c_str()));
+        SPDLOG_ERROR("Wheel Component `{}` not found", name.c_str());
         return nullptr;
     }
 

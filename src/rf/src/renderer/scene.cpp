@@ -1,7 +1,6 @@
 #include <algorithm>
 
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include <rf/renderer/trs_transform.hpp>
 

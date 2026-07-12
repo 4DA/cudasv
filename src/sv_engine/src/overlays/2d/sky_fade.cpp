@@ -1,5 +1,4 @@
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include "sky_fade.hpp"
 
@@ -79,8 +78,7 @@ static glm::vec3 compute_intersection(const SkyFadeParams &params,
             else return false;
         });
 
-    SPDLOG_TRACE("{}", fmt::sprintf("cylinder intersection t = %2.f, p = %.2f, %2.f, %2.f",
-                 ts[0], points[0].x, points[0].y, points[0].z));
+    SPDLOG_TRACE("cylinder intersection t = {:2.f}, p = {:.2f}, {:2.f}, {:2.f}", ts[0], points[0].x, points[0].y, points[0].z);
 
     return points[0];
 }

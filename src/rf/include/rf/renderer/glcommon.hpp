@@ -1,5 +1,4 @@
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #ifndef RF_GLCOMMON_HPP
 #define RF_GLCOMMON_HPP
@@ -13,8 +12,8 @@ namespace rf
     while (true) {                                                      \
         GLenum __e = glGetError();                                      \
         if (__e != GL_NO_ERROR) {                                       \
-            SPDLOG_ERROR("{}", fmt::sprintf("GL error 0x%x in \"%s\": (%s:%d)",          \
-                         __e, __where, __FILE__, __LINE__));             \
+            SPDLOG_ERROR("GL error 0x{:x} in \"{}\": ({}:{})", \
+                         __e, __where, __FILE__, __LINE__);             \
             exit(0);                                                    \
         }                                                               \
         break;                                                          \
@@ -31,8 +30,8 @@ namespace rf
                 break;                                                  \
             } else {                                                    \
                 fail = -1;                                              \
-                SPDLOG_ERROR("{}", fmt::sprintf("GL error 0x%x in \"%s\": (%s:%d)",      \
-                             __e, __where, __FILE__, __LINE__));         \
+                SPDLOG_ERROR("GL error 0x{:x} in \"{}\": ({}:{})", \
+                             __e, __where, __FILE__, __LINE__);         \
            }                                                            \
         }                                                               \
     } while (0)

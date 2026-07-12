@@ -1,5 +1,4 @@
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include "primitive_component.hpp"
 #include "virtual_camera.hpp"

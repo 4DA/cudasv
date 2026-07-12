@@ -1,5 +1,4 @@
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include <engine/camera_config.hpp>
 #include <engine/engine.hpp>
@@ -58,11 +57,7 @@ engine::Error Engine::init()
         _impl->cudaOutput[outputIndex] =
             std::make_unique<cudarf::CudaOutput>(displayWidth, displayHeight);
 
-        SPDLOG_INFO("{}",
-                    fmt::sprintf("CUDA Output[%d]/WH: %d / %d",
-                                 outputIndex,
-                                 displayWidth,
-                                 displayHeight));
+        SPDLOG_INFO("CUDA Output[{}]/WH: {} / {}", outputIndex, displayWidth, displayHeight);
 
         _impl->cuda_rasterizers[outputIndex] = std::make_unique<cudarf::pipe::Ctx>(
                            displayWidth,
@@ -89,7 +84,7 @@ engine::Error Engine::init()
         }
     }
 
-    SPDLOG_INFO("{}", fmt::sprintf("Start mesh loading"));
+    SPDLOG_INFO("Start mesh loading");
 
     rf::TRSTransform vehicleTransform;
     vehicleTransform.scale = glm::vec3(VehicleScaleFactor, VehicleScaleFactor, VehicleScaleFactor);
@@ -111,7 +106,7 @@ engine::Error Engine::init()
 
     assert(_impl->world->scene().get_materials_count() > 0);
 
-    SPDLOG_INFO("{}", fmt::sprintf("Done loading mesh. OK"));
+    SPDLOG_INFO("Done loading mesh. OK");
 
     if (test_scenario_config->enabled) {
         std::string scenarioName = test_scenario_config->name.empty()
@@ -148,7 +143,7 @@ engine::Error Engine::init()
     if (_impl->world->init(_impl->cuda_rasterizers[0].get(),
                            &config,
                            _impl->cudaOutputStreams[0])) {
-        SPDLOG_ERROR("{}", fmt::sprintf("world initialization failed"));
+        SPDLOG_ERROR("world initialization failed");
         assert(false);
         return ERROR;
     }
@@ -168,7 +163,7 @@ engine::Error Engine::init()
                              &_impl->vehicleState,
                              displayWidth,
                              displayHeight)) {
-        SPDLOG_ERROR("{}", fmt::sprintf("3d view initialization failed"));
+        SPDLOG_ERROR("3d view initialization failed");
         assert(false);
         return ERROR;
     }
@@ -183,7 +178,7 @@ engine::Error Engine::init()
                                        *_impl->world,
                                        _impl->view_3d->get_viewpoints(),
                                        _impl->cudaOutputStreams[0])) {
-            SPDLOG_ERROR("{}", fmt::sprintf("3d view virtual controls initialization failed"));
+            SPDLOG_ERROR("3d view virtual controls initialization failed");
             assert(false);
         }
     }

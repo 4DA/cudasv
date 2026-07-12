@@ -1,7 +1,6 @@
 #include <cmath>
 
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include <rf/renderer/glm_common.hpp>
 

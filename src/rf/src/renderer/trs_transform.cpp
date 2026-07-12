@@ -1,5 +1,4 @@
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include "trs_transform.hpp"
 
@@ -12,8 +11,7 @@ namespace rf
 void check_rotation_unity(const glm::quat rotation)
 {
     if (glm::length(rotation) > 1.0f + 2.0f * std::numeric_limits<float>::epsilon()) {
-        SPDLOG_ERROR("{}", fmt::sprintf("not unity rotation quat: <%f, %f, %f, %f>, norm = %f\n",
-            rotation.w, rotation.x, rotation.y, rotation.z, glm::length(rotation)));
+        SPDLOG_ERROR("not unity rotation quat: <{:f}, {:f}, {:f}, {:f}>, norm = {:f}\n", rotation.w, rotation.x, rotation.y, rotation.z, glm::length(rotation));
     }
 }
 

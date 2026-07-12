@@ -5,7 +5,6 @@
 #include <string>
 
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include <rf/renderer/glm_common.hpp>
 #include <rf/renderer/mesh_geometry.hpp>
@@ -76,7 +75,7 @@ bool make_gltf_mesh(const tinygltf::Model &model,
         } else if (it.first == ATTRIB_TANGENT) {
             gltfMesh.tangents = std::move(attrib);
         } else {
-            SPDLOG_INFO("{}", fmt::sprintf("Skipped vertex attrib %s", it.first.c_str()));
+            SPDLOG_INFO("Skipped vertex attrib {}", it.first.c_str());
         }
     }
 
@@ -179,8 +178,7 @@ bool create_mesh_component(cudarf::pipe::Ctx *desc,
             size_t accessorId = attribPair.second;
 
             if (accessorId >= model.accessors.size()) {
-                SPDLOG_ERROR("{}", fmt::sprintf("Invalid accessorId: %lu, total accessors count: %lu",
-                                                accessorId, model.accessors.size()));
+                SPDLOG_ERROR("Invalid accessorId: {}, total accessors count: {}", accessorId, model.accessors.size());
                 return false;
             }
 
@@ -194,7 +192,7 @@ bool create_mesh_component(cudarf::pipe::Ctx *desc,
                     vertexMin = *resMin;
                     vertexMax = *resMax;
                 } else {
-                    SPDLOG_ERROR("{}", fmt::sprintf("Accessor contains invalid min/max values"));
+                    SPDLOG_ERROR("Accessor contains invalid min/max values");
                     return false;
                 }
             } else if (attribPair.first == ATTRIB_NORMAL) {
@@ -228,7 +226,7 @@ bool create_mesh_component(cudarf::pipe::Ctx *desc,
                     return false;
                 }
             } else {
-                SPDLOG_INFO("{}", fmt::sprintf("Skipping attribute %s", attribPair.first.c_str()));
+                SPDLOG_INFO("Skipping attribute {}", attribPair.first.c_str());
                 continue;
             }
 
@@ -274,8 +272,7 @@ bool create_mesh_component(cudarf::pipe::Ctx *desc,
         cudarf::pipe::set_draw_packet_buffers(desc, gltfMesh, drawPacketId, cuStream);
     }
 
-    SPDLOG_DEBUG("{}", fmt::sprintf("added prim_component [name = %s, toLocal='%s'",
-                                    newCompo->name.c_str(), newCompo->toLocal.to_string().c_str()));
+    SPDLOG_DEBUG("added prim_component [name = {}, toLocal='{}'", newCompo->name.c_str(), newCompo->toLocal.to_string().c_str());
 
     if (cb && cb(*newCompo, scene)) {
         *outComponent = nullptr;
@@ -312,7 +309,7 @@ bool create_light_component(const tinygltf::Model &model,
 
     auto extension_it = model.extensions.find("KHR_lights_punctual");
     if (extension_it == model.extensions.end() || !extension_it->second.Has("lights")) {
-        SPDLOG_INFO("{}", fmt::sprintf("No lights are found in model"));
+        SPDLOG_INFO("No lights are found in model");
         return false;
     }
 
@@ -335,8 +332,7 @@ bool create_light_component(const tinygltf::Model &model,
     PointLightComponent *newCompo =
         scene.add_light_component(compoName, TRSTransform(translation, rotation, scale), intensity, parent);
 
-    SPDLOG_DEBUG("{}", fmt::sprintf("created light component [name = %s, int = %f, xform = %s]",
-                                    newCompo->name.c_str(), newCompo->intensity, newCompo->to_world.to_string().c_str()));
+    SPDLOG_DEBUG("created light component [name = {}, int = {:f}, xform = {}]", newCompo->name.c_str(), newCompo->intensity, newCompo->to_world.to_string().c_str());
     *outComponent = newCompo;
     return true;
 }
@@ -432,8 +428,7 @@ bool create_scene_component(cudarf::pipe::Ctx *desc,
     SceneComponent *newCompo =
         scene.add_scene_component(compoName, TRSTransform(translation, rotation, scale), parent);
 
-    SPDLOG_DEBUG("{}", fmt::sprintf("added scene_component [name = %s] [toLocal %s]",
-                                    newCompo->name), newCompo->toLocal.to_string());
+    SPDLOG_DEBUG("added scene_component [name = {}] [toLocal {}]", newCompo->name, newCompo->toLocal.to_string());
 
     *outComponent = newCompo;
     return true;

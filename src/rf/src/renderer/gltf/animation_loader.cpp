@@ -5,7 +5,6 @@
 #include <unordered_map>
 
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include "renderer/gltf/accessors.hpp"
 
@@ -39,8 +38,7 @@ get_key_frame_input(const tinygltf::Model &model,
     }
 
     for (size_t i = 0; i < accessor.count; i++) {
-        SPDLOG_DEBUG("{}", fmt::sprintf("accessor %d key frame time: %f",
-                                        accessorID, get_attribute_float(&accessor, i)));
+        SPDLOG_DEBUG("accessor {} key frame time: {:f}", accessorID, get_attribute_float(&accessor, i));
         result.times.push_back(get_attribute_float(&accessor, i));
     }
 
@@ -70,7 +68,7 @@ create_animation_sampler(const tinygltf::Model &model,
     } else if (gltfSampler.interpolation == INTERPOLATION_CUBICSPLINE) {
         sampler->interpolation = rf::animation::Interpolation::CubicSpline;
     } else {
-        SPDLOG_ERROR("{}", fmt::sprintf("Unknown interpolation type: %s", gltfSampler.interpolation.c_str()));
+        SPDLOG_ERROR("Unknown interpolation type: {}", gltfSampler.interpolation.c_str());
         return nullptr;
     }
 
@@ -127,7 +125,7 @@ create_animation_channel(const tinygltf::Model &model,
     } else if (gltfChannel.target_path == ANIMATION_TARGET_WEIGHTS) {
         targetPath = rf::animation::TargetPath::Weights;
     } else {
-        SPDLOG_ERROR("{}", fmt::sprintf("Unknown target path: %s", gltfChannel.target_path.c_str()));
+        SPDLOG_ERROR("Unknown target path: {}", gltfChannel.target_path.c_str());
         return nullptr;
     }
 
@@ -173,10 +171,7 @@ rf::AnimationMap load_animations(const tinygltf::Model &model, const std::string
                 break;
             }
 
-            SPDLOG_DEBUG("{}", fmt::sprintf("Loaded animation [name=%s] [target=%s], [path=%s]",
-                                            animation.name.c_str(),
-                                            channel->target_name.c_str(),
-                                            gltfChannel.target_path.c_str()));
+            SPDLOG_DEBUG("Loaded animation [name={}] [target={}], [path={}]", animation.name.c_str(), channel->target_name.c_str(), gltfChannel.target_path.c_str());
             animation.channels.push_back(std::move(channel));
         }
 

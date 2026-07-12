@@ -1,7 +1,6 @@
 #include <vector>
 
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include <rf/renderer/primitive_component.hpp>
 #include <rf/camera_control/rotator.hpp>
@@ -66,8 +65,7 @@ static bool viewpoint_control_inserter(const VirtualControlConfig *config,
         {
             rf::PrimitiveComponent &compo = components[comp_idx];
 
-            SPDLOG_INFO("{}", fmt::sprintf("prim_component [name = %s, toLocal='%s'",
-                        compo.name.c_str(), compo.toLocal.to_string().c_str()));
+            SPDLOG_INFO("prim_component [name = {}, toLocal='{}'", compo.name.c_str(), compo.toLocal.to_string().c_str());
 
             std::string public_component_name = std::string(control->component);
             std::string component_name = "control::" + public_component_name;
@@ -143,11 +141,7 @@ static bool viewpoint_control_inserter(const VirtualControlConfig *config,
                                                               frontFace);
                 }
 
-                SPDLOG_INFO("{}", fmt::sprintf("add component %s, %s, scale: (%f, %f, %f)",
-                             public_component_name.c_str(), name.c_str(),
-                             compo.toLocal.scale.x,
-                             compo.toLocal.scale.y,
-                             compo.toLocal.scale.z));
+                SPDLOG_INFO("add component {}, {}, scale: ({:f}, {:f}, {:f})", public_component_name.c_str(), name.c_str(), compo.toLocal.scale.x, compo.toLocal.scale.y, compo.toLocal.scale.z);
 
                 if (newCompo) {
                     newCompo->setPrimitiveGroupFrom(compo);
@@ -157,8 +151,7 @@ static bool viewpoint_control_inserter(const VirtualControlConfig *config,
                 break;
             } else {
                 if (comp_idx == (components.size() - 1)) {
-                    SPDLOG_ERROR("{}", fmt::sprintf("Can't find control-%d, name = %s",
-                                 index, component_name.c_str()));
+                    SPDLOG_ERROR("Can't find control-{}, name = {}", index, component_name.c_str());
                     return false;
                 }
             }

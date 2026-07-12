@@ -2,7 +2,6 @@
 #include <cstring>
 
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include <rf/renderer/glm_common.hpp>
 #include "renderer/cudarf/helpers.hpp"
@@ -21,5 +20,5 @@ void rf::log_duration(const std::string &message, const Duration& duration, unsi
         padding[indent] = '\0';
     }
 
-    SPDLOG_INFO("{}", fmt::sprintf("CPU TIME(ms) %s%s: %.3lf", padding, message.c_str(), duration.count()));
+    SPDLOG_INFO("CPU TIME(ms) {}{}: {:.3f}", padding, message.c_str(), duration.count());
 }

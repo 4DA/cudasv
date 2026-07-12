@@ -1,5 +1,4 @@
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include "virtual_camera.hpp"
 
@@ -151,14 +150,7 @@ void VirtualCamera::get_virtual_image_plane_params(glm::vec3 &horizontal,
 
     lower_left = origin - horizontal / 2.0f - vertical / 2.0f - ipd * w;
 
-    SPDLOG_TRACE("{}", fmt::sprintf("cam basis: w[%f, %f, %f], u[%f, %f, %f], v[%f, %f, %f], ll[%f, %f, %f]",
-           w.x, w.y, w.z,
-           u.x, u.y, u.z,
-           v.x, v.y, v.z,
-           lower_left.x,
-           lower_left.y,
-           lower_left.z
-        ));
+    SPDLOG_TRACE("cam basis: w[{:f}, {:f}, {:f}], u[{:f}, {:f}, {:f}], v[{:f}, {:f}, {:f}], ll[{:f}, {:f}, {:f}]", w.x, w.y, w.z, u.x, u.y, u.z, v.x, v.y, v.z, lower_left.x, lower_left.y, lower_left.z);
 }
 
 glm::vec3 VirtualCamera::get_ray(glm::vec2 screen_ray) const

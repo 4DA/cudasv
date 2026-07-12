@@ -1,5 +1,4 @@
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include <array>
 
@@ -239,9 +238,5 @@ bool BoundingBox::is_good() const
 void BoundingBox::dump(std::string msg) const
 {
     glm::vec3 c = center();
-    SPDLOG_INFO("{}", fmt::sprintf("%s min: {%.2f, %.2f, %.2f}, max: {%.2f, %.2f, %.2f}, c: {%.2f, %.2f, %.2f}",
-           msg.c_str(),
-           vertex_min.x, vertex_min.y, vertex_min.z,
-           vertex_max.x, vertex_max.y, vertex_max.z,
-           c.x, c.y, c.z));
+    SPDLOG_INFO("{} min: {{{:.2f}, {:.2f}, {:.2f}}}, max: {{{:.2f}, {:.2f}, {:.2f}}}, c: {{{:.2f}, {:.2f}, {:.2f}}}", msg.c_str(), vertex_min.x, vertex_min.y, vertex_min.z, vertex_max.x, vertex_max.y, vertex_max.z, c.x, c.y, c.z);
 }

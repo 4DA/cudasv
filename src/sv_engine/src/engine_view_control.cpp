@@ -1,5 +1,4 @@
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/bundled/printf.h>
 
 #include <engine/engine.hpp>
 
@@ -19,7 +18,7 @@ engine::Error Engine::input_event(const Output *output, InputEvent *event)
             }
             break;
         default:
-            SPDLOG_ERROR("{}", fmt::sprintf("Unknown view type %d", active_view));
+            SPDLOG_ERROR("Unknown view type {}", active_view);
             return ERROR;
         }
     }
@@ -36,7 +35,7 @@ engine::Error Engine::view_animate(int view, int viewpoint)
         }
         break;
     default:
-        SPDLOG_ERROR("{}", fmt::sprintf("Unknown view type %d", view));
+        SPDLOG_ERROR("Unknown view type {}", view);
         return ERROR;
     }
 
@@ -52,7 +51,7 @@ engine::Error Engine::get_viewpoint(int view, int *viewpoint)
         }
         break;
     default:
-        SPDLOG_ERROR("{}", fmt::sprintf("Unknown view type %d", view));
+        SPDLOG_ERROR("Unknown view type {}", view);
         return ERROR;
     }
 
@@ -70,7 +69,7 @@ engine::Error Engine::get_animation_status(int view, int *is_active, unsigned in
         }
         break;
     default:
-        SPDLOG_ERROR("{}", fmt::sprintf("Unsupported view type %d", view));
+        SPDLOG_ERROR("Unsupported view type {}", view);
         return ERROR;
     }
 
