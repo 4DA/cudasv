@@ -8,7 +8,7 @@ project(sv_engine VERSION "1.0.0" LANGUAGES C CXX)
 
 option(WITH_BUILD_NATIVE "Enable native x64-specific compile options" OFF)
 
-set (CMAKE_CXX_STANDARD 20)
+set (CMAKE_CXX_STANDARD 23)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(GNUInstallDirs)

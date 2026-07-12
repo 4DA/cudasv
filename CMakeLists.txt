@@ -22,7 +22,7 @@ option(WITH_CUDA_COMPUTE_SANITIZER "Build CUDA code with sanitizer-friendly debu
 option(WITH_TAA "Enable temporal anti-aliasing code paths" ON)
 option(CUDARF_FORCE_AFFINE_BARYCENTRICS "Force affine barycentrics in CUDARF shading paths" OFF)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CUDA_STANDARD 20)

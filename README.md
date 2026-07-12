@@ -28,7 +28,7 @@ Build tools:
 
 - CMake 3.16 or newer.
 - Make, via the `scripts/set_workspace.sh` workflow.
-- A C++20-capable host compiler compatible with the installed CUDA Toolkit.
+- A C++23-capable host compiler compatible with the installed CUDA Toolkit.
 - CUDA Toolkit with `nvcc`.
 - An NVIDIA driver new enough for the installed CUDA Toolkit.
 
