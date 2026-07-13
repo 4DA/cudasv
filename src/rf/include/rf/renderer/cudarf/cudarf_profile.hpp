@@ -23,18 +23,13 @@ class Interval
 public:
     Interval(const std::string &name, cudaStream_t cuStream = 0);
 
-    Interval(Interval &&other):
-        name(std::move(other.name)),
-        start(other.start),
-        stop(other.stop)
-    {
-        other.start = 0;
-        other.stop = 0;
-    }
-
     Interval(const Interval &ev) = delete;
     Interval & operator=(const Interval &ev) = delete;
+
+    Interval(Interval &&) = delete;
+    Interval &operator=(Interval &&) = delete;
     Interval() = delete;
+
     ~Interval();
 
     void close();
