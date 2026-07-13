@@ -45,7 +45,10 @@ static GLuint texLoc = 0;
 static GLuint xyLoc = 0;
 static GLuint uvLoc = 0;
 
-static void print_dev_prop(cudaDeviceProp devProp)
+static void print_dev_prop(const cudaDeviceProp &devProp,
+                           int clockRate,
+                           int asyncEngineCount,
+                           int kernelExecTimeout)
 {
     SPDLOG_INFO("Major revision number:         {}", devProp.major);
     SPDLOG_INFO("Minor revision number:         {}", devProp.minor);
@@ -62,12 +65,12 @@ static void print_dev_prop(cudaDeviceProp devProp)
     for (int i = 0; i < 3; ++i) {
         SPDLOG_INFO("Maximum dimension {} of grid:   {}", i, devProp.maxGridSize[i]);
     }
-    SPDLOG_INFO("Clock rate:                    {}", devProp.clockRate);
+    SPDLOG_INFO("Clock rate:                    {}", clockRate);
     SPDLOG_INFO("Total constant memory:         {}", devProp.totalConstMem);
     SPDLOG_INFO("Texture alignment:             {}", devProp.textureAlignment);
-    SPDLOG_INFO("Concurrent copy and execution: {}", devProp.deviceOverlap ? "Yes" : "No");
+    SPDLOG_INFO("Concurrent copy and execution: {}", asyncEngineCount > 0 ? "Yes" : "No");
     SPDLOG_INFO("Number of multiprocessors:     {}", devProp.multiProcessorCount);
-    SPDLOG_INFO("Kernel execution timeout:      {}", devProp.kernelExecTimeoutEnabled ? "Yes" : "No");
+    SPDLOG_INFO("Kernel execution timeout:      {}", kernelExecTimeout ? "Yes" : "No");
 }
 
 static inline const char* _ConvertSMVer2ArchName(int major, int minor)
@@ -329,13 +332,21 @@ cudarf::CudaOutput::CudaOutput(int width, int height):
         assert(false);
     }
 
-    CUDA_CHK(cudaGetDeviceProperties(&prop, 0));
-    print_dev_prop(prop);
+    CUDA_CHK(cudaGetDeviceProperties(&prop, dev_id));
 
-    int computeMode = -1, major = 0, minor = 0;
+    int computeMode = -1;
+    int major = 0;
+    int minor = 0;
+    int asyncEngineCount = 0;
+    int kernelExecTimeout = 0;
     CUDA_CHK(cudaDeviceGetAttribute(&computeMode, cudaDevAttrComputeMode, dev_id));
     CUDA_CHK(cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, dev_id));
     CUDA_CHK(cudaDeviceGetAttribute(&minor, cudaDevAttrComputeCapabilityMinor, dev_id));
+    CUDA_CHK(cudaDeviceGetAttribute(&clockRate, cudaDevAttrClockRate, dev_id));
+    CUDA_CHK(cudaDeviceGetAttribute(&asyncEngineCount, cudaDevAttrAsyncEngineCount, dev_id));
+    CUDA_CHK(cudaDeviceGetAttribute(&kernelExecTimeout, cudaDevAttrKernelExecTimeout, dev_id));
+
+    print_dev_prop(prop, clockRate, asyncEngineCount, kernelExecTimeout);
 
     if (computeMode == cudaComputeModeProhibited) {
         SPDLOG_ERROR("Error: device is running in <Compute Mode Prohibited>, "
@@ -353,7 +364,6 @@ cudarf::CudaOutput::CudaOutput(int width, int height):
                 _ConvertSMVer2ArchName(major, minor));
 
     SMPCount = prop.multiProcessorCount;
-    clockRate = prop.clockRate;
 
     CUDA_CHK(cudarf_cuda_malloc((void **)&d_output, width * height * sizeof(GLubyte) * 4));
     CUDA_CHK(cudaMallocHost((void **)&cpu_output, width * height * sizeof(GLubyte) * 4));
