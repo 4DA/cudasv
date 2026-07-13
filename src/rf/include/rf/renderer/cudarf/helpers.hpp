@@ -1,5 +1,5 @@
-#ifndef helpers_hpp
-#define helpers_hpp
+#ifndef CUDARF_HELPERS_HPP
+#define CUDARF_HELPERS_HPP
 
 #include <cuda_runtime.h>
 #include <stdio.h>

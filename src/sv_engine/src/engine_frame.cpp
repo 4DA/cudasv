@@ -73,7 +73,7 @@ engine::Error Engine::pre_process(const videoio::RuntimeFramePacket4Cam &frame_p
                 frames_set.width,
                 frames_set.height,
                 frames_set.stride,
-                _impl->cudaOutputStreams[0]);
+                _impl->cudaOutputStreams[0].get());
     }
 
     _impl->world->frame_projector().prevFrameSeq = frames_set.frameseq;
@@ -102,7 +102,7 @@ engine::Error Engine::process(const videoio::RuntimeFramePacket4Cam &frame_packe
 
     cudarf::pipe::Ctx *cuda_rasterizer = _impl->cuda_rasterizers[output_index].get();
     cudarf::CudaOutput *cuda_output = _impl->cudaOutput[output_index].get();
-    cudaStream_t cudaStream = _impl->cudaOutputStreams[0];
+    cudaStream_t cudaStream = _impl->cudaOutputStreams[0].get();
     cudarf::Framebuffer meshGpuOutput = _impl->mesh_gpu_outputs[output_index];
 
     if constexpr (CUDARF_ENABLE_CUDA_PROFILING) {

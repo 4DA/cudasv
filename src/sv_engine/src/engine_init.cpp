@@ -48,8 +48,7 @@ engine::Error Engine::init()
     _impl->frameTimeDB = std::make_shared<cudarf::profiling::Events>("frameTime");
 
     for (int outputIndex = 0; outputIndex < config.outputs_number; ++outputIndex) {
-        CUDA_CHK(cudaStreamCreateWithFlags(&_impl->cudaOutputStreams[outputIndex],
-                                           cudaStreamDefault | cudaStreamNonBlocking));
+        _impl->cudaOutputStreams[outputIndex] = cudarf::Stream(cudaStreamNonBlocking);
 
         const int displayWidth = config.outputs[outputIndex].display_width;
         const int displayHeight = config.outputs[outputIndex].display_height;
@@ -70,12 +69,12 @@ engine::Error Engine::init()
                            false,
 #endif
                            -1,
-                           _impl->cudaOutputStreams[outputIndex]);
+                           _impl->cudaOutputStreams[outputIndex].get());
 
         cudarf::create_surface(_impl->mesh_gpu_outputs[outputIndex],
                                displayWidth,
                                displayHeight,
-                               _impl->cudaOutputStreams[outputIndex]);
+                               _impl->cudaOutputStreams[outputIndex].get());
 
         if constexpr (CUDARF_ENABLE_CUDA_PROFILING) {
             const std::string timeDbName =
@@ -102,7 +101,7 @@ engine::Error Engine::init()
                             _impl->world->animations(),
                             _impl->world->vehicle_model(),
                             nullptr,
-                            _impl->cudaOutputStreams[0]);
+                            _impl->cudaOutputStreams[0].get());
 
     assert(_impl->world->scene().get_materials_count() > 0);
 
@@ -131,7 +130,7 @@ engine::Error Engine::init()
                                      _impl->testScenarioAnimations.back(),
                                      _impl->testScenarioModels.back(),
                                      nullptr,
-                                     _impl->cudaOutputStreams[0]))
+                                     _impl->cudaOutputStreams[0].get()))
         {
             SPDLOG_ERROR("Failed to load test scenario '{}'", scenarioName);
             return ERROR;
@@ -142,7 +141,7 @@ engine::Error Engine::init()
 
     if (_impl->world->init(_impl->cuda_rasterizers[0].get(),
                            &config,
-                           _impl->cudaOutputStreams[0])) {
+                           _impl->cudaOutputStreams[0].get())) {
         SPDLOG_ERROR("world initialization failed");
         assert(false);
         return ERROR;
@@ -177,7 +176,7 @@ engine::Error Engine::init()
                                        &config.overlays_config.controls_config,
                                        *_impl->world,
                                        _impl->view_3d->get_viewpoints(),
-                                       _impl->cudaOutputStreams[0])) {
+                                       _impl->cudaOutputStreams[0].get())) {
             SPDLOG_ERROR("3d view virtual controls initialization failed");
             assert(false);
         }

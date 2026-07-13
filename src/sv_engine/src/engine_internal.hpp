@@ -10,6 +10,7 @@
 #include <rf/renderer/cudarf/cudarf.hpp>
 #include <rf/renderer/cudarf/output.hpp>
 #include <rf/renderer/cudarf/draw_list_renderer.hpp>
+#include <rf/renderer/cudarf/stream.hpp>
 
 #include <vehicle/vehicle_state.hpp>
 #include <views/view_3d.hpp>
@@ -25,10 +26,10 @@ struct EngineImpl
 
     engine::VehicleState vehicleState;
 
+    std::array<cudarf::Stream, SV_MAX_OUTPUTS> cudaOutputStreams;
     std::array<std::unique_ptr<cudarf::CudaOutput>, SV_MAX_OUTPUTS> cudaOutput;
     std::array<std::unique_ptr<cudarf::pipe::Ctx>, SV_MAX_OUTPUTS> cuda_rasterizers;
     std::array<cudarf::Framebuffer, SV_MAX_OUTPUTS> mesh_gpu_outputs;
-    std::array<cudaStream_t, SV_MAX_OUTPUTS> cudaOutputStreams;
 
     std::shared_ptr<cudarf::profiling::Events> frameTimeDB = nullptr;
     std::array<std::shared_ptr<cudarf::profiling::Events>, SV_MAX_OUTPUTS> outputRenderTimeDB;
