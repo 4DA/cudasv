@@ -120,6 +120,7 @@ set(
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/cudarf/cudarf_pipe.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/cudarf/cudarf_blit.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/cudarf/cudarf_profile.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/cudarf/raii/array_surface.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/gltf_loader.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/gltf/accessors.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/gltf/animation_loader.cpp
