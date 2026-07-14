@@ -3,10 +3,13 @@
 
 #include <array>
 #include <cstdint>
+#include <optional>
 
 #include <cuda_runtime.h>
 
 #include <rf/renderer/cudarf/cudarf.hpp>
+#include <rf/renderer/cudarf/array_surface.hpp>
+#include <rf/renderer/cudarf/memory.hpp>
 #include <rf/renderer/glm_common.hpp>
 
 #define SURROUND_VIEW_MAX_CAMERAS 4
@@ -32,22 +35,17 @@ struct CameraProjectionParams {
 using InputFrames =
     std::array<cudaTextureObject_t, SURROUND_VIEW_MAX_CAMERAS>;
 
-using InputFrameArrays =
-    std::array<cudaArray_t, SURROUND_VIEW_MAX_CAMERAS>;
-
-using InputFrameSurfaces =
-    std::array<cudaSurfaceObject_t, SURROUND_VIEW_MAX_CAMERAS>;
-
 struct Projector {
     int tex_width = 0;
     int tex_height = 0;
     int active_texture_set = 0;
     uint64_t prevFrameSeq = ~uint64_t{0};
 
-    std::array<InputFrames, SURROUND_VIEW_TEXTURE_SETS> cuda_textures;
-    std::array<InputFrameArrays, SURROUND_VIEW_TEXTURE_SETS> cuda_arrays = {0};
-    std::array<InputFrameSurfaces, SURROUND_VIEW_TEXTURE_SETS> cuda_surfaces = {0};
-    std::array<uint8_t *, SURROUND_VIEW_MAX_CAMERAS> cuda_frames_staging = {0};
+    using CameraFrameResource = std::optional<cudarf::memory::ArraySurfaceTexture>;
+    using CameraFrameResources = std::array<CameraFrameResource, SURROUND_VIEW_MAX_CAMERAS>;
+
+    std::array<CameraFrameResources, SURROUND_VIEW_TEXTURE_SETS> cudaFrameResources;
+    std::array<cudarf::memory::DeviceBuffer<uint8_t>, SURROUND_VIEW_MAX_CAMERAS> cudaFramesStaging;
 
     InputFrames load_rgb(
         std::array<uint8_t *, SURROUND_VIEW_MAX_CAMERAS> rgb,

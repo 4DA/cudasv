@@ -106,28 +106,21 @@ InputFrames Projector::load_rgb(
     int pitch,
     cudaStream_t cuStream)
 {
-    for (int i = 0; i < 4; i++) {
-        if (cuda_arrays[fs][i] == 0) {
-            // create RGB GPU staging buffer
-            CUDA_CHK(cudaMalloc(&cuda_frames_staging[i], pitch * h));
-
-            // create array-surface-texture triplet for camera frames
-            auto desc = cudaCreateChannelDesc<uchar4>();
-            CUDA_CHK(cudaMallocArray(&cuda_arrays[fs][i], &desc, w, h, cudaArraySurfaceLoadStore));
-
-            cudarf::create_array_texture(cuda_textures[fs][i],
-                                         cuda_arrays[fs][i],
-                                         cudaAddressModeClamp,
-                                         false);
-
-            cudarf::create_array_surface(cuda_surfaces[fs][i], cuda_arrays[fs][i]);
+    for (int i = 0; i < SURROUND_VIEW_MAX_CAMERAS; ++i) {
+        if (!cudaFramesStaging[i]) {
+            cudaFramesStaging[i].reset(pitch * h);
         }
 
-        assert(cuda_frames_staging[i]);
+        if (!cudaFrameResources[fs][i]) {
+            const auto desc = cudarf::memory::rgba8_channel_desc();
+            cudaFrameResources[fs][i].emplace(
+                w, h, desc, cudaAddressModeClamp, cudaReadModeNormalizedFloat,
+                cudarf::memory::TextureSampling::NormalizedLinear);
+        }
 
         // upload frame CPU data to GPU RGB staing buffer
         // --
-        CUDA_CHK(cudaMemcpyAsync(cuda_frames_staging[i],
+        CUDA_CHK(cudaMemcpyAsync(cudaFramesStaging[i].get(),
                                  rgb[i],
                                  pitch * h,
                                  cudaMemcpyHostToDevice,
@@ -139,7 +132,7 @@ InputFrames Projector::load_rgb(
         dim3 gridSize((w-1) / 16 + 1, (h-1) / 16 + 1);
 
         rgb_to_rgba_surface<<<gridSize, blockSize, 0, cuStream>>>(
-            cuda_frames_staging[i], w, h, pitch, cuda_surfaces[fs][i]);
+            cudaFramesStaging[i].get(), w, h, pitch, cudaFrameResources[fs][i]->surface());
 
         CUDA_CHK_ERROR("rgb_to_rgba_surface");
     }
@@ -147,7 +140,11 @@ InputFrames Projector::load_rgb(
     tex_width = w;
     tex_height = h;
 
-    return cuda_textures[fs];
+    InputFrames textures{};
+    for (int i = 0; i < SURROUND_VIEW_MAX_CAMERAS; ++i) {
+        textures[i] = cudaFrameResources[fs][i]->texture();
+    }
+    return textures;
 }
 
 
@@ -600,10 +597,10 @@ void project_async(Projector* ctx,
     dim3 blockDim(width / threadDim.x, height / threadDim.y, 1);
 
     TexturePack texObj = {
-        ctx->cuda_textures[ctx->active_texture_set][0],
-        ctx->cuda_textures[ctx->active_texture_set][1],
-        ctx->cuda_textures[ctx->active_texture_set][2],
-        ctx->cuda_textures[ctx->active_texture_set][3],
+        ctx->cudaFrameResources[ctx->active_texture_set][0]->texture(),
+        ctx->cudaFrameResources[ctx->active_texture_set][1]->texture(),
+        ctx->cudaFrameResources[ctx->active_texture_set][2]->texture(),
+        ctx->cudaFrameResources[ctx->active_texture_set][3]->texture(),
     };
 
     render_mesh_gpu <<<blockDim, threadDim, 0, stream>>> (

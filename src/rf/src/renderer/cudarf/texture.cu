@@ -4,6 +4,7 @@
 
 #include <rf/renderer/image.hpp>
 #include <rf/renderer/cudarf/texture.hpp>
+#include <rf/renderer/cudarf/array_surface.hpp>
 #include <rf/renderer/cudarf/cudarf.hpp>
 
 #include "helpers.hpp"
@@ -69,28 +70,29 @@ void generate_texture_mips(cudaMipmappedArray *dev_mipmapArray,
         CUDA_CHK(cudaGetMipmappedArrayLevel(&dev_mipLevelArray0, dev_mipmapArray, lvl-1));
         CUDA_CHK(cudaGetMipmappedArrayLevel(&dev_mipLevelArray1, dev_mipmapArray, lvl));
 
-        cudaTextureObject_t srcTex;
-        cudaSurfaceObject_t dstSurf;
+        cudarf::memory::TextureObject srcTexture(
+            dev_mipLevelArray0, cudaAddressModeClamp, cudaReadModeNormalizedFloat,
+            cudarf::memory::TextureSampling::UnnormalizedPoint);
 
-        cudarf::create_array_texture(srcTex,
-                                     dev_mipLevelArray0,
-                                     cudaAddressModeClamp,
-                                     true);
+        cudaResourceDesc surfaceResource{};
+        surfaceResource.resType = cudaResourceTypeArray;
+        surfaceResource.res.array.array = dev_mipLevelArray1;
 
-        cudarf::create_array_surface(dstSurf, dev_mipLevelArray1);
+        cudaSurfaceObject_t dstSurface = 0;
+        CUDA_CHK(cudaCreateSurfaceObject(&dstSurface, &surfaceResource));
 
         dim3 blockSize(32, 32);
         dim3 blockCount((width - 1)  / blockSize.x + 1,
                         (height - 1) / blockSize.y + 1);
 
-        mip_downsample2x<<<blockCount, blockSize, 0, cuStream>>>(srcTex, dstSurf, width, height);
+        mip_downsample2x<<<blockCount, blockSize, 0, cuStream>>>(
+            srcTexture.get(), dstSurface, width, height);
+
         CUDA_CHK_ERROR("mip_downsample2x");
 
         // wait until downsample kernel is complete before destroying surface & texture
-        cudaStreamSynchronize(cuStream);
-
-        cudaDestroySurfaceObject(dstSurf);
-        cudaDestroyTextureObject(srcTex);
+        CUDA_CHK(cudaStreamSynchronize(cuStream));
+        CUDA_CHK(cudaDestroySurfaceObject(dstSurface));
     }
 }
 }

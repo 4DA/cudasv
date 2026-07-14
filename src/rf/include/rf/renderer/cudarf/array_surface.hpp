@@ -13,6 +13,11 @@ enum class TextureSampling {
     UnnormalizedPoint,
 };
 
+inline cudaChannelFormatDesc rgba8_channel_desc()
+{
+    return cudaCreateChannelDesc<uchar4>();
+}
+
 class ArraySurface {
 public:
     ArraySurface(unsigned int width,

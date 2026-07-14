@@ -279,83 +279,6 @@ void cudarf::pipe::set_draw_packet_buffers(cudarf::pipe::Ctx *desc,
     SPDLOG_DEBUG("Device vertex buffer [sz: {} = {} * {}] set", drawPacket->vertCount * sizeof(VertexIn), (size_t) drawPacket->vertCount, sizeof(VertexIn));
 }
 
-void cudarf::create_surface(cudaSurfaceObject_t &fb,
-                            int width,
-                            int height,
-                            const cudaStream_t &cuStream)
-{
-    cudaArray *cuArray;
-    const int channels = 4;
-    const int compSz = 1;
-
-    cudaChannelFormatDesc channelDesc =
-        cudaCreateChannelDesc(8, 8, 8, 8, cudaChannelFormatKindUnsigned);
-
-    CUDA_CHK(cudaMallocArray(&cuArray, &channelDesc, width, height, 0));
-
-    cudaResourceDesc surfRes;
-    std::memset(&surfRes, 0, sizeof(cudaResourceDesc));
-    surfRes.resType = cudaResourceTypeArray;
-    surfRes.res.array.array = cuArray;
-
-    create_array_surface(fb, cuArray);
-}
-
-void cudarf::create_array_surface(cudaSurfaceObject_t &outSurf,
-                                  cudaArray_t array)
-{
-    cudaResourceDesc surfRes;
-    std::memset(&surfRes, 0, sizeof(cudaResourceDesc));
-    surfRes.resType = cudaResourceTypeArray;
-    surfRes.res.array.array = array;
-
-    CUDA_CHK(cudaCreateSurfaceObject(&outSurf, &surfRes));
-}
-
-void cudarf::create_array_texture(cudaTextureObject_t &outTex,
-                                  cudaArray_t array,
-                                  cudaTextureAddressMode addressMode,
-                                  bool usePointUnnormalized)
-{
-    cudaResourceDesc texRes;
-    std::memset(&texRes, 0, sizeof(cudaResourceDesc));
-    texRes.resType = cudaResourceTypeArray;
-    texRes.res.array.array = array;
-
-    cudaTextureDesc texDescr;
-    std::memset(&texDescr, 0, sizeof(cudaTextureDesc));
-    texDescr.normalizedCoords = usePointUnnormalized ? 0 : 1;
-    texDescr.filterMode = usePointUnnormalized ? cudaFilterModePoint
-                                               : cudaFilterModeLinear;
-    texDescr.addressMode[0] = addressMode;
-    texDescr.addressMode[1] = addressMode;
-    texDescr.addressMode[2] = cudaAddressModeClamp;
-    texDescr.readMode = cudaReadModeNormalizedFloat;
-
-    CUDA_CHK(cudaCreateTextureObject(&outTex, &texRes, &texDescr, NULL));
-}
-
-void cudarf::create_surface(cudaSurfaceObject_t &outSurface,
-                            cudaTextureObject_t &outTexture,
-                            int width,
-                            int height,
-                            const cudaStream_t &cuStream)
-{
-    cudaArray *cuArray;
-    const int channels = 4;
-    const int compSz = 1;
-
-    cudaChannelFormatDesc channelDesc =
-        cudaCreateChannelDesc(8, 8, 8, 8, cudaChannelFormatKindUnsigned);
-
-    CUDA_CHK(cudaMallocArray(&cuArray, &channelDesc, width, height, 0));
-
-    create_array_surface(outSurface, cuArray);
-    create_array_texture(outTexture, cuArray, cudaAddressModeClamp);
-
-    return;
-}
-
 void cudarf::create_surface(cudarf::LinearSurface &outSurface,
                             int width,
                             int height,
@@ -379,12 +302,25 @@ void cudarf::create_surface(cudarf::LinearSurface &outSurface,
     const int channels = 4;
     const int compSz = 1;
 
-    cudaChannelFormatDesc channelDesc =
-        cudaCreateChannelDesc(8, 8, 8, 8, cudaChannelFormatKindUnsigned);
+    const cudaChannelFormatDesc channelDesc =
+        cudarf::memory::rgba8_channel_desc();
 
     CUDA_CHK(cudaMallocArray(&outSurface.texArray, &channelDesc, width, height, 0));
 
-    create_array_texture(outTexture, outSurface.texArray, cudaAddressModeClamp);
+    cudaResourceDesc textureResource{};
+    textureResource.resType = cudaResourceTypeArray;
+    textureResource.res.array.array = outSurface.texArray;
+
+    cudaTextureDesc textureDesc{};
+    textureDesc.normalizedCoords = 1;
+    textureDesc.filterMode = cudaFilterModeLinear;
+    textureDesc.addressMode[0] = cudaAddressModeClamp;
+    textureDesc.addressMode[1] = cudaAddressModeClamp;
+    textureDesc.addressMode[2] = cudaAddressModeClamp;
+    textureDesc.readMode = cudaReadModeNormalizedFloat;
+
+    CUDA_CHK(cudaCreateTextureObject(
+        &outTexture, &textureResource, &textureDesc, nullptr));
 
     return;
 }
@@ -395,11 +331,6 @@ void cudarf::free_surface(cudarf::LinearSurface &fb)
     fb.devPtr = nullptr;
 }
 
-void cudarf::free_surface(cudaSurfaceObject_t &fb)
-{
-    // TODO
-    fb = 0;
-}
 
 cudarf::pipe::Ctx::Ctx(int window_width,
                        int window_height,
@@ -413,6 +344,23 @@ cudarf::pipe::Ctx::Ctx(int window_width,
       dev_pipeSubmission(1),
       dev_pipeParams(1),
       dev_pipeAtomics(1)
+#ifdef WITH_TAA
+    , framebufferResources{
+          cudarf::memory::ArraySurfaceTexture(
+              window_width, window_height, cudarf::memory::rgba8_channel_desc(),
+              cudaAddressModeClamp, cudaReadModeNormalizedFloat,
+              cudarf::memory::TextureSampling::NormalizedLinear),
+          cudarf::memory::ArraySurfaceTexture(
+              window_width, window_height, cudarf::memory::rgba8_channel_desc(),
+              cudaAddressModeClamp, cudaReadModeNormalizedFloat,
+              cudarf::memory::TextureSampling::NormalizedLinear)}
+    , rasterResource(
+          window_width, window_height, cudarf::memory::rgba8_channel_desc(),
+          cudaAddressModeClamp, cudaReadModeNormalizedFloat,
+          cudarf::memory::TextureSampling::NormalizedLinear)
+    , uiFramebufferResource(
+          window_width, window_height, cudarf::memory::rgba8_channel_desc())
+#endif
 {
     width = window_width;
     height = window_height;
@@ -492,10 +440,10 @@ cudarf::pipe::Ctx::Ctx(int window_width,
 
 #if defined(WITH_TAA)
 
-    create_surface(dev_framebuffer[0], dev_framebufferTex[0], width, height, cuStream);
-    create_surface(dev_framebuffer[1], dev_framebufferTex[1], width, height, cuStream);
-    create_surface(rasterSurface, rasterTexture, width, height, cuStream);
-    create_surface(uiFramebuffer, width, height, cuStream);
+    for (std::size_t i = 0; i < framebufferResources.size(); ++i) {
+        dev_framebuffer[i] = framebufferResources[i].surface();
+        dev_framebufferTex[i] = framebufferResources[i].texture();
+    }
 
     dev_velocityTex.reset(width * height);
 
@@ -536,15 +484,9 @@ cudarf::pipe::Ctx::Ctx(int window_width,
 
 cudarf::pipe::Ctx::~Ctx()
 {
+    // The user is responsible for cleaning draw packets.
+#ifndef WITH_TAA
     cudarf::pipe::Ctx *desc = this;
-    // user is responsible for cleaning draw packets
-
-#ifdef WITH_TAA
-    free_surface(desc->dev_framebuffer[0]);
-    free_surface(desc->dev_framebuffer[1]);
-    free_surface(desc->rasterSurface);
-    free_surface(desc->uiFramebuffer);
-#else
     free_surface(desc->dev_framebuffer);
     free_surface(desc->uiFramebuffer);
 #endif
@@ -684,7 +626,7 @@ void cudarf::pipe::begin_frame(cudarf::pipe::Ctx *desc,
                              cuStream));
 
 #ifdef WITH_TAA
-    cudarf::pipe::clear_framebuffer(desc, desc->rasterSurface, make_uchar4(0, 0, 0, 0), cuStream);
+    cudarf::pipe::clear_framebuffer(desc, desc->rasterResource.surface(), make_uchar4(0, 0, 0, 0), cuStream);
     CUDA_CHK(cudaMemsetAsync(desc->dev_velocityTex.get(), 0, sizeof(cudarf::Velocity) * desc->width * desc->height, cuStream));
 #else
     cudarf::pipe::clear_framebuffer(desc,
@@ -705,7 +647,7 @@ cudarf::Framebuffer cudarf::pipe::get_output_fb(cudarf::pipe::Ctx *desc, unsigne
     if (desc->TAAEnabled) {
         return desc->dev_framebuffer[frameCounter % 2];
     } else {
-        return desc->rasterSurface;
+        return desc->rasterResource.surface();
     }
 #else
     return desc->dev_framebuffer;
@@ -723,7 +665,7 @@ cudarf::FBTexture cudarf::pipe::get_output_tex(cudarf::pipe::Ctx *desc, unsigned
             return desc->dev_framebufferTex[1];
         }
     } else {
-        return desc->rasterTexture;
+        return desc->rasterResource.texture();
     }
 #else
     return desc->dev_framebufferTex;
@@ -734,12 +676,12 @@ cudarf::FBTexture cudarf::pipe::get_output_tex(cudarf::pipe::Ctx *desc, unsigned
 
 cudarf::Framebuffer cudarf::pipe::get_internal_fb(cudarf::pipe::Ctx *desc, unsigned int frameCounter)
 {
-    return desc->rasterSurface;
+    return desc->rasterResource.surface();
 }
 
 cudarf::Framebuffer cudarf::pipe::get_ui_fb(cudarf::pipe::Ctx *desc)
 {
-    return desc->uiFramebuffer;
+    return desc->uiFramebufferResource.surface();
 }
 
 cudarf::Framebuffer cudarf::pipe::get_history_fb(cudarf::pipe::Ctx *desc, unsigned int frameCounter)

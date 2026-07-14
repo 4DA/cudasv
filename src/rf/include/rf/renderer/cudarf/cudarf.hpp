@@ -1,6 +1,7 @@
 #ifndef CUDARF_HPP
 #define CUDARF_HPP
 
+#include <array>
 #include <vector>
 #include <memory>
 #include <unordered_map>
@@ -13,6 +14,7 @@
 
 #include <rf/renderer/cudarf/cudarf_rast.hpp>
 #include <rf/renderer/cudarf/cudarf_profile.hpp>
+#include <rf/renderer/cudarf/array_surface.hpp>
 #include <rf/renderer/cudarf/memory.hpp>
 #include <rf/renderer/mesh_geometry.hpp>
 #include <rf/renderer/virtual_camera.hpp>
@@ -144,11 +146,11 @@ struct Ctx
     DeviceBuffer<cudarf::visibuf::XYCommand> dev_xyCommands;
 
 #ifdef WITH_TAA
-    cudarf::Framebuffer rasterSurface;
-    cudarf::FBTexture rasterTexture = 0;
-    cudarf::Framebuffer uiFramebuffer;
+    std::array<cudarf::memory::ArraySurfaceTexture, 2> framebufferResources;
+    cudarf::memory::ArraySurfaceTexture rasterResource;
+    cudarf::memory::ArraySurface uiFramebufferResource;
 
-    cudarf::Framebuffer dev_framebuffer[2];
+    cudarf::Framebuffer dev_framebuffer[2] = {0};
     cudarf::FBTexture dev_framebufferTex[2] = {0};
 
     DeviceBuffer<cudarf::Velocity> dev_velocityTex;
@@ -335,27 +337,7 @@ void create_surface(cudarf::LinearSurface &outSurface,
                     int height,
                     const cudaStream_t &cuStream);
 
-void create_surface(cudaSurfaceObject_t &outSurface,
-                    cudaTextureObject_t &outTexture,
-                    int width,
-                    int height,
-                    const cudaStream_t &cuStream);
-
-void create_surface(cudaSurfaceObject_t &fb,
-                    int width,
-                    int height,
-                    const cudaStream_t &cuStream);
-
-void create_array_texture(cudaTextureObject_t &outTex,
-                          cudaArray_t array,
-                          cudaTextureAddressMode addressMode,
-                          bool usePointUnnormalized = false);
-
-void create_array_surface(cudaSurfaceObject_t &outSurf,
-                          cudaArray_t array);
-
 void free_surface(cudarf::LinearSurface &fb);
-void free_surface(cudaSurfaceObject_t &fb);
 
 } // namespace cudarf
 

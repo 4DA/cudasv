@@ -71,10 +71,18 @@ engine::Error Engine::init()
                            -1,
                            _impl->cudaOutputStreams[outputIndex].get());
 
-        cudarf::create_surface(_impl->mesh_gpu_outputs[outputIndex],
+#ifdef WITH_TAA
+        const auto framebufferDesc = cudarf::memory::rgba8_channel_desc();
+        _impl->meshGpuOutputResources[outputIndex].emplace(
+            displayWidth, displayHeight, framebufferDesc);
+        _impl->meshGpuOutputs[outputIndex] =
+            _impl->meshGpuOutputResources[outputIndex]->surface();
+#else
+        cudarf::create_surface(_impl->meshGpuOutputs[outputIndex],
                                displayWidth,
                                displayHeight,
                                _impl->cudaOutputStreams[outputIndex].get());
+#endif
 
         if constexpr (CUDARF_ENABLE_CUDA_PROFILING) {
             const std::string timeDbName =

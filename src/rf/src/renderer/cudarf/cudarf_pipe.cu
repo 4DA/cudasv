@@ -771,7 +771,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
             framebuffer = launchConfig.nativeOutput;
         }
         else {
-            framebuffer = desc->rasterSurface;
+            framebuffer = desc->rasterResource.surface();
         }
 #else
         cudarf::Framebuffer framebuffer;
@@ -911,7 +911,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
                           (desc->height - 1) / blockSize2d.y + 1);
 
 #ifdef WITH_TAA
-        cudarf::Framebuffer framebuffer = desc->rasterSurface;
+        cudarf::Framebuffer framebuffer = desc->rasterResource.surface();
 #else
         cudarf::Framebuffer framebuffer = desc->dev_framebuffer;
 #endif
@@ -926,7 +926,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 #ifdef VISUALIZE_TILES
     {
 #ifdef WITH_TAA
-        cudarf::Framebuffer framebuffer = desc->rasterSurface;
+        cudarf::Framebuffer framebuffer = desc->rasterResource.surface();
 #else
         cudarf::Framebuffer framebuffer = desc->dev_framebuffer;
 #endif
@@ -965,7 +965,7 @@ void cudarf::pipe::TAA(cudarf::pipe::Ctx *desc,
         projection,
         desc->width,
         desc->height,
-        desc->rasterTexture,
+        desc->rasterResource.texture(),
         get_history_tex(desc, frameCounter),
         desc->dev_velocityTex.get(),
         frameUniforms,

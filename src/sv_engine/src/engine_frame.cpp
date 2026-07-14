@@ -103,7 +103,7 @@ engine::Error Engine::process(const videoio::RuntimeFramePacket4Cam &frame_packe
     cudarf::pipe::Ctx *cuda_rasterizer = _impl->cuda_rasterizers[output_index].get();
     cudarf::CudaOutput *cuda_output = _impl->cudaOutput[output_index].get();
     cudaStream_t cudaStream = _impl->cudaOutputStreams[0].get();
-    cudarf::Framebuffer meshGpuOutput = _impl->mesh_gpu_outputs[output_index];
+    cudarf::Framebuffer meshGpuOutput = _impl->meshGpuOutputs[output_index];
 
     if constexpr (CUDARF_ENABLE_CUDA_PROFILING) {
         if (_impl->frameCounter == 0) {

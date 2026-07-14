@@ -2,12 +2,14 @@
 
 #include <array>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <engine/engine.hpp>
 
 #include <rf/renderer/animation.hpp>
 #include <rf/renderer/cudarf/cudarf.hpp>
+#include <rf/renderer/cudarf/array_surface.hpp>
 #include <rf/renderer/cudarf/output.hpp>
 #include <rf/renderer/cudarf/draw_list_renderer.hpp>
 #include <rf/renderer/cudarf/stream.hpp>
@@ -29,7 +31,10 @@ struct EngineImpl
     std::array<cudarf::Stream, SV_MAX_OUTPUTS> cudaOutputStreams;
     std::array<std::unique_ptr<cudarf::CudaOutput>, SV_MAX_OUTPUTS> cudaOutput;
     std::array<std::unique_ptr<cudarf::pipe::Ctx>, SV_MAX_OUTPUTS> cuda_rasterizers;
-    std::array<cudarf::Framebuffer, SV_MAX_OUTPUTS> mesh_gpu_outputs;
+#ifdef WITH_TAA
+    std::array<std::optional<cudarf::memory::ArraySurface>, SV_MAX_OUTPUTS> meshGpuOutputResources;
+#endif
+    std::array<cudarf::Framebuffer, SV_MAX_OUTPUTS> meshGpuOutputs{};
 
     std::shared_ptr<cudarf::profiling::Events> frameTimeDB = nullptr;
     std::array<std::shared_ptr<cudarf::profiling::Events>, SV_MAX_OUTPUTS> outputRenderTimeDB;
