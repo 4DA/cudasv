@@ -1,6 +1,8 @@
 #ifndef __CUDARF_OUTPUT
 #define __CUDARF_OUTPUT
 
+#include <rf/renderer/cudarf/memory.hpp>
+
 namespace cudarf
 {
 struct CudaOutput {
@@ -8,8 +10,8 @@ struct CudaOutput {
     int SMPCount;
     int clockRate;
 
-    uchar4 *d_output;
-    unsigned char *cpu_output;
+    memory::DeviceBuffer<uchar4> devOutput;
+    memory::PinnedBuffer<unsigned char> cpuOutput;
 
     int width;
     int height;
@@ -27,10 +29,10 @@ struct CudaOutput {
     CudaOutput &operator=(const CudaOutput &) = delete;
 
     CudaOutput(int width, int height);
-    ~CudaOutput();
+    ~CudaOutput() = default;
 
     // copy 'cpu_output' to gl_output.fbo_tex
-    void present(const uchar4 *buffer);
+    void present();
 };
 
 }

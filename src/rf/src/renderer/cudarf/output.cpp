@@ -291,11 +291,10 @@ static void draw_quad(GLuint tex, int i)
     glUseProgram(0);
 }
 
-void cudarf::CudaOutput::present(const uchar4* devBuffer)
+void cudarf::CudaOutput::present()
 {
     // TODO: research if cuda -> opengl memcpy possible
-
-    CUDA_CHK(cudaMemcpy(cpu_output, devBuffer, width * height * 4, cudaMemcpyDeviceToHost));
+    CUDA_CHK(cudaMemcpy(cpuOutput.get(), devOutput.get(), width * height * 4, cudaMemcpyDeviceToHost));
 
     glBindTexture(GL_TEXTURE_2D, gl_output.fbo_tex);
 
@@ -307,7 +306,7 @@ void cudarf::CudaOutput::present(const uchar4* devBuffer)
                  0,                // GLint border,
                  GL_RGBA,          // GLenum format,
                  GL_UNSIGNED_BYTE, // GLenum type,
-                 cpu_output);      // const void * data);
+                 cpuOutput.get()); // const void * data);
 
     glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -365,8 +364,11 @@ cudarf::CudaOutput::CudaOutput(int width, int height):
 
     SMPCount = prop.multiProcessorCount;
 
-    CUDA_CHK(cudarf_cuda_malloc((void **)&d_output, width * height * sizeof(GLubyte) * 4));
-    CUDA_CHK(cudaMallocHost((void **)&cpu_output, width * height * sizeof(GLubyte) * 4));
+    devOutput = cudarf::memory::DeviceBuffer<uchar4>
+        (width * height * sizeof(GLubyte));
+
+    cpuOutput = cudarf::memory::PinnedBuffer<unsigned char>
+        (width * height * sizeof(GLubyte) * 4);
 
     // create texture for display
     glGenTextures(1, &gl_output.fbo_tex);
@@ -374,15 +376,4 @@ cudarf::CudaOutput::CudaOutput(int width, int height):
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-cudarf::CudaOutput::~CudaOutput()
-{
-    if (cpu_output) {
-        CUDA_CHK(cudarf_cuda_free_host(cpu_output));
-    }
-
-    if (d_output) {
-        CUDA_CHK(cudarf_cuda_free(d_output));
-    }
 }

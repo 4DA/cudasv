@@ -53,7 +53,7 @@ engine::Error Engine::dump_output_png(const std::string &path, int output_index)
     }
 
     cudarf::CudaOutput *cuda_output = _impl->cudaOutput[output_index].get();
-    if (cuda_output == nullptr || cuda_output->d_output == nullptr) {
+    if (cuda_output == nullptr || cuda_output->devOutput.get() == nullptr) {
         SPDLOG_ERROR("dump_output_png requested inactive output {}", output_index);
         return ERROR;
     }
@@ -64,7 +64,7 @@ engine::Error Engine::dump_output_png(const std::string &path, int output_index)
 
     std::vector<uchar4> host_pixels(pixel_count);
     const cudaError_t cuda_status =
-        cudaMemcpy(host_pixels.data(), cuda_output->d_output, byte_count, cudaMemcpyDeviceToHost);
+        cudaMemcpy(host_pixels.data(), cuda_output->devOutput.get(), byte_count, cudaMemcpyDeviceToHost);
 
     if (cuda_status != cudaSuccess) {
         SPDLOG_ERROR("cudaMemcpy failed in dump_output_png: {}", cudaGetErrorString(cuda_status));

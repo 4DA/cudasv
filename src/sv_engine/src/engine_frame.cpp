@@ -170,7 +170,7 @@ engine::Error Engine::process(const videoio::RuntimeFramePacket4Cam &frame_packe
                 view::View3D *view = _impl->view_3d.get();
 
                 view->compose(frames_set,
-                              cuda_output->d_output,
+                              cuda_output->devOutput.get(),
                               meshGpuOutput,
                               width,
                               height,
@@ -196,7 +196,7 @@ engine::Error Engine::process(const videoio::RuntimeFramePacket4Cam &frame_packe
 
     // Wait until all cuda work is complete before presenting on display
     CUDA_CHK(cudaStreamSynchronize(cudaStream));
-    cuda_output->present(cuda_output->d_output);
+    cuda_output->present();
 
     if (surroundViewRendered) {
         _impl->frameCounter++;
