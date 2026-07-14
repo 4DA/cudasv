@@ -198,9 +198,9 @@ struct BinTilerCtx {
 
 struct DrawPacket
 {
-    cudarf::PrimitiveIndex *dev_bufIdx = nullptr;     ///< device index buffer
-    rast::VertexIn *dev_bufVertex = nullptr;           ///< device vertex buffer
-    rast::VertexIn *stagingBufVertex = nullptr;        ///< host-pinned staging buffer
+    cudarf::PrimitiveIndex *dev_bufIdx = nullptr; ///< borrowed device index buffer
+    rast::VertexIn *dev_bufVertex = nullptr;      ///< borrowed device vertex buffer
+    rast::VertexIn *stagingBufVertex = nullptr;   ///< borrowed host-pinned staging buffer
 
     int index_count = 0;
     int vertCount = 0;

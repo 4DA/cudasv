@@ -95,14 +95,6 @@
 
 #define PRIM_ELEMS 3
 
-#define CUDARF_MAX_CONSTMEM_SZ (4 * sizeof(cudarf::rast::PipeParams))
-
-#define cudarf_cuda_malloc cudaMalloc
-#define cudarf_cuda_free cudaFree
-
-#define cudarf_cuda_malloc_host cudaMallocHost
-#define cudarf_cuda_free_host cudaFreeHost
-
 namespace cudarf
 {
 struct Material;

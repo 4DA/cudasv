@@ -88,6 +88,7 @@ namespace pipe
 {
 
 using cudarf::memory::DeviceBuffer;
+using cudarf::memory::PinnedBuffer;
 
 struct Atomics {
     uint32_t subtris_count;  // triangle setup
@@ -124,6 +125,7 @@ struct Ctx
     cudarf::DrawPacket drawPackets[CUDARF_MAX_DRAW_PACKETS];
     DeviceBuffer<cudarf::PrimitiveIndex> drawPacketIdxBuffers[CUDARF_MAX_DRAW_PACKETS];
     DeviceBuffer<cudarf::rast::VertexIn> drawPacketVertexBuffers[CUDARF_MAX_DRAW_PACKETS];
+    PinnedBuffer<cudarf::rast::VertexIn> drawPacketVertexStagingBuffers[CUDARF_MAX_DRAW_PACKETS];
 
     cudarf::rast::PipeInternalBufferSet internalBufs;
 
@@ -325,19 +327,6 @@ void compose(Framebuffer lower,
 void compose(cudarf::Framebuffer fb,
              unsigned int width, unsigned int height,
              uchar4 *dev_out, cudaStream_t cuStream);
-
-void create_surface(cudarf::LinearSurface &outSurface,
-                    cudaTextureObject_t &outTexture,
-                    int width,
-                    int height,
-                    const cudaStream_t &cuStream);
-
-void create_surface(cudarf::LinearSurface &outSurface,
-                    int width,
-                    int height,
-                    const cudaStream_t &cuStream);
-
-void free_surface(cudarf::LinearSurface &fb);
 
 } // namespace cudarf
 

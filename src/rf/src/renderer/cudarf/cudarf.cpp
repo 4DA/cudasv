@@ -134,14 +134,17 @@ void cudarf::pipe::set_draw_packet_buffers(cudarf::pipe::Ctx *desc,
                                  cuStream));
     }
 
-    SPDLOG_DEBUG("set_draw_packet_buffers [drawPacketId:{}]: indices: {}, sz: {}", drawPacketId, (size_t) drawPacket->index_count, drawPacket->index_count * sizeof(PrimitiveIndex), sizeof(PrimitiveIndex));
+    SPDLOG_DEBUG("set_draw_packet_buffers [drawPacketId:{}]: indices: {}, sz: {}",
+                 drawPacketId, (size_t) drawPacket->index_count,
+                 drawPacket->index_count * sizeof(PrimitiveIndex), sizeof(PrimitiveIndex));
 
     if (vertCount > drawPacket->vertexCapacity) {
         desc->drawPacketVertexBuffers[drawPacketId].reset(drawPacket->vertCount);
         drawPacket->dev_bufVertex = desc->drawPacketVertexBuffers[drawPacketId].get();
 
-        CUDA_CHK(cudarf_cuda_free_host(drawPacket->stagingBufVertex));
-        CUDA_CHK(cudarf_cuda_malloc_host((void **)&drawPacket->stagingBufVertex, drawPacket->vertCount * sizeof(VertexIn)));
+        desc->drawPacketVertexStagingBuffers[drawPacketId].reset(drawPacket->vertCount);
+        drawPacket->stagingBufVertex =
+            desc->drawPacketVertexStagingBuffers[drawPacketId].get();
 
         drawPacket->vertexCapacity = vertCount;
     }
@@ -248,8 +251,9 @@ void cudarf::pipe::set_draw_packet_buffers(cudarf::pipe::Ctx *desc,
         desc->drawPacketVertexBuffers[drawPacketId].reset(drawPacket->vertCount);
         drawPacket->dev_bufVertex = desc->drawPacketVertexBuffers[drawPacketId].get();
 
-        CUDA_CHK(cudarf_cuda_free_host(drawPacket->stagingBufVertex));
-        CUDA_CHK(cudarf_cuda_malloc_host((void **)&drawPacket->stagingBufVertex, drawPacket->vertCount * sizeof(VertexIn)));
+        desc->drawPacketVertexStagingBuffers[drawPacketId].reset(drawPacket->vertCount);
+        drawPacket->stagingBufVertex =
+            desc->drawPacketVertexStagingBuffers[drawPacketId].get();
 
         drawPacket->vertexCapacity = vertCount;
     }
@@ -278,59 +282,6 @@ void cudarf::pipe::set_draw_packet_buffers(cudarf::pipe::Ctx *desc,
 
     SPDLOG_DEBUG("Device vertex buffer [sz: {} = {} * {}] set", drawPacket->vertCount * sizeof(VertexIn), (size_t) drawPacket->vertCount, sizeof(VertexIn));
 }
-
-void cudarf::create_surface(cudarf::LinearSurface &outSurface,
-                            int width,
-                            int height,
-                            const cudaStream_t &cuStream)
-{
-    CUDA_CHK(cudaMalloc(&outSurface.devPtr, width * height * sizeof(ColorN)));
-    outSurface.w = width;
-    outSurface.h = height;
-}
-
-void cudarf::create_surface(cudarf::LinearSurface &outSurface,
-                            cudaTextureObject_t &outTexture,
-                            int width,
-                            int height,
-                            const cudaStream_t &cuStream)
-{
-    CUDA_CHK(cudaMalloc(&outSurface.devPtr, width * height * sizeof(ColorN)));
-    outSurface.w = width;
-    outSurface.h = height;
-
-    const int channels = 4;
-    const int compSz = 1;
-
-    const cudaChannelFormatDesc channelDesc =
-        cudarf::memory::rgba8_channel_desc();
-
-    CUDA_CHK(cudaMallocArray(&outSurface.texArray, &channelDesc, width, height, 0));
-
-    cudaResourceDesc textureResource{};
-    textureResource.resType = cudaResourceTypeArray;
-    textureResource.res.array.array = outSurface.texArray;
-
-    cudaTextureDesc textureDesc{};
-    textureDesc.normalizedCoords = 1;
-    textureDesc.filterMode = cudaFilterModeLinear;
-    textureDesc.addressMode[0] = cudaAddressModeClamp;
-    textureDesc.addressMode[1] = cudaAddressModeClamp;
-    textureDesc.addressMode[2] = cudaAddressModeClamp;
-    textureDesc.readMode = cudaReadModeNormalizedFloat;
-
-    CUDA_CHK(cudaCreateTextureObject(
-        &outTexture, &textureResource, &textureDesc, nullptr));
-
-    return;
-}
-
-void cudarf::free_surface(cudarf::LinearSurface &fb)
-{
-    CUDA_CHK(cudaFree(fb.devPtr));
-    fb.devPtr = nullptr;
-}
-
 
 cudarf::pipe::Ctx::Ctx(int window_width,
                        int window_height,

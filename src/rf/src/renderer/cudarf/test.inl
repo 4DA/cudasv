@@ -178,7 +178,7 @@ void test_sorting_driver(unsigned int numMPS)
 
     int32_t *devArray;
     
-    CUDA_CHK(cudarf_cuda_malloc(&devArray, SZ * sizeof(int32_t)));
+    CUDA_CHK(cudaMalloc(&devArray, SZ * sizeof(int32_t)));
     CUDA_CHK(cudaMemcpyAsync(devArray,
                              testArray,
                              SZ * sizeof(int32_t),
@@ -194,7 +194,7 @@ void test_sorting_driver(unsigned int numMPS)
                              cudaMemcpyDeviceToHost,
                              0));
 
-    CUDA_CHK(cudarf_cuda_free(devArray));
+    CUDA_CHK(cudaFree(devArray));
 
     printf("\ndst array:\n");
     for (unsigned int i = 0; i < SZ; i++) {
