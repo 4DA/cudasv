@@ -26,6 +26,14 @@ const std::string UV_TRANSFORM_TEXCOORD = "texCoord";
 
 const unsigned int MATERIAL_MIP_COUNT = 6;
 
+struct MaterialWithTextureResources {
+    cudarf::TextureResource albedoTexture;
+    cudarf::TextureResource normalTexture;
+    cudarf::TextureResource emissiveTexture;
+    cudarf::TextureResource metRoughTexture;
+    cudarf::Material material{};
+};
+
 std::optional<glm::vec2> get_texture_transform_vec2(const tinygltf::Value::Object &object,
                                                     const std::string &key)
 {
@@ -173,13 +181,14 @@ std::string to_string(const cudarf::Material &mat)
     return ss.str();
 }
 
-std::optional<cudarf::Texture> load_gltf_image(const tinygltf::Model &model,
-                                               int image_id,
-                                               const std::string &image_name,
-                                               const std::string &usageStr,
-                                               std::optional<glm::mat3> uvTransform,
-                                               unsigned int mipCount,
-                                               cudaStream_t cuStream)
+std::optional<cudarf::TextureResource>
+load_gltf_image(const tinygltf::Model &model,
+                int image_id,
+                const std::string &image_name,
+                const std::string &usageStr,
+                std::optional<glm::mat3> uvTransform,
+                unsigned int mipCount,
+                cudaStream_t cuStream)
 {
     if (image_id < 0 || image_id >= static_cast<int>(model.images.size())) {
         SPDLOG_ERROR("Invalid image id {}", image_id);
@@ -232,18 +241,8 @@ std::optional<cudarf::Texture> load_gltf_image(const tinygltf::Model &model,
     // The mipmapped CUDA texture path currently expects RGBA8. TinyGLTF's
     // default stb loader expands decoded images to 4 channels as long as
     // SetPreserveImageChannels(true) is not enabled.
-    auto texOpt = cudarf::create_cuda_texture(image, cudaAddressModeWrap, mipCount, cuStream);
-
-    if (!texOpt) {
-        return texOpt;
-    }
-
-    if (uvTransform) {
-        texOpt->hasUVTransform = true;
-        texOpt->uvTransform = *uvTransform;
-    }
-
-    return texOpt;
+    return cudarf::create_cuda_texture(
+        image, cudaAddressModeWrap, mipCount, uvTransform, cuStream);
 }
 
 std::optional<int> get_parameter_texture_index(const tinygltf::Parameter &parameter,
@@ -258,12 +257,13 @@ std::optional<int> get_parameter_texture_index(const tinygltf::Parameter &parame
     return texIndex;
 }
 
-std::optional<cudarf::Texture> load_pbr_texture(const tinygltf::Model &model,
-                                                int tex_index,
-                                                const tinygltf::ExtensionMap &extensions,
-                                                const char *label,
-                                                unsigned int mipCount,
-                                                cudaStream_t cuStream)
+std::optional<cudarf::TextureResource>
+load_pbr_texture(const tinygltf::Model &model,
+                 int tex_index,
+                 const tinygltf::ExtensionMap &extensions,
+                 const char *label,
+                 unsigned int mipCount,
+                 cudaStream_t cuStream)
 {
     if (tex_index < 0 || tex_index >= static_cast<int>(model.textures.size())) {
         SPDLOG_ERROR("Bad texture id: {}", tex_index);
@@ -282,12 +282,8 @@ std::optional<cudarf::Texture> load_pbr_texture(const tinygltf::Model &model,
         return std::nullopt;
     }
 
-    auto tex = load_gltf_image(model, image_id, name, label, uvTransform, mipCount, cuStream);
-    if (!tex) {
-        return std::nullopt;
-    }
-
-    return tex;
+    return load_gltf_image(
+        model, image_id, name, label, uvTransform, mipCount, cuStream);
 }
 
 std::string get_material_name(const tinygltf::Material *gltfMaterial,
@@ -353,10 +349,11 @@ create_material(const tinygltf::Model &model,
 
     rf::UVTransform uvt;
 
-    cudarf::Texture albedoTexture;
-    cudarf::Texture normalTexture;
-    cudarf::Texture emissiveTexture;
-    cudarf::Texture metRoughTexture;
+    auto materialWithTextures = std::make_shared<MaterialWithTextureResources>();
+    auto &albedoTexture = materialWithTextures->albedoTexture;
+    auto &normalTexture = materialWithTextures->normalTexture;
+    auto &emissiveTexture = materialWithTextures->emissiveTexture;
+    auto &metRoughTexture = materialWithTextures->metRoughTexture;
 
     if (gltfMaterial != nullptr) {
         if (!gltfMaterial->values.size()) {
@@ -402,10 +399,13 @@ create_material(const tinygltf::Model &model,
                 return nullptr;
             }
 
-            albedoTexture = *loaded;
-            albedoTexChannels = loaded->channels;
-            if (loaded->hasUVTransform) {
-                uvt.transforms[rf::UVTransform::TEXTURE_KEY_BASECOLOR] = loaded->uvTransform;
+            albedoTexture = std::move(*loaded);
+
+            const cudarf::Texture view = albedoTexture.view();
+            albedoTexChannels = view.channels;
+            if (view.hasUVTransform) {
+                uvt.transforms[rf::UVTransform::TEXTURE_KEY_BASECOLOR] =
+                    view.uvTransform;
             }
         }
 
@@ -436,10 +436,11 @@ create_material(const tinygltf::Model &model,
                 return nullptr;
             }
 
-            metRoughTexture = *loaded;
-            OMRTexChannels = loaded->channels;
-            if (loaded->hasUVTransform) {
-                uvt.transforms[rf::UVTransform::TEXTURE_KEY_METROUGH] = loaded->uvTransform;
+            metRoughTexture = std::move(*loaded);
+            const cudarf::Texture view = metRoughTexture.view();
+            OMRTexChannels = view.channels;
+            if (view.hasUVTransform) {
+                uvt.transforms[rf::UVTransform::TEXTURE_KEY_METROUGH] = view.uvTransform;
             }
         }
 
@@ -454,10 +455,11 @@ create_material(const tinygltf::Model &model,
                 return nullptr;
             }
 
-            normalTexture = *loaded;
-            normalTexChannels = loaded->channels;
-            if (loaded->hasUVTransform) {
-                uvt.transforms[rf::UVTransform::TEXTURE_KEY_NORMAL] = loaded->uvTransform;
+            normalTexture = std::move(*loaded);
+            const cudarf::Texture view = normalTexture.view();
+            normalTexChannels = view.channels;
+            if (view.hasUVTransform) {
+                uvt.transforms[rf::UVTransform::TEXTURE_KEY_NORMAL] = view.uvTransform;
             }
         }
 
@@ -478,11 +480,12 @@ create_material(const tinygltf::Model &model,
                 return nullptr;
             }
 
-            emissiveTexture = *loaded;
-            emissiveTexChannels = loaded->channels;
+            emissiveTexture = std::move(*loaded);
+            const cudarf::Texture view = emissiveTexture.view();
+            emissiveTexChannels = view.channels;
             isEmissive = true;
-            if (loaded->hasUVTransform) {
-                uvt.transforms[rf::UVTransform::TEXTURE_KEY_EMISSIVE] = loaded->uvTransform;
+            if (view.hasUVTransform) {
+                uvt.transforms[rf::UVTransform::TEXTURE_KEY_EMISSIVE] = view.uvTransform;
             }
         }
     }
@@ -499,7 +502,11 @@ create_material(const tinygltf::Model &model,
                           OMRTexChannels,
                           emissiveTexChannels);
 
-    auto newMat                = std::make_shared<cudarf::Material>();
+    // use shared_ptr aliasing constructor for superblock to hold aggregate
+    // object, but provide the narrow cudarf::Material pointer
+    auto newMat = std::shared_ptr<cudarf::Material>(
+        materialWithTextures, &materialWithTextures->material);
+
     newMat->type               = isUnlit ? cudarf::SHADER_TYPE_UNLIT : cudarf::SHADER_TYPE_PBR;
     newMat->baseColor          = baseColorFactor;
     newMat->emissive           = emissiveFactor;
@@ -507,10 +514,10 @@ create_material(const tinygltf::Model &model,
     newMat->roughness          = roughnessFactor;
     newMat->isTranslucent      = !isOpaque;
     newMat->isDoubleSided      = isDoubleSided;
-    newMat->albedoTex          = albedoTexture;
-    newMat->emissiveTex        = emissiveTexture;
-    newMat->metRoughTex        = metRoughTexture;
-    newMat->normalTex          = normalTexture;
+    newMat->albedoTex          = albedoTexture.view();
+    newMat->emissiveTex        = emissiveTexture.view();
+    newMat->metRoughTex        = metRoughTexture.view();
+    newMat->normalTex          = normalTexture.view();
     newMat->clearcoatFactor    = clearcoatFactor;
     newMat->clearcoatRoughness = clearcoatRoughnessFactor;
 

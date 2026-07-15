@@ -16,7 +16,7 @@ Scene::Scene():
 }
 
 void Scene::set_ibl(IBL &&iblRV) {
-    ibl = iblRV;
+    ibl = std::move(iblRV);
     assert(ibl);
 }
 

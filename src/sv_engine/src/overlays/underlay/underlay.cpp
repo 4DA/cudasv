@@ -7,6 +7,7 @@
 #include <rf/renderer/utils.hpp>
 
 #include "underlay.hpp"
+#include "rf/renderer/cudarf/texture.hpp"
 
 using namespace engine;
 
@@ -79,25 +80,44 @@ rf::NaiveMeshPtr Underlay::generate_underlay_mesh(const Config *config)
     return mesh;
 }
 
+struct MaterialWithUnderlayTexture {
+    cudarf::TextureResource texture;
+    cudarf::Material material;
+};
+
 int Underlay::init(cudarf::pipe::Ctx *desc, rf::Scene &scene, const Config *config, cudaStream_t cuStream)
 {
     this->underlay_config = &config->overlays_config.underlay_config;
 
     underlay_image_description = rf::load_image(underlay_config->texture_path, false, true);
-    auto underlayTexture = cudarf::create_cuda_texture(underlay_image_description, cudaAddressModeClamp, 1, cuStream);
-    assert(underlayTexture);
-    underlay_image = underlayTexture->textureObject;
+    auto loaded = cudarf::create_cuda_texture(underlay_image_description, cudaAddressModeClamp, 1, std::nullopt, cuStream);
+
+    if (!loaded) {
+        SPDLOG_ERROR("can not load underlay image: {}",
+                     underlay_config->texture_path);
+        return -1;
+    }
+    assert(loaded);
+
+    auto materialWithTex = std::make_shared<MaterialWithUnderlayTexture>();
+    auto &underlayTexture = materialWithTex->texture;
+
+    underlayTexture = std::move(*loaded);
 
     rf::NaiveMeshPtr mesh = generate_underlay_mesh(config);
 
-    material = std::make_shared<cudarf::Material>();
+    // use shared_ptr aliasing constructor for superblock to hold aggregate
+    // object, but provide the narrow cudarf::Material pointer
+    material = std::shared_ptr<cudarf::Material>(
+        materialWithTex, &materialWithTex->material);
+
     material->isTranslucent = true;
     material->baseColor = make_float4(1.0, 1.0, 1.0, 1.0);
     material->emissive = make_float3(0.0, 0.0, 0.0);
     material->metallic = 0.0f;
     material->roughness = 1.0f;
     material->type = cudarf::SHADER_TYPE_UNLIT;
-    material->albedoTex = *underlayTexture;
+    material->albedoTex = underlayTexture.view();
     material->isDoubleSided = false;
 
     loader::add_naive_mesh(desc,

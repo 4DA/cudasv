@@ -6,6 +6,7 @@
 
 #include <rf/renderer/image.hpp>
 #include "cudarf/material.hpp"
+#include "rf/renderer/cudarf/texture.hpp"
 
 namespace rf
 {
@@ -88,20 +89,26 @@ struct IBL
     // representing varying roughness levels, leading to softer
     // specular reflections
     IBL(rf::SphericalHarmonics irradiance,
-        cudaTextureObject_t brdfLUT,
+        cudarf::TextureResource &&brdfLUT,
         const cudarf::CubeMap &specular) :
         irradiance(irradiance),
-        brdfLUT(brdfLUT),
+        brdfLUT(std::move(brdfLUT)),
         specular(specular),
         mipLevels(9)
     {}
 
-    operator bool() const { return brdfLUT; }
+    IBL(IBL &&other) = default;
+    IBL & operator=(IBL &&other) = default;
+
+    IBL(IBL &other) = delete;
+    IBL & operator=(IBL &other) = delete;
+
+    operator bool() const { return brdfLUT.view().textureObject; }
 
     glm::mat4 get_sh_matrix() const {return irradiance.get_matrix();}
 
     rf::SphericalHarmonics irradiance;
-    cudaTextureObject_t brdfLUT;
+    cudarf::TextureResource brdfLUT;
     cudarf::CubeMap specular;
     std::size_t mipLevels;
 };

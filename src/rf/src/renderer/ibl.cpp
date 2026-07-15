@@ -174,10 +174,10 @@ rf::IBL rf::load_ibl(const std::string &path_prefix, cudaStream_t cuStream) {
 
     Image lutDesc = load_image(path_prefix + "ibl/brdfLUT_16.png", true, false, 4);
 
-    auto lutTex = cudarf::create_cuda_texture(lutDesc, cudaAddressModeClamp, 1, cuStream);
+    auto lutTex = cudarf::create_cuda_texture(lutDesc, cudaAddressModeClamp, 1, std::nullopt, cuStream);
     assert(lutTex);
 
     free((void*)lutDesc.data);
 
-    return IBL(sphericalHarmonics, lutTex->textureObject, specularTex);
+    return IBL(sphericalHarmonics, std::move(*lutTex), specularTex);
 }

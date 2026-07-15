@@ -1,58 +1,57 @@
 #ifndef CUDARF_TEXTURE
 #define CUDARF_TEXTURE
 
+#include <type_traits>
+#include <optional>
+
 #include <cuda_runtime.h>
+
 #include <rf/renderer/glm_common.hpp>
 #include <rf/renderer/image.hpp>
 
 namespace cudarf
 {
 struct Texture {
-    cudaTextureObject_t textureObject;
-    unsigned int channels;
-    unsigned int width;
-    unsigned int height;
-
-    int mipLevels;
-    cudaArray *dev_array;
-    cudaMipmappedArray *dev_mipmapArray;
-
-    bool hasUVTransform;
-    glm::mat3 uvTransform;
-
-    __device__ __host__ Texture(cudaTextureObject_t textureObject,
-                                bool hasUVTransform,
-                                glm::mat3 uvTransform,
-                                unsigned int channels,
-                                unsigned int width,
-                                unsigned int height):
-        textureObject(textureObject),
-        channels(channels),
-        width(width),
-        height(height),
-        mipLevels(1),
-        dev_array(nullptr),
-        dev_mipmapArray(nullptr),
-        hasUVTransform(hasUVTransform),
-        uvTransform(uvTransform)
-        {}
-
-    __device__ __host__ Texture():
-        textureObject(0),
-        channels(0),
-        width(0),
-        height(0),
-        mipLevels(0),
-        dev_array(nullptr),
-        dev_mipmapArray(nullptr),
-        hasUVTransform(false),
-        uvTransform(1.0f)
-        {}
+    cudaTextureObject_t textureObject = 0;
+    unsigned int channels = 0;
+    unsigned int width = 0;
+    unsigned int height = 0;
+    int mipLevels = 0;
+    bool hasUVTransform = false;
+    glm::mat3 uvTransform = glm::mat3(1.0f);
 };
 
-std::optional<Texture> create_cuda_texture(rf::Image image,
-                                           cudaTextureAddressMode addressMode,
-                                           unsigned int mipLevels,
-                                           cudaStream_t cuStream);
+static_assert(std::is_trivially_copyable_v<Texture>);
+
+class TextureResource {
+public:
+    TextureResource() = default;
+
+    TextureResource(Texture view,
+                    cudaArray_t array,
+                    cudaMipmappedArray_t mipmappedArray);
+
+    TextureResource(TextureResource&&) noexcept;
+    TextureResource& operator=(TextureResource&&) noexcept;
+    ~TextureResource();
+
+    TextureResource(const TextureResource&) = delete;
+    TextureResource& operator=(const TextureResource&) = delete;
+
+    Texture view() const noexcept {return _view;}
+
+private:
+    void reset();
+    cudaArray_t _array = nullptr;
+    cudaMipmappedArray_t _mipmappedArray = nullptr;
+    Texture _view = Texture{};
+};
+
+std::optional<TextureResource>
+create_cuda_texture(rf::Image image,
+                    cudaTextureAddressMode addressMode,
+                    unsigned int mipLevels,
+                    std::optional<glm::mat3> uvTransform,
+                    cudaStream_t cuStream);
 }
 #endif

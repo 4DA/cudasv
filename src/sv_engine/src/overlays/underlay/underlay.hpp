@@ -28,7 +28,6 @@ private:
     std::shared_ptr<cudarf::Material> material;
 
     rf::Image underlay_image_description;
-    cudaTextureObject_t underlay_image = 0;
 
     rf::NaiveMeshPtr generate_underlay_mesh(const engine::Config *config);
 };

@@ -6,6 +6,7 @@
 #include <rf/renderer/cudarf/texture.hpp>
 #include <rf/renderer/cudarf/array_surface.hpp>
 #include <rf/renderer/cudarf/cudarf.hpp>
+#include <utility>
 
 #include "helpers.hpp"
 #include "helpers_cudavec.inl"
@@ -97,18 +98,74 @@ void generate_texture_mips(cudaMipmappedArray *dev_mipmapArray,
 }
 }
 
-std::optional<cudarf::Texture> cudarf::create_cuda_texture(rf::Image image,
-                                                           cudaTextureAddressMode addressMode,
-                                                           unsigned int mipLevels,
-                                                           cudaStream_t cuStream)
+namespace cudarf
+{
+
+TextureResource::TextureResource(Texture view,
+                                 cudaArray_t array,
+                                 cudaMipmappedArray_t mipmappedArray):
+    _view(view),
+    _array(array),
+    _mipmappedArray(mipmappedArray) {}
+
+TextureResource::TextureResource(TextureResource &&other) noexcept
+{
+    _view = std::exchange(other._view, Texture{});
+    _array = std::exchange(other._array, nullptr);
+    _mipmappedArray = std::exchange(other._mipmappedArray, nullptr);
+}
+
+TextureResource& TextureResource::operator=(TextureResource &&other) noexcept
+{
+    if (this != &other) {
+        reset();
+        _view = std::exchange(other._view, Texture{});
+        _array = std::exchange(other._array, nullptr);
+        _mipmappedArray = std::exchange(other._mipmappedArray, nullptr);
+    }
+
+    return *this;
+}
+
+TextureResource::~TextureResource()
+{
+    reset();
+}
+
+void TextureResource::reset()
+{
+    if (_view.textureObject) {
+        CUDA_CHK(cudaDestroyTextureObject(_view.textureObject));
+        _view.textureObject = 0;
+    }
+
+    if (_array) {
+        CUDA_CHK(cudaFreeArray(_array));
+    }
+
+    if (_mipmappedArray) {
+        CUDA_CHK(cudaFreeMipmappedArray(_mipmappedArray));
+    }
+
+    _array = nullptr;
+    _mipmappedArray = nullptr;
+    _view = Texture{};
+}
+
+std::optional<cudarf::TextureResource>
+create_cuda_texture(rf::Image image,
+                    cudaTextureAddressMode addressMode,
+                    unsigned int mipLevels,
+                    std::optional<glm::mat3> uvTransform,
+                    cudaStream_t cuStream)
 {
     assert(mipLevels > 0);
     if (mipLevels == 0) {return std::nullopt;}
 
     cudaTextureObject_t tex;
 
-    unsigned int compSz;
-    unsigned bitsR, bitsG, bitsB, bitsA;
+    int compSz;
+    int bitsR, bitsG, bitsB, bitsA;
 
     switch (image.pixel_type) {
     case rf::PixelChannelType::U8:
@@ -158,14 +215,15 @@ std::optional<cudarf::Texture> cudarf::create_cuda_texture(rf::Image image,
 
     if (mipLevels == 1) {
         CUDA_CHK(cudaMallocArray(&cuArray, &channelDesc, image.w, image.h));
-        CUDA_CHK(cudaMemcpy2DToArrayAsync(cuArray,                           // source
-                                          0, 0,                              // offsets
-                                          image.data,                        // source ptr
-                                          image.w * image.channels * compSz, // spitch
-                                          image.w * image.channels * compSz, // width
-                                          image.h,                           // height
-                                          cudaMemcpyHostToDevice,            // destination
-                                          cuStream));
+        CUDA_CHK(cudaMemcpy2DToArrayAsync(
+            cuArray,                           // source
+            0, 0,                              // offsets
+            image.data,                        // source ptr
+            image.w * image.channels * compSz, // spitch
+            image.w * image.channels * compSz, // width
+            image.h,                           // height
+            cudaMemcpyHostToDevice,            // destination
+            cuStream));
 
         texRes.resType            = cudaResourceTypeArray;
         texRes.res.array.array    = cuArray;
@@ -189,16 +247,18 @@ std::optional<cudarf::Texture> cudarf::create_cuda_texture(rf::Image image,
 
         CUDA_CHK(cudaGetMipmappedArrayLevel(&dev_mipLevelArray, dev_mipmapArray, 0));
 
-        CUDA_CHK(cudaMemcpy2DToArrayAsync(dev_mipLevelArray,                 // source
-                                          0, 0,                              // offsets
-                                          image.data,                        // source ptr
-                                          image.w * image.channels * compSz, // spitch
-                                          image.w * image.channels * compSz, // width
-                                          image.h,                           // height
-                                          cudaMemcpyHostToDevice,            // destination
-                                          cuStream));
+        CUDA_CHK(cudaMemcpy2DToArrayAsync(
+            dev_mipLevelArray,                 // source
+            0, 0,                              // offsets
+            image.data,                        // source ptr
+            image.w * image.channels * compSz, // spitch
+            image.w * image.channels * compSz, // width
+            image.h,                           // height
+            cudaMemcpyHostToDevice,            // destination
+            cuStream));
 
-        generate_texture_mips(dev_mipmapArray, image.w, image.h, image.channels, compSz, mipLevels, cuStream);
+        generate_texture_mips(dev_mipmapArray, image.w, image.h,
+                              image.channels, compSz, mipLevels, cuStream);
 
         texRes.resType               = cudaResourceTypeMipmappedArray;
         texRes.res.mipmap.mipmap     = dev_mipmapArray;
@@ -214,16 +274,19 @@ std::optional<cudarf::Texture> cudarf::create_cuda_texture(rf::Image image,
     }
     CUDA_CHK(cudaCreateTextureObject(&tex, &texRes, &texDescr, NULL));
 
-    cudarf::Texture result(tex,
-                           false,
-                           glm::mat3(1.0f),
-                           image.channels,
-                           image.w,
-                           image.h);
+    auto view = cudarf::Texture{
+        tex,
+        image.channels,
+        image.w,
+        image.h,
+        mipLevels,
+        (bool) uvTransform,
+        (uvTransform) ? *uvTransform : glm::mat3(1.0f)
+    };
 
-    result.dev_array = cuArray;
-    result.dev_mipmapArray = dev_mipmapArray;
-    result.mipLevels = mipLevels;
+    return cudarf::TextureResource(view,
+                                   cuArray,
+                                   dev_mipmapArray);
+}
 
-    return result;
 }

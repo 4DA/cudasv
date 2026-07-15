@@ -148,7 +148,7 @@ engine::Error Engine::process(const videoio::RuntimeFramePacket4Cam &frame_packe
                                           virtualCamera.transform.translation.z);
 
     cudarf::PBRParams pbrCommon{camera_translation, virtualCamera.exposure,
-        lightList, ibl.get_sh_matrix(), ibl.brdfLUT, ibl.specular};
+        lightList, ibl.get_sh_matrix(), ibl.brdfLUT.view().textureObject, ibl.specular};
 
     assert(pbrCommon.specular);
 
