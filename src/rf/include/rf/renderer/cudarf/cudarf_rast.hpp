@@ -264,7 +264,8 @@ struct PipeFrameContext {
     float3              camera;
     glm::mat4           sphericalHarmonics;
     cudaTextureObject_t brdfLUT = 0;
-    cudarf::CubeMap     specular;
+    cudaTextureObject_t specular = 0;
+    unsigned int        specularMipCount = 0;
 };
 
 /// Per-draw/submission state: render flags, active draw packets, materials,

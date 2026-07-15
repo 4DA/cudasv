@@ -75,8 +75,10 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
     assert(ibl);
     cudarf::PBRParams pbrCommon{camera_translation, camera.exposure,
         lightList, ibl.get_sh_matrix(), ibl.brdfLUT.view().textureObject,
-        ibl.specular};
+        ibl.specular.view().textureObject,
+        ibl.specular.view().mipLevels};
 
+    assert(ibl.specular.view().textureObject);
     assert(pbrCommon.specular);
 
     if (work.pbr) {
@@ -178,14 +180,14 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
         lightList.push_back(light);
     }
 
-
     const rf::IBL &ibl = scene.get_ibl();
 
-    assert(ibl.specular);
-    cudarf::PBRParams pbrCommon{camera_translation, camera.exposure,
-        lightList, ibl.get_sh_matrix(), ibl.brdfLUT.view().textureObject, ibl.specular};
+    assert(ibl.specular.view().textureObject);
 
-    assert(pbrCommon.specular);
+    cudarf::PBRParams pbrCommon{camera_translation, camera.exposure,
+        lightList, ibl.get_sh_matrix(),
+        ibl.brdfLUT.view().textureObject, ibl.specular.view().textureObject,
+        ibl.specular.view().mipLevels};
 
     if (shaderType == cudarf::SHADER_TYPE_PBR && work.pbr) {
         int translucentTotal;
@@ -292,10 +294,11 @@ cudarf::DrawListRenderer::render(cudarf::pipe::Ctx* rasterization_desc,
 
     const rf::IBL &ibl = scene.get_ibl();
 
-    assert(ibl.specular);
+    assert(ibl.specular.view().textureObject);
     cudarf::PBRParams pbrCommon{camera_translation, camera.exposure,
         lightList, ibl.get_sh_matrix(), ibl.brdfLUT.view().textureObject,
-        ibl.specular};
+        ibl.specular.view().textureObject,
+        ibl.specular.view().mipLevels};
 
     assert(pbrCommon.specular);
 

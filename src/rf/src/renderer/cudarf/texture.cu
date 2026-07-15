@@ -106,7 +106,10 @@ TextureResource::TextureResource(Texture view,
                                  cudaMipmappedArray_t mipmappedArray):
     _view(view),
     _array(array),
-    _mipmappedArray(mipmappedArray) {}
+    _mipmappedArray(mipmappedArray)
+{
+    assert(view.textureObject);
+}
 
 TextureResource::TextureResource(TextureResource &&other) noexcept
 {

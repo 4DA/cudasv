@@ -218,7 +218,7 @@ cudarf::ColorRGB get_ibl_radiance_ggx(const cudarf::rast::PipeParams *pipe,
 {
     const cudarf::rast::PipeFrameContext *frame = pipe->frame;
 
-    int mipCount = frame->specular.mipCount;
+    int mipCount = frame->specularMipCount;
     assert(mipCount);
 
     float lod = clamp(perceptualRoughness * float(mipCount), 0.0, float(mipCount));
@@ -227,7 +227,9 @@ cudarf::ColorRGB get_ibl_radiance_ggx(const cudarf::rast::PipeParams *pipe,
     glm::vec2 brdfSamplePoint = glm::clamp(glm::vec2(NdotV, perceptualRoughness), glm::vec2(0.0, 0.0), glm::vec2(1.0, 1.0));
     glm::vec2 brdf = glm::vec2(to_glm(tex2D<float4>(frame->brdfLUT, brdfSamplePoint.x, brdfSamplePoint.y)));
 
-    glm::vec4 specularSample = to_glm(sampleCube(frame->specular, reflection.x, reflection.y, reflection.z, lod));
+    glm::vec4 specularSample = to_glm(texCubemapLod<float4>(
+        frame->specular, reflection.x, reflection.y, reflection.z, lod));
+
     glm::vec3 specularLight = glm::vec3(specularSample);
 
 // #ifndef USE_HDR

@@ -560,6 +560,9 @@ void cudarf::pipe::begin_frame(cudarf::pipe::Ctx *desc,
         pipeFrame.sphericalHarmonics = pbr.sphericalHarmonics;
         pipeFrame.brdfLUT = pbr.brdfLUT;
         pipeFrame.specular = pbr.specular;
+        pipeFrame.specularMipCount = pbr.specularMipCount;
+
+        assert(pbr.specularMipCount);
     }
 
     CUDA_CHK(cudaMemcpyAsync(desc->dev_pipeFrame.get(), &pipeFrame, sizeof(cudarf::rast::PipeFrameContext), cudaMemcpyHostToDevice, cuStream));

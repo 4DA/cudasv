@@ -6,6 +6,7 @@
 
 #include "renderer/cudarf/helpers.hpp"
 #include "renderer/utils.hpp"
+#include "texture.hpp"
 
 #include "ibl.hpp"
 
@@ -61,8 +62,9 @@ SphericalHarmonics SphericalHarmonics::load_from_file(const std::string &file)
     return SphericalHarmonics{result};
 }
 
-static cudarf::CubeMap create_cubemap_mipped(std::vector<CubemapDescription> specularMap,
-                                             cudaStream_t cuStream)
+static cudarf::TextureResource create_cubemap_mipped(
+    std::vector<CubemapDescription> specularMap,
+    cudaStream_t cuStream)
 {
     int lod = 0;
     int mipLevels = specularMap.size();
@@ -135,7 +137,19 @@ static cudarf::CubeMap create_cubemap_mipped(std::vector<CubemapDescription> spe
 
     CUDA_CHK(cudaCreateTextureObject(&tex, &texRes, &texDescr, NULL));
 
-    return cudarf::CubeMap{tex, specularMap.size()};
+    auto view = cudarf::Texture{
+        tex,
+        topLod[0].channels,
+        topLod[0].w,
+        topLod[0].h,
+        mipLevels,
+        false,
+        glm::mat3(1.0f)
+    };
+
+    return cudarf::TextureResource(view,
+                                   nullptr,
+                                   dev_mipmapArray);
 }
 
 rf::IBL rf::load_ibl(const std::string &path_prefix, cudaStream_t cuStream) {
@@ -162,8 +176,7 @@ rf::IBL rf::load_ibl(const std::string &path_prefix, cudaStream_t cuStream) {
         specularMap.push_back(specularLevel);
     }
 
-    cudarf::CubeMap specularTex = create_cubemap_mipped(specularMap, cuStream);
-    assert(specularTex);
+    auto specularTex = create_cubemap_mipped(specularMap, cuStream);
 
     for (unsigned int i = 0; i < specularMap.size(); i++) {
         CubemapDescription specularLevel = specularMap[i];
@@ -179,5 +192,5 @@ rf::IBL rf::load_ibl(const std::string &path_prefix, cudaStream_t cuStream) {
 
     free((void*)lutDesc.data);
 
-    return IBL(sphericalHarmonics, std::move(*lutTex), specularTex);
+    return IBL(sphericalHarmonics, std::move(*lutTex), std::move(specularTex));
 }

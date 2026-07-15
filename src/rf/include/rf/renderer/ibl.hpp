@@ -90,11 +90,10 @@ struct IBL
     // specular reflections
     IBL(rf::SphericalHarmonics irradiance,
         cudarf::TextureResource &&brdfLUT,
-        const cudarf::CubeMap &specular) :
+        cudarf::TextureResource &&specular) :
         irradiance(irradiance),
         brdfLUT(std::move(brdfLUT)),
-        specular(specular),
-        mipLevels(9)
+        specular(std::move(specular))
     {}
 
     IBL(IBL &&other) = default;
@@ -109,8 +108,7 @@ struct IBL
 
     rf::SphericalHarmonics irradiance;
     cudarf::TextureResource brdfLUT;
-    cudarf::CubeMap specular;
-    std::size_t mipLevels;
+    cudarf::TextureResource specular;
 };
 
 rf::IBL load_ibl(const std::string &path_prefix, cudaStream_t cuStream);

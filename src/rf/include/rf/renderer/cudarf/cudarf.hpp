@@ -64,12 +64,13 @@ struct CudaStreams {
 
 struct PBRParams
 {
-    float3 camera;
-    float exposure;
+    float3                   camera;
+    float                    exposure;
     std::vector<CUDARFLight> lights;
-    glm::mat4 sphericalHarmonics;
-    cudaTextureObject_t brdfLUT;
-    CubeMap specular;
+    glm::mat4                sphericalHarmonics;
+    cudaTextureObject_t      brdfLUT;
+    cudaTextureObject_t      specular;
+    unsigned int             specularMipCount;
 };
 
 

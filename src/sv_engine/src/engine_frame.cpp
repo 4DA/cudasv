@@ -141,16 +141,15 @@ engine::Error Engine::process(const videoio::RuntimeFramePacket4Cam &frame_packe
         lightList.push_back(light);
     }
 
-    assert(ibl.specular);
+    assert(ibl.specular.view().textureObject);
 
     auto camera_translation = make_float3(virtualCamera.transform.translation.x,
                                           virtualCamera.transform.translation.y,
                                           virtualCamera.transform.translation.z);
 
     cudarf::PBRParams pbrCommon{camera_translation, virtualCamera.exposure,
-        lightList, ibl.get_sh_matrix(), ibl.brdfLUT.view().textureObject, ibl.specular};
-
-    assert(pbrCommon.specular);
+        lightList, ibl.get_sh_matrix(), ibl.brdfLUT.view().textureObject,
+        ibl.specular.view().textureObject, ibl.specular.view().mipLevels};
 
     cudarf::pipe::begin_frame(cuda_rasterizer,
                               virtualCamera,
