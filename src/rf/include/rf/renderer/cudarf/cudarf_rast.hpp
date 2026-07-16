@@ -20,6 +20,7 @@
 #include <rf/renderer/cudarf/material.hpp>
 #include <rf/renderer/cudarf/types.hpp>
 #include <rf/renderer/glm_common.hpp>
+#include <rf/renderer/cudarf/memory.hpp>
 
 // quality knobs
 // -----------------------------------------------------------------------------
@@ -215,6 +216,7 @@ struct DrawPacket
 
 namespace rast
 {
+using cudarf::memory::DeviceBuffer;
 
 /// Internal GPU buffers for tiled rasterization, sized by primitive count.
 ///
@@ -223,16 +225,16 @@ struct PipeInternalBufferSet
     std::size_t maxVertexCount = 0;
     std::size_t maxIndexCount = 0;
 
-    VertexOut *dev_bufVertexOut = NULL;   // vertex shader output
-    Triangle  *dev_triangles   = NULL;   // triangle setup output
-    void      *dev_tri_subtris;
+    DeviceBuffer<VertexOut> dev_bufVertexOut;   // vertex shader output
+    DeviceBuffer<Triangle > dev_triangles;   // triangle setup output
+    DeviceBuffer<uint8_t>   dev_tri_subtris;
 
     int32_t maxBinSegs = 0;
-    void *dev_binSegData  = NULL;   // maxBinSegs * CUDARF_BIN_SEG_SIZE * S32
-    void *dev_binSegNext  = NULL;   // maxBinSegs * S32 segIdx, -1 = none
-    void *dev_binSegCount = NULL;   // maxBinSegs * S32 numEntries
+    DeviceBuffer<int32_t> dev_binSegData;   // maxBinSegs * CUDARF_BIN_SEG_SIZE * S32
+    DeviceBuffer<int32_t> dev_binSegNext;   // maxBinSegs * S32 segIdx, -1 = none
+    DeviceBuffer<int32_t> dev_binSegCount;  // maxBinSegs * S32 numEntries
 
-    int32_t *dev_dbgbuf = NULL;
+    DeviceBuffer<int32_t> dev_dbgbuf;
 };
 
 /// Persistent render-target and tiling state. These fields change only when

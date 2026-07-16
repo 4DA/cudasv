@@ -243,17 +243,16 @@ static void prepare_internal_buffers(PipeInternalBufferSet &bufferSet, std::size
     // DEBUG override to draw specific number of triangles
     // --
 
-    reinit_buf(&bufferSet.dev_bufVertexOut,
-               totalVertices * sizeof(VertexOut));
+    bufferSet.dev_bufVertexOut.reset(totalVertices);
 
-    reinit_buf(&bufferSet.dev_tri_subtris,  total_triangles * sizeof(uint8_t));
+    bufferSet.dev_tri_subtris.reset(total_triangles);
 
 
     // printf("%s[#triangles: %d]\n", __func__, triangle_count);
 
     // allocate buffers for vertex and triangle setup stage
     // --
-    reinit_buf(&bufferSet.dev_triangles, total_triangles * sizeof(cudarf::rast::Triangle));
+    bufferSet.dev_triangles.reset(total_triangles);
 
     // estimate bin buffer sizes
     // --
@@ -263,9 +262,9 @@ static void prepare_internal_buffers(PipeInternalBufferSet &bufferSet, std::size
                    (int) std::max(numBins * CUDARF_BIN_STREAMS_SIZE,
                                   (int) (total_triangles - 1) / CUDARF_BIN_SEG_SIZE + 1) + maxBinSegsSlack);
 
-    reinit_buf(&bufferSet.dev_binSegData, bufferSet.maxBinSegs * CUDARF_BIN_SEG_SIZE * sizeof(int32_t));
-    reinit_buf(&bufferSet.dev_binSegNext, bufferSet.maxBinSegs * sizeof(int32_t));
-    reinit_buf(&bufferSet.dev_binSegCount, bufferSet.maxBinSegs * sizeof(int32_t));
+    bufferSet.dev_binSegData.reset(bufferSet.maxBinSegs * CUDARF_BIN_SEG_SIZE);
+    bufferSet.dev_binSegNext.reset(bufferSet.maxBinSegs);
+    bufferSet.dev_binSegCount.reset(bufferSet.maxBinSegs);
 
     // allocate debug buffers
     // --
@@ -447,7 +446,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     //                          total_triangles * sizeof(cudarf::Triangle),
     //                          cuStream));
 
-    CUDA_CHK(cudaMemsetAsync(bufferSet.dev_tri_subtris, 0, total_triangles * sizeof(uint8_t), cuStream));
+    CUDA_CHK(cudaMemsetAsync(bufferSet.dev_tri_subtris.get(), 0, total_triangles * sizeof(uint8_t), cuStream));
 
     if (desc->dev_geom_output) {
         // Geom output is consumed by visibuf stages in the current run_pipe call.
@@ -490,15 +489,15 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     }
 
     pipeSubmission.uniforms = desc->dev_uniforms.get();
-    pipeScratch.vertexOut = bufferSet.dev_bufVertexOut;
+    pipeScratch.vertexOut = bufferSet.dev_bufVertexOut.get();
     pipeSubmission.drawPacketCount = drawPacketIds.size();
 
-    pipeScratch.tris = bufferSet.dev_triangles;
+    pipeScratch.tris = bufferSet.dev_triangles.get();
     pipeSubmission.numTriangles = total_triangles;
     pipeSubmission.maxSubtris = total_triangles; // TODO: revise when we implement clipping
 
-    pipeScratch.triSubtris = static_cast<uint8_t *>(bufferSet.dev_tri_subtris);
-    pipeScratch.dbgbuf = bufferSet.dev_dbgbuf;
+    pipeScratch.triSubtris = bufferSet.dev_tri_subtris.get();
+    pipeScratch.dbgbuf = bufferSet.dev_dbgbuf.get();
 
     // Select batch size for bin tiler and estimate buffer sizes
     // --
@@ -510,7 +509,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         pipeScratch.binCtx.binH = rasterizerH / pipeScratch.binCtx.binsY;
         pipeScratch.binCtx.numBins = pipeScratch.binCtx.binsX * pipeScratch.binCtx.binsY;
 
-        // how many triangles are to be processed on one SM in one cycle (512) 
+        // how many triangles are to be processed on one SM in one cycle (512)
         int roundSize  = CUDARF_BIN_WARPS * 32;
 
         // minimal number of batches in tiler_bin kernel invocation
@@ -524,9 +523,9 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         pipeScratch.binCtx.maxBinSegs = bufferSet.maxBinSegs;
         pipeScratch.binCtx.binFirstSeg = desc->dev_binFirstSeg.get();
         pipeScratch.binCtx.binTotal = desc->dev_binTotal.get();
-        pipeScratch.binCtx.binSegData = bufferSet.dev_binSegData;
-        pipeScratch.binCtx.binSegNext = bufferSet.dev_binSegNext;
-        pipeScratch.binCtx.binSegCount = bufferSet.dev_binSegCount;
+        pipeScratch.binCtx.binSegData = bufferSet.dev_binSegData.get();
+        pipeScratch.binCtx.binSegNext = bufferSet.dev_binSegNext.get();
+        pipeScratch.binCtx.binSegCount = bufferSet.dev_binSegCount.get();
         // pipe.dbgtiles = bufferSet.dev_dbgtiles;
     }
 
@@ -630,7 +629,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
     // dump vertex transform output
     #ifdef DUMP_STAGE_OUTPUT
     {
-        CUDA_CHK(cudaMemcpyAsync(verts, bufferSet.dev_bufVertexOut,
+        CUDA_CHK(cudaMemcpyAsync(verts, bufferSet.dev_bufVertexOut.get(),
                             bufferSet.vertCount * sizeof(VertexOut), cudaMemcpyDeviceToHost));
 
         for (int i = 0; i < bufferSet.vertCount; i++) {
@@ -676,10 +675,10 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
     #ifdef DUMP_STAGE_OUTPUT
     {
-        CUDA_CHK(cudaMemcpyAsync(&subtris, bufferSet.dev_tri_subtris,
+        CUDA_CHK(cudaMemcpyAsync(&subtris, bufferSet.dev_tri_subtris.get(),
                             triangle_count * sizeof(uint8_t), cudaMemcpyDeviceToHost));
 
-        CUDA_CHK(cudaMemcpyAsync(&triags, bufferSet.dev_triangles,
+        CUDA_CHK(cudaMemcpyAsync(&triags, bufferSet.dev_triangles.get(),
                             triangle_count * sizeof(cudarf::rast::Triangle), cudaMemcpyDeviceToHost));
 
         for (unsigned int i = 0; i < triangle_count; i++) {
@@ -697,7 +696,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         // 512 threads
         CUDA_TIME_BEGIN(tiler_bin);
         tiler_bin<<<dim3(CUDARF_BIN_STREAMS_SIZE), dim3(32, CUDARF_BIN_WARPS), 0, cuStream>>>
-            (desc->dev_pipeParams.get(), desc->dev_pipeAtomics.get(), bufferSet.dev_triangles);
+            (desc->dev_pipeParams.get(), desc->dev_pipeAtomics.get(), bufferSet.dev_triangles.get());
 
         CUDA_CHK_ERROR("tiler_bin");
 
