@@ -67,7 +67,7 @@ static cudarf::TextureResource create_cubemap_mipped(
     cudaStream_t cuStream)
 {
     int lod = 0;
-    int mipLevels = specularMap.size();
+    const auto mipLevels = static_cast<unsigned int>(specularMap.size());
     CubemapDescription topLod = specularMap[lod];
     int width = topLod[0].w;
     assert(topLod[0].channels == 4);
@@ -83,7 +83,7 @@ static cudarf::TextureResource create_cubemap_mipped(
                                       mipLevels,
                                       cudaArrayCubemap));
 
-    for (int id = 0; id < mipLevels; id++) {
+    for (unsigned int id = 0; id < mipLevels; id++) {
         CubemapDescription lod = specularMap[id];
         int width = lod[0].w;
 

@@ -13,10 +13,10 @@ namespace cudarf
 {
 struct Texture {
     cudaTextureObject_t textureObject = 0;
-    unsigned int channels = 0;
-    unsigned int width = 0;
-    unsigned int height = 0;
-    int mipLevels = 0;
+    int channels = 0;
+    int width = 0;
+    int height = 0;
+    unsigned int mipLevels = 0;
     bool hasUVTransform = false;
     glm::mat3 uvTransform = glm::mat3(1.0f);
 };
