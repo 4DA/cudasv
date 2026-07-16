@@ -69,7 +69,7 @@ loader::add_naive_mesh(cudarf::pipe::Ctx *desc,
         return nullptr;
     }
 
-    if (scene.get_scene_component(name) != nullptr) {
+    if (scene.find_scene_component(name) != nullptr) {
         SPDLOG_ERROR("Cannot add naive mesh '{}': scene component already exists", name);
         return nullptr;
     }

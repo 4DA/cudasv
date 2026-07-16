@@ -30,7 +30,7 @@ class WheelComponents
 public:
     WheelComponents();
 
-    WheelComponents(const WheelGroupConfig &names, const rf::Scene &scene);
+    WheelComponents(const WheelGroupConfig &names, rf::Scene &scene);
 
     // Adjust steering angles for front wheels and enable spinning for all wheels
     void set_wheel_orientation(float rotation_angles[VEHICLE_OVERLAY_WHEELS_NUM],
@@ -38,7 +38,7 @@ public:
 
 
 private:
-    rf::SceneComponent * get_wheel_compo(const std::string &name, const rf::Scene &scene);
+    rf::SceneComponent * get_wheel_compo(const std::string &name, rf::Scene &scene);
     void set_spin_angle(rf::SceneComponent *compo, float rotation_angle);
     void set_steering_angle(rf::SceneComponent *compo, float steering_angle);
 

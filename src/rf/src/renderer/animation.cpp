@@ -164,7 +164,7 @@ AnimationState::AnimationState(Scene *scene,
     name(modelAnimation.name)
 {
     for (auto &channel: modelAnimation.channels) {
-        auto target = scene->get(channel->targetName);
+        auto target = scene->find_component(channel->targetName);
         channels.push_back(CompoChannel(target, channel.get()));
     }
 }

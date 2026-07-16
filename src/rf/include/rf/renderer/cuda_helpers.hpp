@@ -7,6 +7,7 @@
 #include <cstdlib>
 
 #ifdef __DRIVER_TYPES_H__
+[[maybe_unused]]
 static const char *_cudaGetErrorEnum(cudaError_t error) {
   return cudaGetErrorName(error);
 }
@@ -38,8 +39,10 @@ void check(T result, char const *const func, const char *const file,
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define CUDA_CHK_ERROR(msg) _checkCUDAErrorHelper(msg, FILENAME, __LINE__)
 
-static
-void _checkCUDAErrorHelper(const char *msg, const char *filename, int line) {
+[[maybe_unused]]
+static void _checkCUDAErrorHelper(const char *msg,
+                                  const char *filename,
+                                  int line) {
 #if !defined(NDEBUG)
     cudaDeviceSynchronize();
     cudaError_t err = cudaGetLastError();

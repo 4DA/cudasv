@@ -37,7 +37,7 @@ WheelComponents::WheelComponents()
     }
 }
 
-WheelComponents::WheelComponents(const WheelGroupConfig &parts_names, const rf::Scene &scene)
+WheelComponents::WheelComponents(const WheelGroupConfig &parts_names, rf::Scene &scene)
 {
     for (int i = 0; i < VEHICLE_OVERLAY_WHEELS_NUM; i++) {
         steeringCompos[i] = get_wheel_compo(parts_names.steeringParts[i], scene);
@@ -47,13 +47,13 @@ WheelComponents::WheelComponents(const WheelGroupConfig &parts_names, const rf::
 
 
 rf::SceneComponent * WheelComponents::get_wheel_compo(const std::string &name,
-                                                   const rf::Scene &scene)
+                                                      rf::Scene &scene)
 {
     if (name.empty()) {
         return nullptr;
     }
 
-    rf::SceneComponent * result = scene.get(name);
+    rf::SceneComponent * result = scene.find_component(name);
     if (!result) {
         SPDLOG_ERROR("Wheel Component `{}` not found", name.c_str());
         return nullptr;

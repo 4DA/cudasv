@@ -161,7 +161,7 @@ bool create_mesh_component(cudarf::pipe::Ctx *desc,
 
     const tinygltf::Mesh &mesh = model.meshes[node.mesh];
 
-    if (scene.get_scene_component(compoName) != nullptr) {
+    if (scene.find_scene_component(compoName) != nullptr) {
         SPDLOG_ERROR("Duplicate scene component name '{}'", compoName);
         return false;
     }
@@ -420,7 +420,7 @@ bool create_scene_component(cudarf::pipe::Ctx *desc,
                                       outComponent);
     }
 
-    if (scene.get_scene_component(compoName) != nullptr) {
+    if (scene.find_scene_component(compoName) != nullptr) {
         SPDLOG_ERROR("Duplicate scene component name '{}'", compoName);
         return false;
     }

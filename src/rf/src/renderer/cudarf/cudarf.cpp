@@ -628,7 +628,7 @@ cudarf::FBTexture cudarf::pipe::get_output_tex(cudarf::pipe::Ctx *desc, unsigned
 
 #ifdef WITH_TAA
 
-cudarf::Framebuffer cudarf::pipe::get_internal_fb(cudarf::pipe::Ctx *desc, unsigned int frameCounter)
+cudarf::Framebuffer cudarf::pipe::get_internal_fb(cudarf::pipe::Ctx *desc, unsigned int)
 {
     return desc->rasterResource.surface();
 }

@@ -83,12 +83,24 @@ class Scene {
                                                      const glm::vec3 &dir,
                                                      const rf::VirtualCamera *camera);
 
-    // Retrieve a scene component by its name.
-    // - name: The name of the component
-    SceneComponent * get(const std::string &name) const;
+    // Find any component by name. Primitive components take precedence over
+    // scene components if the indexes contain the same name.
+    const SceneComponent * find_component(const std::string &name) const;
+    SceneComponent * find_component(const std::string &name);
+
+    // Find a structural scene component by name.
+    const SceneComponent * find_scene_component(const std::string &name) const;
+    SceneComponent * find_scene_component(const std::string &name);
+
+    // Find a primitive component by name.
+    const PrimitiveComponent * find_primitive_component(const std::string &name) const;
+    PrimitiveComponent * find_primitive_component(const std::string &name);
 
     // Retrieve the root component.
     SceneComponent * get_root() {return &root;}
+
+    // Retrieve the root component.
+    const SceneComponent * get_root() const {return &root;}
 
     // Retrieve a material by its name.
     // - name: The name of the material
@@ -138,12 +150,6 @@ class Scene {
 
     bool add_material(const std::string &name,
                       std::shared_ptr<cudarf::Material> material);
-
-    SceneComponent * get_scene_component(const std::string &name) const {
-        auto it = sceneComponents.find(name);
-        if (it == sceneComponents.end()) {return nullptr;}
-        else {return it->second;}
-    }
 
     void set_ibl(IBL && iblRV);
 

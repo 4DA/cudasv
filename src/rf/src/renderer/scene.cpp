@@ -20,27 +20,51 @@ void Scene::set_ibl(IBL &&iblRV) {
     assert(ibl);
 }
 
-SceneComponent * Scene::get(const std::string &name) const
+SceneComponent * Scene::find_component(const std::string &name)
 {
-    auto pr_it = primitiveComponents.find(name);
+    return const_cast<SceneComponent *>(
+        static_cast<const Scene &>(*this).find_component(name));
+}
 
-    if (pr_it != primitiveComponents.end()) {
-        return pr_it->second;
+const SceneComponent * Scene::find_component(const std::string &name) const
+{
+    if (const auto *primitive = find_primitive_component(name)) {
+        return primitive;
     }
 
-    auto sc_it = sceneComponents.find(name);
-    if (sc_it != sceneComponents.end()) {
-        return sc_it->second;
-    }
+    return find_scene_component(name);
+}
 
-    return nullptr;
+SceneComponent * Scene::find_scene_component(const std::string &name)
+{
+    return const_cast<SceneComponent *>(
+        static_cast<const Scene &>(*this).find_scene_component(name));
+}
+
+const SceneComponent * Scene::find_scene_component(const std::string &name) const
+{
+    auto it = sceneComponents.find(name);
+    return it == sceneComponents.end() ? nullptr : it->second;
+}
+
+PrimitiveComponent * Scene::find_primitive_component(const std::string &name)
+{
+    return const_cast<PrimitiveComponent *>(
+        static_cast<const Scene &>(*this).find_primitive_component(name));
+}
+
+const PrimitiveComponent * Scene::find_primitive_component(
+    const std::string &name) const
+{
+    auto it = primitiveComponents.find(name);
+    return it == primitiveComponents.end() ? nullptr : it->second;
 }
 
 SceneComponent *
 Scene::add_scene_component(const std::string &name, const TRSTransform &transform, SceneComponent *parent)
 {
     if (parent) {
-        assert(get(parent->name));
+        assert(find_component(parent->name));
     }
 
     SceneComponent *new_compo = new SceneComponent(name, transform, parent);
@@ -62,7 +86,7 @@ Scene::add_primitive_component(const std::string &name,
                                bool front_facing)
 {
     if (parent) {
-        assert(get(parent->name));
+        assert(find_component(parent->name));
     }
 
     PrimitiveComponent *new_compo =
@@ -82,7 +106,7 @@ Scene::add_primitive_component(std::unique_ptr<PrimitiveComponent> compo,
                                SceneComponent *parent)
 {
     if (parent) {
-        assert(get(parent->name));
+        assert(find_component(parent->name));
     }
 
     parent->children.push_back(compo.get());
@@ -104,7 +128,7 @@ Scene::add_light_component(const std::string &name,
                            SceneComponent *parent)
 {
     if (parent) {
-        assert(get(parent->name));
+        assert(find_component(parent->name));
     }
 
     PointLightComponent *new_compo = new PointLightComponent(name, transform, parent, intensity);
