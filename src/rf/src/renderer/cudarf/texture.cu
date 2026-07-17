@@ -8,7 +8,6 @@
 #include <rf/renderer/cudarf/cudarf.hpp>
 #include <utility>
 
-#include "helpers.hpp"
 #include "helpers_cudavec.inl"
 
 __device__ uchar4 float4_to_uchar4(float4 v)

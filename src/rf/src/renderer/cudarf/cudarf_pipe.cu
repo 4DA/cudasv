@@ -20,7 +20,6 @@
 
 #include <cuda_runtime.h>
 
-#include <rf/renderer/cudarf/helpers.hpp>
 #include <rf/renderer/cudarf/cudarf.hpp>
 
 #include "helpers_cudavec.inl"
@@ -476,8 +475,6 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
         CUDA_CHK_ERROR("init_tile_queue_sizes");
     }
-
-    // reinit_buf(&bufferSet.dev_dbgbuf, total_triangles * sizeof(int32_t));
 
     // initialize constant memory
     // --

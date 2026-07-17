@@ -12,7 +12,6 @@
 #include "cudarf_rast.hpp"
 #include "helpers_cudavec.inl"
 #include "TAA_common.hpp"
-#include "helpers.hpp"
 
 #include "vecglm.inl"
 #include "types.hpp"
@@ -28,6 +27,8 @@
 
 using namespace cudarf;
 using namespace cudarf::rast;
+
+int32_t __host__ __device__ round_up_to_mult_pwr(int32_t val, int L);
 
 namespace cudarf
 {

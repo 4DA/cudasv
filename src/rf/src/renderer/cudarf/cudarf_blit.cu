@@ -5,7 +5,6 @@
 #include <cuda_runtime.h>
 
 #include <rf/renderer/cudarf/cudarf.hpp>
-#include "helpers.hpp"
 #include "types.hpp"
 #include "helpers_cudavec.inl"
 #include "framebuffer.inl"

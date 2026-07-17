@@ -4,7 +4,6 @@
 #include <spdlog/spdlog.h>
 
 #include <rf/renderer/glm_common.hpp>
-#include "renderer/cudarf/helpers.hpp"
 
 #include "utils.hpp"
 

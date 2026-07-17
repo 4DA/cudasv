@@ -4,8 +4,7 @@
 
 #include <spdlog/spdlog.h>
 
-#include "renderer/cudarf/helpers.hpp"
-#include "renderer/utils.hpp"
+#include "renderer/cuda_helpers.hpp"
 #include "texture.hpp"
 
 #include "ibl.hpp"

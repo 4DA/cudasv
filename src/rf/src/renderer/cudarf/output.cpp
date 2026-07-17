@@ -8,7 +8,6 @@
 #include <rf/renderer/cudarf/output.hpp>
 
 #include "glcommon.hpp"
-#include "helpers.hpp"
 
 #define CHECK_GL_ERROR() {\
     GLenum error = glGetError();\
