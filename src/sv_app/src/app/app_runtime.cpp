@@ -1,11 +1,12 @@
-#include "app/app_runtime.hpp"
-
-#include <unistd.h>
+#include <chrono>
+#include <thread>
 
 #include <GLFW/glfw3.h>
 #include <GLES3/gl3.h>
 
 #include <spdlog/spdlog.h>
+
+#include "app/app_runtime.hpp"
 
 #include "sources/render_bridge_4cam.hpp"
 
@@ -28,10 +29,27 @@ int run_application_loop(AppContext &app,
     const bool dump_after_frame = !options.dump_frame_path.empty();
     int rendered_frames = 0;
 
+    if (options.fps <= 0) {
+        SPDLOG_ERROR("Cannot run application with non-positive FPS");
+        return EXIT_FAILURE;
+    }
+
     if (!prepare_runtime_render_bridge_4cam_context(source_info, runtime_render_bridge)) {
         SPDLOG_ERROR("Failed to prepare the current 4-camera runtime compatibility bridge");
         return EXIT_FAILURE;
     }
+
+    using Clock = std::chrono::steady_clock;
+
+    const auto framePeriod = std::chrono::duration_cast<Clock::duration>(
+        std::chrono::duration<double>(1.0 / options.fps));
+
+    if (framePeriod <= Clock::duration::zero()) {
+        SPDLOG_ERROR("FPS {} exceeds the steady clock resolution", options.fps);
+        return EXIT_FAILURE;
+    }
+
+    auto nextFrameStart = Clock::now();
 
     while (app.running && !glfw_host.should_close_any()) {
         if (!signal_provider.get_next_signals(demo_state)) {
@@ -133,7 +151,15 @@ int run_application_loop(AppContext &app,
         rendered_frames++;
         frame_set_index = 1 - frame_set_index;
 
-        usleep(1000000 / options.fps);
+        nextFrameStart += framePeriod;
+
+        const auto now = Clock::now();
+        if (nextFrameStart > now) {
+            std::this_thread::sleep_until(nextFrameStart);
+        } else {
+            // resync after an overrun
+            nextFrameStart = now;
+        }
     }
 
     return 0;

@@ -131,15 +131,15 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    app.engine = std::make_unique<engine::Engine>();
-
     if (svapp::parse_cmdline(argc, argv, cmdline)) {
-        return -1;
+        return EXIT_FAILURE;
     }
 
     if (!svapp::validate_source_inputs(cmdline)) {
         return -1;
     }
+
+    app.engine = std::make_unique<engine::Engine>();
 
     if (cmdline.source_kind != videoio::SourceKind::NuScenes) {
         load_config(&app.engine->config);

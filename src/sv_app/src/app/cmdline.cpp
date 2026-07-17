@@ -1,9 +1,11 @@
-#include "app/cmdline.hpp"
-
 #include <algorithm>
+#include <charconv>
 #include <cstring>
+#include <string_view>
 
 #include <spdlog/spdlog.h>
+
+#include "app/cmdline.hpp"
 
 namespace svapp
 {
@@ -46,7 +48,20 @@ int parse_cmdline(int argc, char **argv, CmdlineOpts &options)
                 return -1;
             }
 
-            options.fps = atoi(argv[++index]);
+            const std::string_view value = argv[++index];
+            int fps = 0;
+            const auto [ptr, error] = std::from_chars(
+                value.data(), value.data() + value.size(), fps);
+
+            if (error != std::errc{} ||
+                ptr != value.data() + value.size() ||
+                fps <= 0)
+            {
+                SPDLOG_ERROR("Invalid --fps value '{}': expected a positive integer", value);
+                return -1;
+            }
+
+            options.fps = fps;
         } else if (!strcmp(argv[index], "--rig")) {
             if (index + 1 >= argc) {
                 SPDLOG_ERROR("--rig requires a file path");
