@@ -107,6 +107,7 @@ void TextureObject::destroy()
 {
     if (_object) {
         CUDA_CHK(cudaDestroyTextureObject(_object));
+        _object = 0;
     }
 }
 
