@@ -164,6 +164,8 @@ class Scene {
 
 private:
     bool owns(const SceneComponent &compo) const;
+    bool can_insert(const std::string &name,
+                    const SceneComponent &parent) const;
 
     SceneComponent root;
 

@@ -71,20 +71,37 @@ bool Scene::owns(const SceneComponent& component) const
     return find_component(component.name) == &component;
 }
 
-SceneComponent *
-Scene::add_scene_component(const std::string &name, const TRSTransform &transform, SceneComponent &parent)
+bool Scene::can_insert(const std::string &name, const SceneComponent &parent) const
 {
-    assert(owns(parent));
+    if (find_component(name)) {
+        SPDLOG_ERROR("component with name `{}' already exists", name);
+        return false;
+    }
 
-    SceneComponent *new_compo = new SceneComponent(name, transform, &parent);
-    parent.children.push_back(new_compo);
+    if (!owns(parent)) {
+        SPDLOG_ERROR("parent with name `{}' does not belong to scene", parent.name);
+        return false;
+    }
 
-    auto it = sceneComponents.find(name);
-    assert(it == sceneComponents.end());
+    return true;
+}
 
-    sceneComponents[name] = new_compo;
-    components[name] = std::unique_ptr<SceneComponent>(new_compo);
-    return new_compo;
+SceneComponent *
+Scene::add_scene_component(const std::string &name,
+                           const TRSTransform &transform,
+                           SceneComponent &parent)
+{
+    if (!can_insert(name, parent)) {
+        return nullptr;
+    }
+
+    auto newCompo = std::make_unique<SceneComponent>(name, transform, &parent);
+    SceneComponent *ptr = newCompo.get();
+    components.emplace(name, std::move(newCompo));
+    sceneComponents.emplace(name, ptr);
+    parent.children.push_back(ptr);
+
+    return ptr;
 }
 
 PrimitiveComponent *
@@ -94,34 +111,32 @@ Scene::add_primitive_component(const std::string &name,
                                bool selectable,
                                bool front_facing)
 {
-    assert(owns(parent));
+    if (!can_insert(name, parent)) {
+        return nullptr;
+    }
 
-    PrimitiveComponent *new_compo =
-        new PrimitiveComponent(name, transform, parent, selectable, front_facing);
-    parent.children.push_back(new_compo);
+    auto newCompo = std::make_unique<PrimitiveComponent>(
+        name, transform, parent, selectable, front_facing);
+    PrimitiveComponent *ptr = newCompo.get();
+    components.emplace(name, std::move(newCompo));
+    primitiveComponents.emplace(name, ptr);
+    parent.children.push_back(ptr);
 
-    auto it = primitiveComponents.find(name);
-    assert(it == primitiveComponents.end());
-
-    primitiveComponents[name] = new_compo;
-    components[name] = std::unique_ptr<SceneComponent>(new_compo);
-    return new_compo;
+    return ptr;
 }
 
 PrimitiveComponent *
 Scene::add_primitive_component(std::unique_ptr<PrimitiveComponent> compo,
                                SceneComponent &parent)
 {
-    assert(owns(parent));
-
-    parent.children.push_back(compo.get());
-
-    auto it = primitiveComponents.find(compo->name);
-    assert(it == primitiveComponents.end());
+    if (!compo || !can_insert(compo->name, parent)) {
+        return nullptr;
+    }
 
     PrimitiveComponent *ptr = compo.get();
-    primitiveComponents[compo->name] = ptr;
-    components[compo->name] = std::move(compo);
+    components.emplace(ptr->name, std::move(compo));
+    primitiveComponents.emplace(ptr->name, ptr);
+    parent.children.push_back(ptr);
 
     return ptr;
 }
@@ -132,19 +147,18 @@ Scene::add_light_component(const std::string &name,
                            float intensity,
                            SceneComponent &parent)
 {
-    assert(owns(parent));
+    if (!can_insert(name, parent)) {
+        return nullptr;
+    }
 
-    PointLightComponent *new_compo = new PointLightComponent(
+    auto newCompo = std::make_unique<PointLightComponent>(
         name, transform, parent, intensity);
+    PointLightComponent *ptr = newCompo.get();
+    components.emplace(name, std::move(newCompo));
+    lights.emplace(name, ptr);
+    parent.children.push_back(ptr);
 
-    parent.children.push_back(new_compo);
-
-    auto it = lights.find(name);
-    assert(it == lights.end());
-
-    lights[name] = new_compo;
-    components[name] = std::unique_ptr<SceneComponent>(new_compo);
-    return new_compo;
+    return ptr;
 }
 
 bool Scene::add_material(const std::string &name,

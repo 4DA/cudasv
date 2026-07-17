@@ -272,15 +272,27 @@ bool create_mesh_component(cudarf::pipe::Ctx *desc,
         cudarf::pipe::set_draw_packet_buffers(desc, gltfMesh, drawPacketId, cuStream);
     }
 
-    SPDLOG_DEBUG("added prim_component [name = {}, toLocal='{}'", newCompo->name.c_str(), newCompo->toLocal.to_string().c_str());
-
     if (cb && cb(*newCompo, scene)) {
+        SPDLOG_DEBUG("added cb consumed prim_component [name = {}, toLocal='{}'",
+                     newCompo->name.c_str(),
+                     newCompo->toLocal.to_string().c_str());
+
         *outComponent = nullptr;
         return true;
     }
 
-    *outComponent = scene.add_primitive_component(std::move(newCompo), parent);
-    return true;
+    if (PrimitiveComponent *added =
+        scene.add_primitive_component(std::move(newCompo), parent))
+    {
+        SPDLOG_DEBUG("added prim_component [name = {}, toLocal='{}'",
+                     added->name.c_str(),
+                     added->toLocal.to_string().c_str());
+        *outComponent = added;
+        return true;
+    } else {
+        *outComponent = nullptr;
+        return false;
+    }
 }
 
 bool create_light_component(const tinygltf::Model &model,
@@ -329,12 +341,17 @@ bool create_light_component(const tinygltf::Model &model,
         intensity = *parsedIntensity;
     }
 
-    PointLightComponent *newCompo =
-        scene.add_light_component(compoName, TRSTransform(translation, rotation, scale), intensity, parent);
+    if (PointLightComponent *newCompo =
+        scene.add_light_component(compoName, TRSTransform(translation, rotation, scale), intensity, parent)){
 
-    SPDLOG_DEBUG("created light component [name = {}, int = {:f}, xform = {}]", newCompo->name.c_str(), newCompo->intensity, newCompo->to_world.to_string().c_str());
-    *outComponent = newCompo;
-    return true;
+        SPDLOG_DEBUG("created light component [name = {}, int = {:f}, xform = {}]",
+                     newCompo->name.c_str(), newCompo->intensity, newCompo->to_world.to_string().c_str());
+        *outComponent = newCompo;
+        return true;
+    } else {
+        *outComponent = nullptr;
+        return false;
+    }
 }
 
 bool create_scene_component(cudarf::pipe::Ctx *desc,
@@ -415,18 +432,19 @@ bool create_scene_component(cudarf::pipe::Ctx *desc,
                                       outComponent);
     }
 
-    if (scene.find_scene_component(compoName) != nullptr) {
-        SPDLOG_ERROR("Duplicate scene component name '{}'", compoName);
+    if (SceneComponent *newCompo =
+        scene.add_scene_component(compoName,
+                                  TRSTransform(translation, rotation, scale),
+                                  parent))
+    {
+        SPDLOG_DEBUG("added scene_component [name = {}] [toLocal {}]", newCompo->name, newCompo->toLocal.to_string());
+        *outComponent = newCompo;
+        return true;
+
+    } else {
+        *outComponent = nullptr;
         return false;
     }
-
-    SceneComponent *newCompo =
-        scene.add_scene_component(compoName, TRSTransform(translation, rotation, scale), parent);
-
-    SPDLOG_DEBUG("added scene_component [name = {}] [toLocal {}]", newCompo->name, newCompo->toLocal.to_string());
-
-    *outComponent = newCompo;
-    return true;
 }
 
 bool load_scene_tree(cudarf::pipe::Ctx *desc,
