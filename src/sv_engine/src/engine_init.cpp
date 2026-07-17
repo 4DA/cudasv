@@ -99,12 +99,12 @@ engine::Error Engine::init()
     _impl->world->vehicle_component() =
         _impl->world->scene().add_scene_component(vehicleCompoName,
                                                   vehicleTransform,
-                                                  _impl->world->scene().get_root());
+                                                  *_impl->world->scene().get_root());
 
     loader::load_gltf_model(_impl->cuda_rasterizers[0].get(),
                             vehicle_model_config->model_path,
                             _impl->world->scene(),
-                            _impl->world->vehicle_component(),
+                            *_impl->world->vehicle_component(),
                             "vehicle::",
                             _impl->world->animations(),
                             _impl->world->vehicle_model(),
@@ -125,7 +125,7 @@ engine::Error Engine::init()
         rf::SceneComponent *scenarioRoot =
             _impl->world->scene().add_scene_component(scenarioRootName,
                                                       make_test_scenario_transform(*test_scenario_config),
-                                                      _impl->world->vehicle_component());
+                                                      *_impl->world->vehicle_component());
 
         _impl->testScenarioModels.emplace_back();
         _impl->testScenarioAnimations.emplace_back();
@@ -133,7 +133,7 @@ engine::Error Engine::init()
         if (!loader::load_gltf_model(_impl->cuda_rasterizers[0].get(),
                                      test_scenario_config->glb_path,
                                      _impl->world->scene(),
-                                     scenarioRoot,
+                                     *scenarioRoot,
                                      scenarioPrefix,
                                      _impl->testScenarioAnimations.back(),
                                      _impl->testScenarioModels.back(),

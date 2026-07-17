@@ -22,7 +22,7 @@ struct PointLightComponent: public SceneComponent {
     // intensity - Radiant intensity (in watt)
     PointLightComponent(const std::string &name,
                         const TRSTransform &toLocal,
-                        SceneComponent *parent,
+                        SceneComponent &parent,
                         float intensity);
 };
 }

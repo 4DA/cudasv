@@ -55,7 +55,7 @@ static bool viewpoint_control_inserter(const VirtualControlConfig *config,
                                        rf::Scene &scene,
                                        const std::vector<rf::Viewpoint> &viewpoints,
                                        std::vector<rf::PrimitiveComponent *> &viewpointCompos,
-                                       rf::SceneComponent *parent)
+                                       rf::SceneComponent &parent)
 {
     for (uint32_t index = 0; index < config->controls_count; index++) {
         const ViewpointControlIconSettings *control =
@@ -178,7 +178,7 @@ int engine::sv_viewpoint_controls_init(
             rf::TRSTransform(glm::vec3(0.0f, 0.0f, 0.0f),
                                glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
                                glm::vec3(1000.0f)),
-            world.scene().get_root());
+            *world.scene().get_root());
 
     rf::AnimationMap unused;
 
@@ -193,7 +193,7 @@ int engine::sv_viewpoint_controls_init(
         &desc,
         std::string(config->model_path),
         world.scene(),
-        world.control_root(),
+        *world.control_root(),
         "control::",
         unused,
         world.control_model(),
@@ -219,9 +219,12 @@ int engine::sv_viewpoint_controls_init(
         return -1;
     }
     else {
-        viewpoint_control_inserter(config, components, world.scene(),
-                                   viewpoints, controls,
-                                   world.control_root());
+        viewpoint_control_inserter(config,
+                                   components,
+                                   world.scene(),
+                                   viewpoints,
+                                   controls,
+                                   *world.control_root());
         viewpoint_controls = controls;
 
         return 0;

@@ -126,7 +126,7 @@ int Underlay::init(cudarf::pipe::Ctx *desc, rf::Scene &scene, const Config *conf
                            material,
                            rf::TRSTransform(),
                            scene,
-                           scene.get_root(),
+                           *scene.get_root(),
                            cuStream);
 
     scene.add_material("underlay::shadowMat",  material);

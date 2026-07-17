@@ -119,7 +119,7 @@ class Scene {
     // a component with this name.
     // - transform: The initial transform of the component.
     SceneComponent *
-    add_scene_component(const std::string &name, const TRSTransform &transform, SceneComponent *parent);
+    add_scene_component(const std::string &name, const TRSTransform &transform, SceneComponent &parent);
 
     // Create a new primitive component and add it to the scene.
     // - name: The name of the new component. The scene shouldn't already contain
@@ -128,25 +128,25 @@ class Scene {
     // - hitable: If true, the primitive accepts camera rays.
     // - frontFacing: If true, the primitive should be oriented towards
     //                 the camera with its local +X axis.
-    // - parent: Pointer to the parent component.
+    // - parent: Reference to the parent component.
     PrimitiveComponent *
     add_primitive_component(const std::string &name,
                             const TRSTransform &transform,
-                            SceneComponent *parent,
+                            SceneComponent &parent,
                             bool hitable = false,
                             bool frontFacing = false);
 
     PrimitiveComponent *
-    add_primitive_component(std::unique_ptr<PrimitiveComponent> compo, SceneComponent *parent);
+    add_primitive_component(std::unique_ptr<PrimitiveComponent> compo, SceneComponent &parent);
 
     // Create a new light component and add it to the scene.
     // - name: The name of the new component. The scene shouldn't already contain
     // a component with this name.
     // - transform: The initial transform of the component.
     // - intensity: Radiant intensity (in watts).
-    // - parent: Pointer to the parent component.
+    // - parent: Reference to the parent component.
     PointLightComponent *
-    add_light_component(const std::string &name, const TRSTransform &transform, float intensity, SceneComponent *parent);
+    add_light_component(const std::string &name, const TRSTransform &transform, float intensity, SceneComponent &parent);
 
     bool add_material(const std::string &name,
                       std::shared_ptr<cudarf::Material> material);

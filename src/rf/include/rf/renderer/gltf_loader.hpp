@@ -22,7 +22,7 @@ using PrimitiveComponentCB = std::function<bool(const rf::PrimitiveComponent &, 
 bool load_gltf_model(cudarf::pipe::Ctx *desc,
               const std::string &input_filename,
               rf::Scene &scene,
-              rf::SceneComponent *parent,
+              rf::SceneComponent &parent,
               const std::string &prefix,
               rf::AnimationMap &animations,
               tinygltf::Model &model,
@@ -36,7 +36,7 @@ add_naive_mesh(cudarf::pipe::Ctx *desc,
                const std::shared_ptr<cudarf::Material> &material,
                const rf::TRSTransform &transform,
                rf::Scene &scene,
-               rf::SceneComponent *parent,
+               rf::SceneComponent &parent,
                cudaStream_t cuStream);
 }
 

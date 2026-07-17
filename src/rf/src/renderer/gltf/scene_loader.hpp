@@ -11,7 +11,7 @@ namespace loader::gltf
 bool load_scene(cudarf::pipe::Ctx *desc,
                 const tinygltf::Model &model,
                 rf::Scene &scene,
-                rf::SceneComponent *parent,
+                rf::SceneComponent &parent,
                 const std::string &namePrefix,
                 loader::PrimitiveComponentCB cb,
                 cudaStream_t cuStream);

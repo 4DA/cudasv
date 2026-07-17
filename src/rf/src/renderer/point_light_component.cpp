@@ -8,7 +8,7 @@ constexpr float UNIT_SCALE_2 = (UNIT_SCALE * UNIT_SCALE);
 
 PointLightComponent::PointLightComponent(const std::string &name,
                                          const TRSTransform &toLocal,
-                                         SceneComponent *parent,
+                                         SceneComponent &parent,
                                          float intensity):
-    SceneComponent(name, toLocal, parent),
+    SceneComponent(name, toLocal, &parent),
     intensity(intensity * UNIT_SCALE_2) {}

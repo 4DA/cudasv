@@ -148,7 +148,7 @@ bool create_mesh_component(cudarf::pipe::Ctx *desc,
                            const glm::vec3 &translation,
                            const glm::quat &rotation,
                            const glm::vec3 &scale,
-                           SceneComponent *parent,
+                           SceneComponent &parent,
                            const std::string &namePrefix,
                            loader::PrimitiveComponentCB cb,
                            cudaStream_t cuStream,
@@ -290,7 +290,7 @@ bool create_light_component(const tinygltf::Model &model,
                             const glm::vec3 &translation,
                             const glm::quat &rotation,
                             const glm::vec3 &scale,
-                            SceneComponent *parent,
+                            SceneComponent &parent,
                             SceneComponent **outComponent)
 {
     auto nodeLightIt = node.extensions.find("KHR_lights_punctual");
@@ -342,7 +342,7 @@ bool create_scene_component(cudarf::pipe::Ctx *desc,
                             int nodeIndex,
                             Scene &scene,
                             const tinygltf::Node &node,
-                            SceneComponent *parent,
+                            SceneComponent &parent,
                             const std::string &namePrefix,
                             loader::PrimitiveComponentCB cb,
                             cudaStream_t cuStream,
@@ -353,13 +353,8 @@ bool create_scene_component(cudarf::pipe::Ctx *desc,
         return false;
     }
 
-    if (parent == nullptr) {
-        SPDLOG_ERROR("Cannot create GLTF scene component for node {}: parent is null", nodeIndex);
-        return false;
-    }
-
     SPDLOG_DEBUG("parent component [name = {}] [toLocal = {}]",
-                 parent->name, parent->toLocal.to_string());
+                 parent.name, parent.toLocal.to_string());
 
     std::string compoName = node.name.empty()
         ? namePrefix + "__gltf_node_" + std::to_string(nodeIndex)
@@ -439,7 +434,7 @@ bool load_scene_tree(cudarf::pipe::Ctx *desc,
                      int nodeIndex,
                      const tinygltf::Node &node,
                      rf::Scene &scene,
-                     rf::SceneComponent *parent,
+                     rf::SceneComponent &parent,
                      const std::string &namePrefix,
                      loader::PrimitiveComponentCB cb,
                      cudaStream_t cuStream)
@@ -449,17 +444,13 @@ bool load_scene_tree(cudarf::pipe::Ctx *desc,
         return false;
     }
 
-    if (parent == nullptr) {
-        SPDLOG_ERROR("Cannot load GLTF scene tree at node {}: parent is null", nodeIndex);
-        return false;
-    }
-
     SceneComponent *compo = nullptr;
     if (!create_scene_component(desc, model, nodeIndex, scene, node, parent, namePrefix, cb, cuStream, &compo)) {
         return false;
     }
 
-    SceneComponent *childParent = compo ? compo : parent;
+    // for callback-consumed nodes their children are promoted to supplied parent
+    SceneComponent &childParent = compo ? *compo : parent;
 
     for (int child: node.children) {
         if (child < 0 || child >= static_cast<int>(model.nodes.size())) {
@@ -472,9 +463,7 @@ bool load_scene_tree(cudarf::pipe::Ctx *desc,
         }
     }
 
-    if (parent) {
-        parent->compute_bounding_box();
-    }
+    parent.compute_bounding_box();
 
     return true;
 }
@@ -487,7 +476,7 @@ namespace loader::gltf
 bool load_scene(cudarf::pipe::Ctx *desc,
                 const tinygltf::Model &model,
                 rf::Scene &scene,
-                rf::SceneComponent *parent,
+                rf::SceneComponent &parent,
                 const std::string &namePrefix,
                 loader::PrimitiveComponentCB cb,
                 cudaStream_t cuStream)

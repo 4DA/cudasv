@@ -51,7 +51,7 @@ loader::add_naive_mesh(cudarf::pipe::Ctx *desc,
                        const std::shared_ptr<cudarf::Material> &material,
                        const rf::TRSTransform &transform,
                        rf::Scene &scene,
-                       rf::SceneComponent *parent,
+                       rf::SceneComponent &parent,
                        cudaStream_t cuStream)
 {
     if (desc == nullptr) {
@@ -61,11 +61,6 @@ loader::add_naive_mesh(cudarf::pipe::Ctx *desc,
 
     if (meshPtr == nullptr) {
         SPDLOG_ERROR("Cannot add naive mesh '{}': mesh is null", name);
-        return nullptr;
-    }
-
-    if (parent == nullptr) {
-        SPDLOG_ERROR("Cannot add naive mesh '{}': parent component is null", name);
         return nullptr;
     }
 
@@ -138,7 +133,7 @@ static std::string get_file_path_extension(const std::string &name) {
 bool loader::load_gltf_model(cudarf::pipe::Ctx *desc,
                              const std::string &file,
                              rf::Scene &scene,
-                             rf::SceneComponent *parent,
+                             rf::SceneComponent &parent,
                              const std::string &namePrefix,
                              rf::AnimationMap &animations,
                              tinygltf::Model &model,
@@ -147,11 +142,6 @@ bool loader::load_gltf_model(cudarf::pipe::Ctx *desc,
 {
     if (desc == nullptr) {
         SPDLOG_ERROR("Failed to load GLTF: raster context is null");
-        return false;
-    }
-
-    if (parent == nullptr) {
-        SPDLOG_ERROR("Failed to load GLTF '{}': parent component is null", file);
         return false;
     }
 

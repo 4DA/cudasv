@@ -35,8 +35,8 @@ struct SceneComponent {
     /// @param[in] toLocal Local space transform affecting geometry and children
     /// @param[in] parent Parent, null if this is root component
     SceneComponent(const std::string &name,
-                      TRSTransform toLocal = TRSTransform(),
-                      SceneComponent *parent = nullptr)
+                   TRSTransform toLocal = TRSTransform(),
+                   SceneComponent *parent = nullptr)
         : name(name), parent(parent),
           toLocal(toLocal),
           toWorld(compute_to_world(parent)),

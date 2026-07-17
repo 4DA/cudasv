@@ -60,10 +60,10 @@ struct PrimitiveComponent : public SceneComponent {
     // hitable - True if object accepts camera rays
     PrimitiveComponent(const std::string &name,
                        const TRSTransform &toLocal,
-                       SceneComponent *parent,
+                       SceneComponent &parent,
                        bool hitable = false,
                        bool isFrontFacing = false)
-        : SceneComponent(name, toLocal, parent),
+        : SceneComponent(name, toLocal, &parent),
           _hitable(hitable),
           _frontFacing(isFrontFacing){}
 
