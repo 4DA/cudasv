@@ -134,7 +134,7 @@ InputFrames Projector::load_rgb(
         rgb_to_rgba_surface<<<gridSize, blockSize, 0, cuStream>>>(
             cudaFramesStaging[i].get(), w, h, pitch, cudaFrameResources[fs][i]->surface());
 
-        CUDA_CHK_ERROR("rgb_to_rgba_surface");
+        CUDA_CHK_KERNEL(cuStream, "rgb_to_rgba_surface");
     }
 
     tex_width = w;
@@ -607,7 +607,7 @@ void project_async(Projector* ctx,
         width, height, texObj,
         ctx->tex_width, ctx->tex_height, virtCamera, params, dev_framebuffer);
 
-    CUDA_CHK_ERROR("surround_view::project_async kernel");
+    CUDA_CHK_KERNEL(stream, "surround_view::project_async kernel");
 }
 
 void project_async(std::array<cudaTextureObject_t, SURROUND_VIEW_MAX_CAMERAS> cuda_textures,
@@ -634,7 +634,7 @@ void project_async(std::array<cudaTextureObject_t, SURROUND_VIEW_MAX_CAMERAS> cu
         width, height, texObj,
         texture_width, texture_height, virtCamera, params, dev_framebuffer);
 
-    CUDA_CHK_ERROR("surround_view::project_async kernel");
+    CUDA_CHK_KERNEL(stream, "surround_view::project_async kernel");
 }
 
 } // namespace rf::surround_view

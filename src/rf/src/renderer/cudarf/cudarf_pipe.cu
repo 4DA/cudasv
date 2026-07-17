@@ -319,7 +319,7 @@ void init_tile_queue_static(cudarf::pipe::Ctx *desc,
         init_tile_queue_pointers<<<blockCount2d, blockSize2d, 0, cuStream>>>(
             desc->dev_tileQHeaders.get(), desc->dev_tileQData.get(), desc->tileQLimit,
             rasterizerW / CUDARF_TILE_SZ, rasterizerH / CUDARF_TILE_SZ);
-        CUDA_CHK_ERROR("init_tile_queue_pointers");
+        CUDA_CHK_KERNEL(cuStream, "init_tile_queue_pointers");
     }
 }
 }
@@ -473,7 +473,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
             rasterizerW / CUDARF_TILE_SZ,
             rasterizerH / CUDARF_TILE_SZ);
 
-        CUDA_CHK_ERROR("init_tile_queue_sizes");
+        CUDA_CHK_KERNEL(cuStream, "init_tile_queue_sizes");
     }
 
     // initialize constant memory
@@ -618,7 +618,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
                 }
             }
         }
-        CUDA_CHK_ERROR("vertex_transform");
+        CUDA_CHK_KERNEL(cuStream, "vertex_transform");
     }
 
     CUDA_TIME_END(total_vertex_transform);
@@ -665,7 +665,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
             }
         }
 
-        CUDA_CHK_ERROR("triangle_assembly");
+        CUDA_CHK_KERNEL(cuStream, "triangle_assembly");
     }
 
     CUDA_TIME_END(total_triangle_assembly);
@@ -695,7 +695,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         tiler_bin<<<dim3(CUDARF_BIN_STREAMS_SIZE), dim3(32, CUDARF_BIN_WARPS), 0, cuStream>>>
             (desc->dev_pipeParams.get(), desc->dev_pipeAtomics.get(), bufferSet.dev_triangles.get());
 
-        CUDA_CHK_ERROR("tiler_bin");
+        CUDA_CHK_KERNEL(cuStream, "tiler_bin");
 
         CUDA_TIME_END(tiler_bin);
 
@@ -738,7 +738,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
             <<<gridSize, blockSize, 0, cuStream >>>(desc->dev_pipeParams.get(), desc->dev_pipeAtomics.get());
         }
 
-        CUDA_CHK_ERROR("tilerCoarse");
+        CUDA_CHK_KERNEL(cuStream, "tilerCoarse");
         CUDA_TIME_END(tilerCoarse);
 
         // DEBUG: test to check that coarse tiler has processed all triangles
@@ -855,7 +855,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
         CUDA_TIME_END(fine_raster_naive);
 
-        CUDA_CHK_ERROR("fine_raster_naive");
+        CUDA_CHK_KERNEL(cuStream, "fine_raster_naive");
     }
 
     bool useOpaqueVisibuf = !params.with_blending && launchConfig.withOpaqueVisibuf;
@@ -879,7 +879,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
         CUDA_TIME_END(visibuf_build_xy_lists);
 
-        CUDA_CHK_ERROR("visibuf_build_xy_lists");
+        CUDA_CHK_KERNEL(cuStream, "visibuf_build_xy_lists");
     }
 
     if (useOpaqueVisibuf)
@@ -894,7 +894,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
             (desc->dev_pipeParams.get(), desc->dev_geom_output.get(), desc->dev_pipeAtomics.get(),
              desc->dev_xyCommands.get(), framebuffer);
 
-        CUDA_CHK_ERROR("visibuf_material_pass");
+        CUDA_CHK_KERNEL(cuStream, "visibuf_material_pass");
 
         CUDA_TIME_END(visibuf_material_pass);
     }
@@ -915,7 +915,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
         visualizeBins<<<blockCount2d, blockSize2d, 0, cuStream>>>(
             desc->dev_pipeParams.get(), framebuffer);
 
-        CUDA_CHK_ERROR("visualizeBins");
+        CUDA_CHK_KERNEL(cuStream, "visualizeBins");
     }
 #endif
 
@@ -932,7 +932,7 @@ void cudarf::pipe::run_pipe(cudarf::pipe::Ctx *desc,
 
         visualizeTiles <<< blockCount2d, blockSize2d, 0, cuStream >>>(desc->dev_pipeParams.get(), framebuffer);
 
-        CUDA_CHK_ERROR("visualizeTiles");
+        CUDA_CHK_KERNEL(cuStream, "visualizeTiles");
     }
 #endif
 
@@ -971,7 +971,7 @@ void cudarf::pipe::TAA(cudarf::pipe::Ctx *desc,
         desc->TAA.feedback,
         jitter);
 
-    CUDA_CHK_ERROR("resolve_TAA");
+    CUDA_CHK_KERNEL(cuStream, "resolve_TAA");
 
     // DEBUG: visualize velocity buffer
     // visualize_velocity<<<blockCount2d, blockSize2d, 0, cuStream>>>

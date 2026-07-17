@@ -88,7 +88,7 @@ void generate_texture_mips(cudaMipmappedArray *dev_mipmapArray,
         mip_downsample2x<<<blockCount, blockSize, 0, cuStream>>>(
             srcTexture.get(), dstSurface, width, height);
 
-        CUDA_CHK_ERROR("mip_downsample2x");
+        CUDA_CHK_KERNEL(cuStream, "mip_downsample2x");
 
         // wait until downsample kernel is complete before destroying surface & texture
         CUDA_CHK(cudaStreamSynchronize(cuStream));

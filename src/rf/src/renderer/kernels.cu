@@ -139,7 +139,7 @@ void rasterize_copy_output_rgba_surface__async(Color* image, int w, int h, cudaS
                       (h - 1) / blockSize2d.y + 1);
 
     copy_to_pbo__surface<<<blockCount2d, blockSize2d, 0, stream>>>(image, w, h, outputSurface);
-    CUDA_CHK_ERROR("copy_to_pbo__surface");
+    CUDA_CHK_KERNEL(stream, "copy_to_pbo__surface");
 }
 
 extern "C" void rasterize_copy_output_rgba_buffer_async(cudarf::ColorN* image, int w, int h, void* buffer, cudaStream_t stream)
@@ -150,7 +150,7 @@ extern "C" void rasterize_copy_output_rgba_buffer_async(cudarf::ColorN* image, i
                       (h - 1) / blockSize2d.y + 1);
 
     copy_to_pbo__buffer<<<blockCount2d, blockSize2d, 0, stream>>>(image, w, h, (uchar4 *)buffer);
-    CUDA_CHK_ERROR("copy_to_pbo__buffer");
+    CUDA_CHK_KERNEL(stream, "copy_to_pbo__buffer");
 }
 
 extern "C"
@@ -164,7 +164,7 @@ void rasterize_clear_output_rgba__async(cudarf::ColorN *image, int w, int h, flo
                       (h - 1) / blockSize2d.y + 1);
 
     clear_pbo_rgba8<<<blockCount2d, blockSize2d, 0, stream>>>(image, w, h, clearColor);
-    CUDA_CHK_ERROR("clear_pbo_vec4");
+    CUDA_CHK_KERNEL(stream, "clear_pbo_vec4");
 }
 
 void clear_depth__async(cudarf::pipe::Ctx *desc, cudaStream_t stream)
@@ -178,7 +178,7 @@ void clear_depth__async(cudarf::pipe::Ctx *desc, cudaStream_t stream)
                         desc->dev_depthbuffer.get(),
                         desc->width, desc->height);
 
-    CUDA_CHK_ERROR("init_depth");
+    CUDA_CHK_KERNEL(stream, "init_depth");
 }
 
 #endif

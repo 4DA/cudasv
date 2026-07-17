@@ -186,7 +186,7 @@ void test_sorting_driver(unsigned int numMPS)
                              0));
 
     test_sorting_wrapper<<<gridSize, blockSize>>>(devArray, SZ);
-    CUDA_CHK_ERROR("test_sorting_driver");
+    CUDA_CHK_KERNEL(0, "test_sorting_driver");
 
     CUDA_CHK(cudaMemcpyAsync(testArray,
                              devArray,

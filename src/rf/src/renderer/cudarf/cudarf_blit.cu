@@ -237,7 +237,7 @@ void cudarf::pipe::clear_framebuffer(cudarf::pipe::Ctx *desc, cudarf::Framebuffe
     dim3 blockCount2d((desc->width  - 1) / blockSize2d.x + 1,
                       (desc->height - 1) / blockSize2d.y + 1);
     init_framebuffer<<<blockCount2d, blockSize2d, 0, cuStream>>>(fb, desc->width, desc->height, color);
-    CUDA_CHK_ERROR("clear_framebuffer");
+    CUDA_CHK_KERNEL(cuStream, "clear_framebuffer");
 }
 
 void cudarf::pipe::copy_framebuffer(cudarf::pipe::Ctx *desc,
@@ -250,7 +250,7 @@ void cudarf::pipe::copy_framebuffer(cudarf::pipe::Ctx *desc,
                       (desc->height - 1) / blockSize2d.y + 1);
     copy_framebuffer_kernel<<<blockCount2d, blockSize2d, 0, cuStream>>>(
         src, dst, desc->width, desc->height);
-    CUDA_CHK_ERROR("copy_framebuffer");
+    CUDA_CHK_KERNEL(cuStream, "copy_framebuffer");
 }
 
 void cudarf::pipe::generate_checkers(cudarf::pipe::Ctx *desc, cudarf::Framebuffer fb,
@@ -260,7 +260,7 @@ void cudarf::pipe::generate_checkers(cudarf::pipe::Ctx *desc, cudarf::Framebuffe
     dim3 blockCount2d((desc->width  - 1) / blockSize2d.x + 1,
                       (desc->height - 1) / blockSize2d.y + 1);
     init_framebuffer_checkers<<<blockCount2d, blockSize2d, 0, cuStream>>>(fb, desc->width, desc->height);
-    CUDA_CHK_ERROR("generate_checkers");
+    CUDA_CHK_KERNEL(cuStream, "generate_checkers");
 }
 
 void cudarf::pipe::clear_depth(cudarf::pipe::Ctx *desc, cudaStream_t stream)
@@ -270,7 +270,7 @@ void cudarf::pipe::clear_depth(cudarf::pipe::Ctx *desc, cudaStream_t stream)
                       (desc->height - 1) / blockSize2d.y + 1);
     init_depth<<<blockCount2d, blockSize2d, 0, stream>>>(desc->dev_depthbuffer.get(),
                                                          desc->width, desc->height);
-    CUDA_CHK_ERROR("clear_depth");
+    CUDA_CHK_KERNEL(stream, "clear_depth");
 }
 
 // ---------------------------------------------------------------------------
@@ -284,7 +284,7 @@ void cudarf::resample(cudarf::FBTexture src, int outputWidth, int outputHeight, 
     dim3 blockCount2d((outputWidth  - 1) / blockSize2d.x + 1,
                       (outputHeight - 1) / blockSize2d.y + 1);
     resample_bilinear<<<blockCount2d, blockSize2d>>>(src, outputWidth, outputHeight, pbo);
-    CUDA_CHK_ERROR("resample");
+    CUDA_CHK_KERNEL(0, "resample");
 }
 
 void cudarf::pipe::copy_to_pbo(cudarf::pipe::Ctx *desc, cudarf::Framebuffer src, uchar4 *pbo)
@@ -293,7 +293,7 @@ void cudarf::pipe::copy_to_pbo(cudarf::pipe::Ctx *desc, cudarf::Framebuffer src,
     dim3 blockCount2d((desc->width  - 1) / blockSize2d.x + 1,
                       (desc->height - 1) / blockSize2d.y + 1);
     copy_to_pbo<<<blockCount2d, blockSize2d>>>(src, desc->width, desc->height, pbo);
-    CUDA_CHK_ERROR("copy_to_pbo");
+    CUDA_CHK_KERNEL(0, "copy_to_pbo");
 }
 
 void cudarf::pipe::copy_depth_to_pbo(cudarf::pipe::Ctx *desc, uchar4 *pbo)
@@ -303,7 +303,7 @@ void cudarf::pipe::copy_depth_to_pbo(cudarf::pipe::Ctx *desc, uchar4 *pbo)
                       (desc->height - 1) / blockSize2d.y + 1);
     copy_depth_to_pbo<<<blockCount2d, blockSize2d>>>(desc->dev_depthbuffer.get(),
                                                      desc->width, desc->height, pbo);
-    CUDA_CHK_ERROR("copy_depth_to_pbo");
+    CUDA_CHK_KERNEL(0, "copy_depth_to_pbo");
 }
 
 // ---------------------------------------------------------------------------
@@ -328,7 +328,7 @@ void cudarf::compose(cudarf::Framebuffer lower,
                       (height - 1) / blockSize2d.y + 1);
     compose<<<blockCount2d, blockSize2d, 0, cuStream>>>(
         lower, upper, overlay, exposure, width, height, fadeMinY, fadeMaxY, dev_out);
-    CUDA_CHK_ERROR("compose");
+    CUDA_CHK_KERNEL(cuStream, "compose");
 }
 
 void cudarf::compose(cudarf::Framebuffer lower,
@@ -348,7 +348,7 @@ void cudarf::compose(cudarf::Framebuffer lower,
                       (height - 1) / blockSize2d.y + 1);
     compose_no_tonemap<<<blockCount2d, blockSize2d, 0, cuStream>>>(
         lower, upper, overlay, width, height, fadeMinY, fadeMaxY, dev_out);
-    CUDA_CHK_ERROR("compose");
+    CUDA_CHK_KERNEL(cuStream, "compose");
 }
 
 void cudarf::compose(cudarf::Framebuffer fb,
@@ -362,5 +362,5 @@ void cudarf::compose(cudarf::Framebuffer fb,
     dim3 blockCount2d((width  - 1) / blockSize2d.x + 1,
                       (height - 1) / blockSize2d.y + 1);
     compose_single<<<blockCount2d, blockSize2d, 0, cuStream>>>(fb, width, height, dev_out);
-    CUDA_CHK_ERROR("compose");
+    CUDA_CHK_KERNEL(cuStream, "compose");
 }
