@@ -28,11 +28,17 @@ SceneComponent * Scene::find_component(const std::string &name)
 
 const SceneComponent * Scene::find_component(const std::string &name) const
 {
-    if (const auto *primitive = find_primitive_component(name)) {
-        return primitive;
+    if (name == root.name) {
+        return &root;
     }
 
-    return find_scene_component(name);
+    const auto it = components.find(name);
+
+    if(it != components.end()) {
+        return it->second.get();
+    } else {
+        return nullptr;
+    }
 }
 
 SceneComponent * Scene::find_scene_component(const std::string &name)
@@ -60,10 +66,15 @@ const PrimitiveComponent * Scene::find_primitive_component(
     return it == primitiveComponents.end() ? nullptr : it->second;
 }
 
+bool Scene::owns(const SceneComponent& component) const
+{
+    return find_component(component.name) == &component;
+}
+
 SceneComponent *
 Scene::add_scene_component(const std::string &name, const TRSTransform &transform, SceneComponent &parent)
 {
-    assert(find_component(parent.name));
+    assert(owns(parent));
 
     SceneComponent *new_compo = new SceneComponent(name, transform, &parent);
     parent.children.push_back(new_compo);
@@ -83,7 +94,7 @@ Scene::add_primitive_component(const std::string &name,
                                bool selectable,
                                bool front_facing)
 {
-    assert(find_component(parent.name));
+    assert(owns(parent));
 
     PrimitiveComponent *new_compo =
         new PrimitiveComponent(name, transform, parent, selectable, front_facing);
@@ -101,7 +112,7 @@ PrimitiveComponent *
 Scene::add_primitive_component(std::unique_ptr<PrimitiveComponent> compo,
                                SceneComponent &parent)
 {
-    assert(find_component(parent.name));
+    assert(owns(parent));
 
     parent.children.push_back(compo.get());
 
@@ -121,9 +132,11 @@ Scene::add_light_component(const std::string &name,
                            float intensity,
                            SceneComponent &parent)
 {
-    assert(find_component(parent.name));
+    assert(owns(parent));
 
-    PointLightComponent *new_compo = new PointLightComponent(name, transform, parent, intensity);
+    PointLightComponent *new_compo = new PointLightComponent(
+        name, transform, parent, intensity);
+
     parent.children.push_back(new_compo);
 
     auto it = lights.find(name);

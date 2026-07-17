@@ -163,6 +163,8 @@ class Scene {
                          cudarf::DrawList &output) const;
 
 private:
+    bool owns(const SceneComponent &compo) const;
+
     SceneComponent root;
 
     cudarf::MaterialNames materials;
